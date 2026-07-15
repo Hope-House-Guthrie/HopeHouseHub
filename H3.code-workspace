@@ -1,0 +1,61 @@
+{
+    "folders": [
+        {
+            "path": "."
+        }
+    ],
+    "settings": {
+        "nix.enableLanguageServer": true,
+        "nix.serverPath": "nixd",
+        "nix.serverSettings": {
+            "nixd": {
+                "formatting": {
+                    "command": [
+                        "nixfmt"
+                    ]
+                },
+                "nixpkgs": {
+                    // Instructs nixd to lazily evaluate package strings from your flake input
+                    "expr": "import (builtins.getFlake (toString ./. )).inputs.nixpkgs { }"
+                },
+                "options": {
+                    "nixos": {
+                        // Allows nixd to auto-complete the exact modules in your flake configuration
+                        "expr": "(builtins.getFlake (toString ./. )).nixosConfigurations.dc-server.options"
+                    }
+                }
+            }
+        },
+        "[nix]": {
+            "editor.defaultFormatter": "jnoortheen.nix-ide",
+            "editor.formatOnSave": true,
+            "editor.tabSize": 2,
+            "editor.insertSpaces": true
+        },
+        "javascript.preferences.quoteStyle": "double",
+        "[javascript]": {
+            "editor.defaultFormatter": "esbenp.prettier-vscode",
+            "editor.formatOnSave": true,
+            "editor.tabSize": 2
+        },
+        "yaml.format.enable": true,
+        "yaml.validate": true,
+        "[yaml]": {
+            "editor.defaultFormatter": "redhat.vscode-yaml",
+            "editor.formatOnSave": true,
+            "editor.tabSize": 2
+        },
+        "terminal.integrated.env.linux": {
+            "DIRENV_LOG_FORMAT": "" // Silences direnv verbose output in new tabs
+        }
+    },
+    "extensions": {
+        "recommendations": [
+            "jnoortheen.nix-ide",
+            "Oven.bun-vscode",
+            "esbenp.prettier-vscode",
+            "redhat.vscode-yaml",
+            "mkhl.direnv"
+        ]
+    }
+}
