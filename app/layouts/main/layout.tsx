@@ -10,7 +10,7 @@ import {
 import MainHeader from "./header";
 import MainDrawer from "./drawer";
 
-const DRAWER_WIDTH = 200;
+const DRAWER_WIDTH = 300;
 
 export const MainLayout: React.FC = () => {
     const theme = useTheme();
@@ -20,7 +20,6 @@ export const MainLayout: React.FC = () => {
         <Box sx={{ display: 'flex', minHeight: '100vh' }}>
         
             <MainHeader
-                headerText="Hope House Hub"
                 drawerWidth={DRAWER_WIDTH}
                 drawerOpen={drawerOpen}
                 setDrawerOpen={setDrawerOpen} />
@@ -30,7 +29,7 @@ export const MainLayout: React.FC = () => {
                 drawerOpen={drawerOpen}
                 setDrawerOpen={setDrawerOpen} />
             
-            {/* todo: `paddingTop` should be a variable / calc'd from the header height */}
+            {/* todo: `marginTop` should be a variable / calc'd from the header height */}
             <Box
                 component="main"
                 sx={{
@@ -38,7 +37,7 @@ export const MainLayout: React.FC = () => {
                     p: 3,
                     width: { md: `calc(100% - ${DRAWER_WIDTH}px)` },
                     backgroundColor: theme.palette.background.default,
-                    paddingTop: '64px',
+                    marginTop: '64px',
                 }}>
 
                 <Outlet />
