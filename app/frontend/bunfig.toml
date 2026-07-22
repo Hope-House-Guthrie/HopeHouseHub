@@ -1,5 +1,5 @@
 [serve]
-port = 4000
+port = 3001
 
 [serve.static]
 env = "BUN_PUBLIC_*"

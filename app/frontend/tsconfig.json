@@ -23,7 +23,7 @@
     "noImplicitOverride": true,
 
     "paths": {
-      "@/*": ["./app/*"],
+      "@/*": ["./src/*"],
       "@assets/*": ["./assets/*"]
     },
 

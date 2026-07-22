@@ -5,34 +5,12 @@
         }
     ],
     "settings": {
-        "nix.enableLanguageServer": true,
-        "nix.serverPath": "nixd",
-        "nix.serverSettings": {
-            "nixd": {
-                "formatting": {
-                    "command": [
-                        "nixfmt"
-                    ]
-                },
-                "nixpkgs": {
-                    // Instructs nixd to lazily evaluate package strings from your flake input
-                    "expr": "import (builtins.getFlake (toString ./. )).inputs.nixpkgs { }"
-                },
-                "options": {
-                    "nixos": {
-                        // Allows nixd to auto-complete the exact modules in your flake configuration
-                        "expr": "(builtins.getFlake (toString ./. )).nixosConfigurations.dc-server.options"
-                    }
-                }
-            }
-        },
-        "[nix]": {
-            "editor.defaultFormatter": "jnoortheen.nix-ide",
+        "js/ts.preferences.quoteStyle": "double",
+        "[typescript]": {
+            "editor.defaultFormatter": "esbenp.prettier-vscode",
             "editor.formatOnSave": true,
-            "editor.tabSize": 2,
-            "editor.insertSpaces": true
+            "editor.tabSize": 2
         },
-        "javascript.preferences.quoteStyle": "double",
         "[javascript]": {
             "editor.defaultFormatter": "esbenp.prettier-vscode",
             "editor.formatOnSave": true,
@@ -54,8 +32,7 @@
             "jnoortheen.nix-ide",
             "Oven.bun-vscode",
             "esbenp.prettier-vscode",
-            "redhat.vscode-yaml",
-            "mkhl.direnv"
+            "redhat.vscode-yaml"
         ]
     }
 }
