@@ -12,9 +12,12 @@
     devShells.${system}.default = pkgs.mkShell {
       buildInputs = with pkgs; [
         bun
-        nixd
-        nixfmt
+        dotnet-sdk_10
       ];
+
+      shellHook = ''
+        export DOTNET_ROOT="${pkgs.dotnet-sdk_10}"
+      '';
     };
   };
 }
