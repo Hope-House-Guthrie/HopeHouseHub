@@ -23,6 +23,12 @@
             "editor.formatOnSave": true,
             "editor.tabSize": 2
         },
+        "[nix]": {
+            "editor.defaultFormatter": "jnoortheen.nix-ide",
+            "editor.formatOnSave": true,
+            "editor.tabSize": 2,
+            "editor.insertSpaces": true
+        },
         "terminal.integrated.env.linux": {
             "DIRENV_LOG_FORMAT": "" // Silences direnv verbose output in new tabs
         }
