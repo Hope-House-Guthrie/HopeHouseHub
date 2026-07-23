@@ -1,6 +1,9 @@
 { lib, ... }: {
   imports = [
     modules/caddy.nix
+    modules/ssh.nix
+    modules/users.nix
+    modules/vm-variant.nix
   ];
 
   nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
