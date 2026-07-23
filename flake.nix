@@ -91,6 +91,8 @@
           agenix
           serverName
           adminPubKeys
+          frontend
+          backend
           ;
 
         stateVersion = "26.05";

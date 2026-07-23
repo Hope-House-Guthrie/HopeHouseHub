@@ -22,6 +22,16 @@
         host.port = 3022;
         guest.port = 22;
       }
+      {
+        from = "host";
+        host.port = 3080;
+        guest.port = 80;
+      }
+      {
+        from = "host";
+        host.port = 3443;
+        guest.port = 443;
+      }
     ];
 
     system.activationScripts.install-host-key = {

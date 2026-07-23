@@ -5,6 +5,8 @@
   serverName,
   adminPubKeys,
   stateVersion,
+  frontend,
+  backend,
   ...
 }:
 let
@@ -12,7 +14,12 @@ let
 in
 nixpkgs.lib.nixosSystem {
   specialArgs = {
-    inherit self adminPubKeys;
+    inherit
+      self
+      adminPubKeys
+      frontend
+      backend
+      ;
   };
 
   modules = [
