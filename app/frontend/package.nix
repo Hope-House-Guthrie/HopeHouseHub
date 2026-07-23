@@ -1,8 +1,14 @@
-{ stdenv, bun2nix, ... }:
+{
+  stdenv,
+  bun2nix,
+  version,
+  ...
+}:
 
 stdenv.mkDerivation {
+  inherit version;
+
   pname = "frontend";
-  version = "0.1.0";
   src = ./.;
 
   nativeBuildInputs = [
@@ -18,6 +24,7 @@ stdenv.mkDerivation {
   '';
 
   installPhase = ''
-    cp -R ./dist $out
+    mkdir -p $out/bin
+    cp -R ./dist/* $out/bin
   '';
 }
