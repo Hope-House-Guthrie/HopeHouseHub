@@ -30,7 +30,7 @@
       {
         from = "host";
         host.port = 3443;
-        guest.port = 443;
+        guest.port = 3443;
       }
     ];
 

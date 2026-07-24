@@ -2,6 +2,7 @@
   self,
   nixpkgs,
   agenix,
+  disko,
   serverName,
   adminPubKeys,
   stateVersion,
@@ -24,6 +25,7 @@ nixpkgs.lib.nixosSystem {
 
   modules = [
     agenix.nixosModules.default
+    disko.nixosModules.disko
     ./configuration.nix
     ./modules
     {

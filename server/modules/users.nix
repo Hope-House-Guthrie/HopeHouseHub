@@ -19,4 +19,9 @@
     enable = true;
     wheelNeedsPassword = false;
   };
+
+  nix.settings.trusted-users = [
+    "root"
+    "admin"
+  ];
 }

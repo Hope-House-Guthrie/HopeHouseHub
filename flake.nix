@@ -6,6 +6,16 @@
 
     super-laptop.url = "github:tj-super/super-laptop";
 
+    disko = {
+      url = "github:nix-community/disko?ref=v1.13.0";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    nixos-anywhere = {
+      url = "github:nix-community/nixos-anywhere?ref=1.13.0";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     agenix = {
       url = "github:ryantm/agenix/main";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -27,6 +37,8 @@
       self,
       nixpkgs,
       super-laptop,
+      nixos-anywhere,
+      disko,
       agenix,
       bun2nix,
       nuget-packageslock2nix,
@@ -76,6 +88,7 @@
           self
           serverName
           agenix
+          nixos-anywhere
           adminPubKeys
           serverPubKey
           dotnet-sdk
@@ -89,6 +102,7 @@
           self
           nixpkgs
           agenix
+          disko
           serverName
           adminPubKeys
           frontend

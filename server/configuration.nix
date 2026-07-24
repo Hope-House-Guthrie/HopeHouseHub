@@ -4,11 +4,9 @@
 
   services.qemuGuest.enable = true;
 
-  fileSystems."/" = {
-    device = "/dev/disk/by-label/nixos";
-    fsType = "ext4";
-    autoResize = true;
-  };
+  fileSystems."/".autoResize = true;
+
+  networking.useDHCP = true;
 
   boot = {
     growPartition = true;
@@ -18,13 +16,21 @@
       "uhci_hcd"
       "virtio_pci"
       "virtio_scsi"
+      "virtio_net"
       "sd_mod"
       "sr_mod"
     ];
 
-    loader.grub = {
-      enable = true;
-      device = "/dev/vda";
+    loader = {
+      systemd-boot.enable = true;
+      efi.canTouchEfiVariables = true;
     };
+
+    /*
+      loader.grub = {
+        enable = true;
+        device = "/dev/sda";
+      };
+    */
   };
 }
