@@ -53,6 +53,7 @@ let
 
     # todo: not sure if extra_dir below is working; host keys aren't right after install
     # todo: added below lines to see if it fixed, but haven't tested
+    # todo: it might have also been agenix config that is fixed now fuck i don't know
     chmod 0600 "$EXTRA_DIR/etc/ssh/ssh_host_ed25519_key"
     chmod 0644 "$EXTRA_DIR/etc/ssh/ssh_host_ed25519_key.pub"
 
