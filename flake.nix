@@ -70,46 +70,45 @@
         pkgs = pkgs;
       };
 
-      serverName = "server";
-      serverPubKey = builtins.readFile ./secrets/ssh_host_ed25519_key.pub;
-
       adminPubKeys = [
         super-laptop.pubKeys.ssh.users.super
       ];
+
+      serverHost = (import ./host/server/host.nix) {
+        inherit
+          self
+          nixpkgs
+          agenix
+          disko
+          adminPubKeys
+          frontend
+          backend
+          ;
+
+        vmSSHPort = 3022;
+        stateVersion = "26.05";
+      };
+
+      devShell = (import ./shell/dev-shell.nix) {
+        inherit
+          pkgs
+          self
+          agenix
+          adminPubKeys
+          dotnet-sdk
+          system
+          bun2nix
+          serverHost
+          ;
+      };
     in
     {
       packages.${system} = {
         inherit frontend backend;
       };
 
-      devShells.${system}.default = (import ./shell/dev-shell.nix) {
-        inherit
-          pkgs
-          self
-          serverName
-          agenix
-          nixos-anywhere
-          adminPubKeys
-          serverPubKey
-          dotnet-sdk
-          system
-          bun2nix
-          ;
-      };
+      nixosConfigurations.${serverHost.name} = serverHost.nixosConfiguration;
 
-      nixosConfigurations.${serverName} = (import ./server/nixos-system.nix) {
-        inherit
-          self
-          nixpkgs
-          agenix
-          disko
-          serverName
-          adminPubKeys
-          frontend
-          backend
-          ;
-
-        stateVersion = "26.05";
-      };
+      devShells.${system}.default = devShell;
     };
 }

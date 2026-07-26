@@ -1,0 +1,22 @@
+{ vmSSHPort, ... }: {
+  services.openssh = {
+    enable = true;
+
+    hostKeys = [
+      {
+        path = "/etc/ssh/ssh_host_ed25519_key";
+        type = "ed25519";
+      }
+    ];
+  };
+
+  virtualisation.vmVariant = {
+    virtualisation.forwardPorts = [
+      {
+        from = "host";
+        host.port = vmSSHPort;
+        guest.port = 22;
+      }
+    ];
+  };
+}

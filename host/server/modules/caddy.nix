@@ -57,4 +57,19 @@ in
       '';
     };
   };
+
+  virtualisation.vmVariant = {
+    virtualisation.forwardPorts = [
+      {
+        from = "host";
+        host.port = 3080;
+        guest.port = 80;
+      }
+      {
+        from = "host";
+        host.port = 3443;
+        guest.port = 3443;
+      }
+    ];
+  };
 }

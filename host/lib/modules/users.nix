@@ -1,4 +1,4 @@
-{ adminPubKeys, ... }:
+{ lib, adminPubKeys, ... }:
 {
   users = {
     mutableUsers = false;
@@ -24,4 +24,13 @@
     "root"
     "admin"
   ];
+
+  virtualisation.vmVariant = {
+    users = {
+      users.root = {
+        password = lib.mkForce "root";
+        hashedPassword = lib.mkForce null;
+      };
+    };
+  };
 }

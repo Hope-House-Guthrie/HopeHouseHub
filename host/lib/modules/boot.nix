@@ -1,13 +1,4 @@
-{ lib, ... }:
-{
-  nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
-
-  services.qemuGuest.enable = true;
-
-  fileSystems."/".autoResize = true;
-
-  networking.useDHCP = true;
-
+{ lib, ... }: {
   boot = {
     growPartition = true;
 
@@ -25,12 +16,9 @@
       systemd-boot.enable = true;
       efi.canTouchEfiVariables = true;
     };
+  };
 
-    /*
-      loader.grub = {
-        enable = true;
-        device = "/dev/sda";
-      };
-    */
+  virtualisation.vmVariant = {
+    boot.growPartition = lib.mkForce false;
   };
 }
