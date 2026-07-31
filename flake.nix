@@ -89,7 +89,7 @@
         stateVersion = "26.05";
       };
 
-      devShell = (import ./shell/dev-shell.nix) {
+      devShell = (import ./shell/dev-shell/default.nix) {
         inherit
           pkgs
           self

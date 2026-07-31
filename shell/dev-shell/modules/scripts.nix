@@ -3,19 +3,18 @@
   self,
   agenix,
   adminPubKeys,
-  dotnet-sdk,
   system,
-  bun2nix,
   serverHost,
+  ...
 }:
 let
+  # todo: sh files and build inputs
+
   build-server = pkgs.writeShellScriptBin "build-server" ''
     nix build .#nixosConfigurations.${serverHost.name}.config.system.build.vm
   '';
 
   run-server = pkgs.writeShellScriptBin "run-server" ''
-    build-server
-
     export SHARED_DIR=$(mktemp -d)
     trap 'rm -rf "$SHARED_DIR"' EXIT
 
@@ -27,7 +26,7 @@ let
 
     echo "${serverHost.publicKey}" > "$SHARED_DIR/ssh_host_ed25519_key.pub";
 
-    ./result/bin/run-${serverHost.name}-vm
+    build-server && ./result/bin/run-${serverHost.name}-vm
   '';
 
   deploy-server = pkgs.writeShellScriptBin "deploy-server" ''
@@ -40,9 +39,6 @@ let
 
   agenix-wrapped =
     let
-      adminPubKeysArg =
-        "[ " + (pkgs.lib.concatMapStringsSep " " (key: ''"${pkgs.lib.trim key}"'') adminPubKeys) + " ]";
-
       secrets = (import "${self}/secrets.nix") {
         inherit adminPubKeys;
         inherit serverHost;
@@ -56,20 +52,13 @@ let
         "${agenix.packages.${system}.agenix}/bin/agenix" "$@"
     '';
 in
-pkgs.mkShell {
-  buildInputs = with pkgs; [
-    age
-    bun
-    dotnet-sdk
-    bun2nix.packages.${system}.default
+{
+  buildInputs = [
+    pkgs.age
 
     build-server
     run-server
     deploy-server
     agenix-wrapped
   ];
-
-  shellHook = ''
-    export DOTNET_ROOT="${dotnet-sdk}/share/dotnet"
-  '';
 }
