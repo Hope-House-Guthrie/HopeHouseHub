@@ -42,6 +42,10 @@ in
   ];
 
   shellHook = ''
-    echo -e "Host commands: build-host, run-host, deploy-host \n"
+    echo "Host commands:"
+    echo "  - build-host"
+    echo "  - run-host"
+    echo "  - deploy-host"
+    echo
   '';
 }

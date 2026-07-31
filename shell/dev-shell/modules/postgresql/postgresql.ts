@@ -80,9 +80,7 @@ async function start() {
     await syncConfigs();
   }
 
-  if (await isRunning()) {
-    console.log("PostgreSQL is already running.");
-  } else {
+  if (!(await isRunning())) {
     console.log("Starting local PostgreSQL server...");
     await $`pg_ctl -D ${PGDATA} -l ${PGDATA}/postgres.log -w start`;
   }
