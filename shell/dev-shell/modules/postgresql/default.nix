@@ -1,24 +1,24 @@
 { pkgs, ... }:
 let
-  dev-db = pkgs.writeShellApplication {
-    name = "dev-db";
+  postgresql-ts = pkgs.writeShellApplication {
+    name = "postgresql-ts";
     runtimeInputs = [
       pkgs.bun
       pkgs.postgresql
     ];
     text = ''
-      exec bun ${./dev-db.ts} "$@"
+      exec bun ${./postgresql.ts} "$@"
     '';
   };
 in
 {
   buildInputs = [
     pkgs.postgresql
-    dev-db
+    postgresql-ts
   ];
 
   shellHook = ''
-    eval "$(dev-db env)"
-    dev-db start
+    eval "$(postgresql-ts env)"
+    postgresql-ts start
   '';
 }

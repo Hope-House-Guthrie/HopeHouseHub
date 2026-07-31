@@ -8,14 +8,14 @@
   stateVersion,
   frontend,
   backend,
+  ipv4Address,
 }:
 let
-  name = "hub-server";
   publicKey = builtins.readFile ./secrets/ssh_host_ed25519_key.pub;
   privateKey = ./secrets/ssh_host_ed25519_key.age;
 in
 {
-  inherit name publicKey privateKey;
+  inherit ipv4Address publicKey privateKey;
 
   nixosConfiguration = nixpkgs.lib.nixosSystem {
     specialArgs = {
@@ -37,7 +37,7 @@ in
       ./modules
 
       {
-        networking.hostName = name;
+        networking.hostName = "hub-server";
         system.stateVersion = stateVersion;
       }
     ];

@@ -4,7 +4,6 @@ import { $ } from "bun";
 import { existsSync, mkdirSync, rmSync } from "node:fs";
 import { resolve } from "node:path";
 
-// Find project root using git, fallback to current working directory
 let projectRoot: string;
 try {
   projectRoot = (await $`git rev-parse --show-toplevel`.text()).trim();
@@ -12,21 +11,18 @@ try {
   projectRoot = process.cwd();
 }
 
-// Set up environment variables
 const PGDATA = resolve(projectRoot, ".postgresql/data");
 const PGHOST = resolve(projectRoot, ".postgresql/sockets");
 const PGPORT = "5432";
 const PGDATABASE = "hub_db";
 const PGUSER = "hub_user";
 
-// Export into process environment for spawned processes
 process.env.PGDATA = PGDATA;
 process.env.PGHOST = PGHOST;
 process.env.PGPORT = PGPORT;
 process.env.PGDATABASE = PGDATABASE;
 process.env.PGUSER = PGUSER;
 
-// PostgreSQL configuration files content
 const postgresqlConf = `
 listen_addresses = ''
 unix_socket_directories = '${PGHOST}'
@@ -37,19 +33,16 @@ const pgHbaConf = `
 local   all       all            trust
 `;
 
-// Helper: Ensure configuration files are up to date
 async function syncConfigs() {
   await Bun.write(`${PGDATA}/postgresql.conf`, postgresqlConf);
   await Bun.write(`${PGDATA}/pg_hba.conf`, pgHbaConf);
 }
 
-// Helper: Check if PostgreSQL server is running
 async function isRunning(): Promise<boolean> {
   const status = await $`pg_isready -h ${PGHOST} -q`.nothrow();
   return status.exitCode === 0;
 }
 
-// Subcommand Implementations
 async function init() {
   if (existsSync(PGDATA)) {
     console.log(`Database cluster already exists at ${PGDATA}`);
@@ -136,10 +129,10 @@ function env() {
 
 function showHelp() {
   console.log(`
-dev-db.ts
+postgresql.ts
 
 Usage:
-  dev-db.ts <command>
+  postgresql.ts <command>
 
 Commands:
   init   Initialize the PostgreSQL cluster and create the database
@@ -151,7 +144,6 @@ Commands:
 `);
 }
 
-// Main CLI dispatch
 const command = process.argv[2];
 
 switch (command) {
@@ -173,6 +165,8 @@ switch (command) {
   case "help":
   case "-h":
   case "--help":
+    showHelp();
+    process.exit(0);
   default:
     showHelp();
     process.exit(1);

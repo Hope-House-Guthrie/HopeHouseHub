@@ -37,7 +37,6 @@
       self,
       nixpkgs,
       super-laptop,
-      nixos-anywhere,
       disko,
       agenix,
       bun2nix,
@@ -74,19 +73,22 @@
         super-laptop.pubKeys.ssh.users.super
       ];
 
-      serverHost = (import ./host/server/host.nix) {
-        inherit
-          self
-          nixpkgs
-          agenix
-          disko
-          adminPubKeys
-          frontend
-          backend
-          ;
+      hosts = {
+        hub-server = (import ./host/server/host.nix) {
+          inherit
+            self
+            nixpkgs
+            agenix
+            disko
+            adminPubKeys
+            frontend
+            backend
+            ;
 
-        vmSSHPort = 3022;
-        stateVersion = "26.05";
+          vmSSHPort = 3022;
+          stateVersion = "26.05";
+          ipv4Address = "192.168.0.90";
+        };
       };
 
       devShell = (import ./shell/dev-shell/default.nix) {
@@ -98,7 +100,7 @@
           dotnet-sdk
           system
           bun2nix
-          serverHost
+          hosts
           ;
       };
     in
@@ -107,7 +109,7 @@
         inherit frontend backend;
       };
 
-      nixosConfigurations.${serverHost.name} = serverHost.nixosConfiguration;
+      nixosConfigurations = builtins.mapAttrs (_name: host: host.nixosConfiguration) hosts;
 
       devShells.${system}.default = devShell;
     };

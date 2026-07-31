@@ -1,4 +1,9 @@
-{ pkgs, bun2nix, ... }:
+{
+  pkgs,
+  bun2nix,
+  system,
+  ...
+}:
 {
   buildInputs = with pkgs; [
     bun

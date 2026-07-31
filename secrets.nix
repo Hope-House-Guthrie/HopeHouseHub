@@ -1,6 +1,6 @@
-{ adminPubKeys, serverHost }:
+{ adminPubKeys, hosts }:
 {
   "host/server/secrets/ssh_host_ed25519_key.age".publicKeys = adminPubKeys ++ [
-    serverHost.publicKey
+    hosts.hub-server.publicKey
   ];
 }
