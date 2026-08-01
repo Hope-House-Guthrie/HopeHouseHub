@@ -9,4 +9,7 @@ var app = builder.Build();
 
 app.MapClientEndpoints();
 
+if (app.Environment.IsProduction())
+    await app.MigrateDatabaseAsync();
+
 app.Run();

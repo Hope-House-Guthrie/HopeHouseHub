@@ -20,6 +20,29 @@ public static class WebApplicationBuilderExtensions
         return builder;
     }
 
+    public async static Task MigrateDatabaseAsync(
+        this WebApplication app)
+    {
+        
+        using var scope = app.Services.CreateScope();
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        var db = scope.ServiceProvider.GetRequiredService<HubDbContext>();
+
+        try
+        {
+            logger.LogInformation("Checking for pending EF Core database migrations...");
+            
+            await db.Database.MigrateAsync();
+            
+            logger.LogInformation("Database migrations applied successfully.");
+        }
+        catch (Exception ex)
+        {
+            logger.LogCritical(ex, "An error occurred while migrating the database.");
+            throw;
+        }
+    }
+
     private static string BuildConnectionStringFromPostgresEnvVars()
     {
         string env(string name)
