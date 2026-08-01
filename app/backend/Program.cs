@@ -1,7 +1,12 @@
+using H3.Data;
+using H3.Endpoints;
+
 var builder = WebApplication.CreateBuilder(args);
+
+builder.AddDatabase();
+
 var app = builder.Build();
 
-app.MapGet("/api", () => "api route");
-app.MapGet("/api/hello", () => "hello route");
+app.MapClientEndpoints();
 
 app.Run();
