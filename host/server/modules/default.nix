@@ -4,5 +4,6 @@
     ./backend.nix
     ./caddy.nix
     ./disko.nix
+    ./postgresql.nix
   ];
 }

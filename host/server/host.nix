@@ -13,6 +13,8 @@
 let
   publicKey = builtins.readFile ./secrets/ssh_host_ed25519_key.pub;
   privateKey = ./secrets/ssh_host_ed25519_key.age;
+
+  constants = import ./constants.nix;
 in
 {
   inherit ipv4Address publicKey privateKey;
@@ -25,6 +27,7 @@ in
         vmSSHPort
         frontend
         backend
+        constants
         ;
     };
 
