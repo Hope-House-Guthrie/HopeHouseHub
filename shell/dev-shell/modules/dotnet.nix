@@ -1,7 +1,8 @@
-{ dotnet-sdk, ... }:
+{ dotnet-sdk, pkgs, ... }:
 {
   buildInputs = [
     dotnet-sdk
+    pkgs.dotnet-ef
   ];
 
   shellHook = ''
