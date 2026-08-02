@@ -4,7 +4,7 @@ import { createRoot } from "react-dom/client";
 import { CssBaseline } from "@mui/material";
 import { Provider } from "react-redux";
 
-import { store } from "./storage/store";
+import { store } from "./store";
 import { routesConfig } from "./routes";
 
 const elem = document.getElementById("root")!;

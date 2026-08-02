@@ -2,15 +2,16 @@ import { type RouteObject } from "react-router";
 import { type ReactNode } from "react";
 import {
     Dashboard as DashboardIcon,
-    People as AccountsIcon,
-    PhoneCallback as IncomingCallsIcon,
+    //People as AccountsIcon,
+    //PhoneCallback as IncomingCallsIcon,
     PermIdentity as ClientsIcon,
-    Settings as SettingsIcon,
+    //Settings as SettingsIcon,
 } from "@mui/icons-material";
 
 import MainLayout from "./layouts/main";
 import DashboardPage from "./pages/dashboard";
-import AccountsPage from "./pages/accounts";
+import ClientsPage from "./pages/clients";
+//import AccountsPage from "./pages/accounts";
 import NotFoundPage from "./pages/not-found";
 
 export interface AppRouteHandle {
@@ -39,38 +40,11 @@ export const routesConfig: AppRouteObject[] = [
                 },
             },
             {
-                path: "calls",
-                element: <div>Incoming Calls Page</div>, 
-                handle: {
-                    title: "Incoming Calls",
-                    icon: <IncomingCallsIcon />,
-                    showInNavigation: true,
-                },
-            },
-            {
                 path: "clients",
-                element: <div>Client Profiles Page</div>, 
+                element: <ClientsPage />,
                 handle: {
-                    title: "Client Profiles",
+                    title: "Clients",
                     icon: <ClientsIcon />,
-                    showInNavigation: true,
-                },
-            },
-            {
-                path: "accounts",
-                element: <AccountsPage />,
-                handle: {
-                    title: "Manage Accounts",
-                    icon: <AccountsIcon />,
-                    showInNavigation: true,
-                },
-            },
-            {
-                path: "settings",
-                element: <div>Settings Page</div>, 
-                handle: {
-                    title: "Settings",
-                    icon: <SettingsIcon />,
                     showInNavigation: true,
                 },
             },

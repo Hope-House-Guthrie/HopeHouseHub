@@ -389,6 +389,14 @@
     url = "https://registry.npmjs.org/object-assign/-/object-assign-4.1.1.tgz";
     hash = "sha512-rJgTQnkUnH1sFw8yT6VSU3zD3sWmu6sZhIseY8VX+GRu3P6F7Fu+JNDoXfklElbLJSnc3FUQHVe4cU5hj+BcUg==";
   };
+  "openapi-fetch@0.17.0" = fetchurl {
+    url = "https://registry.npmjs.org/openapi-fetch/-/openapi-fetch-0.17.0.tgz";
+    hash = "sha512-PsbZR1wAPcG91eEthKhN+Zn92FMHxv+/faECIwjXdxfTODGSGegYv0sc1Olz+HYPvKOuoXfp+0pA2XVt2cI0Ig==";
+  };
+  "openapi-typescript-helpers@0.1.0" = fetchurl {
+    url = "https://registry.npmjs.org/openapi-typescript-helpers/-/openapi-typescript-helpers-0.1.0.tgz";
+    hash = "sha512-OKTGPthhivLw/fHz6c3OPtg72vi86qaMlqbJuVJ23qOvQ+53uw1n7HdmkJFibloF7QEjDrDkzJiOJuockM/ljw==";
+  };
   "openapi-typescript@7.13.0" = fetchurl {
     url = "https://registry.npmjs.org/openapi-typescript/-/openapi-typescript-7.13.0.tgz";
     hash = "sha512-EFP392gcqXS7ntPvbhBzbF8TyBA+baIYEm791Hy5YkjDYKTnk/Tn5OQeKm5BIZvJihpp8Zzr4hzx0Irde1LNGQ==";

@@ -7,6 +7,18 @@ var isOpenApiBuildReflectionStep = Assembly.GetEntryAssembly()?.GetName().Name =
 
 var builder = WebApplication.CreateBuilder(args);
 
+const string DevCorsPolicyName = "development";
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(DevCorsPolicyName, policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
+});
+
 builder.Services.AddOpenApi();
 
 builder.AddDatabase();
@@ -17,6 +29,7 @@ app.MapClientEndpoints();
 
 if (app.Environment.IsDevelopment())
 {
+    app.UseCors(DevCorsPolicyName);
     app.MapOpenApi();
     app.MapScalarApiReference();
 }

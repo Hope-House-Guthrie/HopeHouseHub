@@ -8,31 +8,83 @@
     "/api/client": {
       "get": {
         "tags": [
-          "backend"
+          "Clients"
         ],
+        "summary": "Retrieve all active clients",
+        "description": "Fetches a list of all non-deleted clients.",
+        "operationId": "IndexClients",
         "responses": {
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ClientResource"
+                  }
+                }
+              }
+            }
           }
         }
       },
       "post": {
         "tags": [
-          "backend"
+          "Clients"
         ],
+        "summary": "Create a new client",
+        "operationId": "CreateClient",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ClientDto"
+                "$ref": "#/components/schemas/ClientResource"
               }
             }
           },
           "required": true
         },
         "responses": {
-          "200": {
-            "description": "OK"
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientResource"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
           }
         }
       }
@@ -40,39 +92,59 @@
     "/api/client/{id}": {
       "get": {
         "tags": [
-          "backend"
+          "Clients"
         ],
+        "summary": "Get a client by ID",
+        "operationId": "GetClientById",
         "parameters": [
           {
             "name": "id",
             "in": "path",
             "required": true,
             "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": "integer",
-              "format": "int32"
+              "type": "string"
             }
           }
         ],
         "responses": {
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientResource"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
           }
         }
       },
       "put": {
         "tags": [
-          "backend"
+          "Clients"
         ],
+        "summary": "Update an existing client",
+        "operationId": "UpdateClient",
         "parameters": [
           {
             "name": "id",
             "in": "path",
             "required": true,
             "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": "integer",
-              "format": "int32"
+              "type": "string"
             }
           }
         ],
@@ -80,37 +152,73 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ClientDto"
+                "$ref": "#/components/schemas/ClientResource"
               }
             }
           },
           "required": true
         },
         "responses": {
-          "200": {
-            "description": "OK"
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
           }
         }
       },
       "delete": {
         "tags": [
-          "backend"
+          "Clients"
         ],
+        "summary": "Delete a client",
+        "operationId": "DeleteClient",
         "parameters": [
           {
             "name": "id",
             "in": "path",
             "required": true,
             "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": "integer",
-              "format": "int32"
+              "type": "string"
             }
           }
         ],
         "responses": {
-          "200": {
-            "description": "OK"
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
           }
         }
       }
@@ -118,7 +226,7 @@
   },
   "components": {
     "schemas": {
-      "ClientDto": {
+      "ClientResource": {
         "required": [
           "id",
           "firstName",
@@ -129,12 +237,10 @@
         "type": "object",
         "properties": {
           "id": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
-              "integer",
+              "null",
               "string"
-            ],
-            "format": "int32"
+            ]
           },
           "firstName": {
             "type": "string"
@@ -152,12 +258,97 @@
             "type": "boolean"
           }
         }
+      },
+      "HttpValidationProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "detail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "instance": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "ProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "detail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "instance": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
       }
     }
   },
   "tags": [
     {
-      "name": "backend"
+      "name": "Clients"
     }
   ]
 }
