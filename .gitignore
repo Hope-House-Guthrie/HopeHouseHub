@@ -3,3 +3,4 @@ result
 *.qcow2
 .postgresql
 node_modules
+NOTES.md

@@ -7,12 +7,8 @@ public static class WebApplicationBuilderExtensions
     public static WebApplicationBuilder AddDatabase(
         this WebApplicationBuilder builder)
     {
-        var connectionString = builder.Configuration.GetConnectionString("HubDb");
-
-        if (string.IsNullOrEmpty(connectionString))
-        {
-            connectionString = BuildConnectionStringFromPostgresEnvVars();
-        }
+        var connectionString = builder.Configuration.GetConnectionString("HubDb")
+            ?? BuildConnectionStringFromPostgresEnvVars();
 
         builder.Services.AddDbContext<HubDbContext>(options =>
             options.UseNpgsql(connectionString));
@@ -43,14 +39,14 @@ public static class WebApplicationBuilderExtensions
         }
     }
 
-    private static string BuildConnectionStringFromPostgresEnvVars()
+    private static string? BuildConnectionStringFromPostgresEnvVars()
     {
-        string env(string name)
+        static string? env(string name)
         {
             var value = Environment.GetEnvironmentVariable(name);
 
             if (string.IsNullOrWhiteSpace(value))
-                throw new ApplicationException($"Missing or empty ${name} environment variable");
+                return null;
 
             return value;
         }
@@ -59,6 +55,9 @@ public static class WebApplicationBuilderExtensions
         var database = env("PGDATABASE");
         var user = env("PGUSER");
         var port = env("PGPORT");
+
+        if (host == null || database == null || user == null || port == null)
+            return null;
 
         return $"Host={host};Database={database};Username={user};Port={port}";
     }
