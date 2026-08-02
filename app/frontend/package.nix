@@ -2,6 +2,7 @@
   stdenv,
   bun2nix,
   version,
+  backend,
   ...
 }:
 
@@ -18,6 +19,11 @@ stdenv.mkDerivation {
   bunDeps = bun2nix.fetchBunDeps {
     bunNix = ./bun.nix;
   };
+
+  postUnpack = ''
+    mkdir -p $NIX_BUILD_TOP/backend
+    cp ${backend}/lib/backend/openapi.json $NIX_BUILD_TOP/backend/openapi.json
+  '';
 
   buildPhase = ''
     bun run build

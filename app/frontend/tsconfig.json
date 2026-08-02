@@ -24,7 +24,8 @@
 
     "paths": {
       "@/*": ["./src/*"],
-      "@assets/*": ["./assets/*"]
+      "@assets/*": ["./assets/*"],
+      "@backend": ["./.backend/index.ts"]
     },
 
     // Some stricter flags (disabled by default)

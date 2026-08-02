@@ -49,12 +49,6 @@
 
       version = "0.1.0";
 
-      frontend = pkgs.callPackage ./app/frontend/package.nix {
-        inherit version;
-
-        bun2nix = bun2nix.packages.${system}.default;
-      };
-
       dotnet-sdk = pkgs.dotnet-sdk_10;
       dotnet-runtime = pkgs.dotnet-aspnetcore_10;
 
@@ -67,6 +61,12 @@
           ;
 
         pkgs = pkgs;
+      };
+
+      frontend = pkgs.callPackage ./app/frontend/package.nix {
+        inherit version backend;
+
+        bun2nix = bun2nix.packages.${system}.default;
       };
 
       adminPubKeys = [

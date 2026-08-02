@@ -6,7 +6,8 @@
   "scripts": {
     "postinstall": "bun2nix -o bun.nix",
     "dev": "bun --hot ./src/dev-server.ts",
-    "build": "bun build ./src/index.html --outdir=dist --sourcemap --target=browser --minify --define:process.env.NODE_ENV='\"production\"' --env='BUN_PUBLIC_*'"
+    "generate-backend": "mkdir -p ./.backend && openapi-typescript -o ./.backend/index.ts ../backend/openapi.json",
+    "build": "bun run generate-backend && bun build ./src/index.html --outdir=dist --sourcemap --target=browser --minify --define:process.env.NODE_ENV='\"production\"' --env='BUN_PUBLIC_*'"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -21,8 +22,9 @@
     "react-router": "^8.0.1"
   },
   "devDependencies": {
+    "@types/bun": "^1.3.14",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@types/bun": "^1.3.14"
+    "openapi-typescript": "^7.13.0"
   }
 }
