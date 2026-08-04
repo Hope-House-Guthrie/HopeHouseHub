@@ -165,7 +165,7 @@ export default function ClientsPage() {
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>id</TableCell>
+                <TableCell>Id</TableCell>
                 <TableCell>First Name</TableCell>
                 <TableCell>Middle Name</TableCell>
                 <TableCell>Last Name</TableCell>
