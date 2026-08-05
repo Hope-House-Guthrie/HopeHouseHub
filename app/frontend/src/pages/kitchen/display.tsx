@@ -9,7 +9,7 @@ const SAMPLE_MENU = {
   breakfast: "Cold cereal",
   lunch: "Sandwiches and leftovers",
   dinner: "Baked chicken, rice, and green beans",
-  dinnerTime: "5:00 PM",
+  dinnerTime: "5:30 PM",
 };
 
 function MealBlock({ label, body }: { label: string; body: string }) {
