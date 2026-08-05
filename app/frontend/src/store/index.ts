@@ -1,9 +1,11 @@
 import { configureStore } from "@reduxjs/toolkit";
 import clientReducer from "./slices/clients";
+import kitchenReducer from "./slices/kitchen";
 
 export const store = configureStore({
   reducer: {
     clients: clientReducer,
+    kitchen: kitchenReducer,
   },
 });
 

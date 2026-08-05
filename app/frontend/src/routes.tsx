@@ -6,6 +6,7 @@ import {
     //PhoneCallback as IncomingCallsIcon,
     PermIdentity as ClientsIcon,
     //Settings as SettingsIcon,
+    Kitchen as KitchenIcon,
 } from "@mui/icons-material";
 
 import MainLayout from "./layouts/main";
@@ -27,15 +28,6 @@ export type AppRouteObject = RouteObject & {
 };
 
 export const routesConfig: AppRouteObject[] = [
-    // TV / kiosk: no main drawer chrome
-    {
-        path: "/kitchen/display",
-        element: <KitchenDisplayPage />,
-        handle: {
-            title: "Kitchen Display",
-            showInNavigation: false,
-        },
-    },
     {
         path: "/",
         element: <MainLayout />,
@@ -55,6 +47,15 @@ export const routesConfig: AppRouteObject[] = [
                 handle: {
                     title: "Clients",
                     icon: <ClientsIcon />,
+                    showInNavigation: true,
+                },
+            },
+            {
+                path: "kitchen",
+                element: <KitchenDisplayPage />,
+                handle: {
+                    title: "Kitchen",
+                    icon: <KitchenIcon />,
                     showInNavigation: true,
                 },
             },
