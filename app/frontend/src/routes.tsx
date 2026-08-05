@@ -11,6 +11,7 @@ import {
 import MainLayout from "./layouts/main";
 import DashboardPage from "./pages/dashboard";
 import ClientsPage from "./pages/clients";
+import KitchenDisplayPage from "./pages/kitchen/display";
 //import AccountsPage from "./pages/accounts";
 import NotFoundPage from "./pages/not-found";
 
@@ -26,6 +27,15 @@ export type AppRouteObject = RouteObject & {
 };
 
 export const routesConfig: AppRouteObject[] = [
+    // TV / kiosk: no main drawer chrome
+    {
+        path: "/kitchen/display",
+        element: <KitchenDisplayPage />,
+        handle: {
+            title: "Kitchen Display",
+            showInNavigation: false,
+        },
+    },
     {
         path: "/",
         element: <MainLayout />,
