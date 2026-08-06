@@ -1,154 +1,112 @@
-//change this to client side only and also change the data modle to kitchen menu
-import {
-  createSlice,
-  createAsyncThunk,
-  type PayloadAction,
-} from "@reduxjs/toolkit";
-import { api, type Client } from "@/lib/api";
+import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 
-export { type Client };
-
-export interface ClientState {
-  clients: Client[];
-  selectedClient: Client | null;
-  loading: boolean;
-  error: string | null;
+export interface MenuItem {
+  id: string;
+  name: string;
 }
 
-const initialState: ClientState = {
-  clients: [],
-  selectedClient: null,
-  loading: false,
-  error: null,
-};
+export interface Menu {
+  itemIds: string[];
+  mealTime: string;
+}
 
-export const fetchClients = createAsyncThunk(
-  "clients/fetchAll",
-  async (_, { rejectWithValue }) => {
-    const { data, error } = await api.GET("/api/client");
-    if (error) return rejectWithValue(error);
-    return data;
-  },
-);
+export type MealKey = "breakfast" | "lunch" | "dinner";
 
-export const fetchClientById = createAsyncThunk(
-  "clients/fetchById",
-  async (id: string, { rejectWithValue }) => {
-    const { data, error } = await api.GET("/api/client/{id}", {
-      params: { path: { id } },
-    });
-    if (error) return rejectWithValue(error);
-    return data;
-  },
-);
+export interface KitchenState {
+  menuItems: MenuItem[];
+  breakfast: Menu;
+  lunch: Menu;
+  dinner: Menu;
+}
 
-export const createClientThunk = createAsyncThunk(
-  "clients/create",
-  async (body: Omit<Client, "ID">, { rejectWithValue }) => {
-    // Cast body as required by schema parameters
-    const { data, error } = await api.POST("/api/client", {
-      body: body as Client,
-    });
-    if (error) return rejectWithValue(error);
-    return data;
-  },
-);
-
-export const updateClient = createAsyncThunk(
-  "clients/update",
-  async (
-    { id, resource }: { id: string; resource: Client },
-    { rejectWithValue },
-  ) => {
-    const { error } = await api.PUT("/api/client/{id}", {
-      params: { path: { id } },
-      body: resource,
-    });
-    if (error) return rejectWithValue(error);
-    return resource;
-  },
-);
-
-export const deleteClient = createAsyncThunk(
-  "clients/delete",
-  async (id: string, { rejectWithValue }) => {
-    const { error } = await api.DELETE("/api/client/{id}", {
-      params: { path: { id } },
-    });
-    if (error) return rejectWithValue(error);
-    return id;
-  },
-);
-
-// --- Slice ---
-
-export const clientSlice = createSlice({
-  name: "clients",
-  initialState,
-  reducers: {
-    clearSelectedClient: (state) => {
-      state.selectedClient = null;
-    },
-  },
-  extraReducers: (builder) => {
-    builder
-      // Fetch All
-      .addCase(fetchClients.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(
-        fetchClients.fulfilled,
-        (state, action: PayloadAction<Client[]>) => {
-          state.loading = false;
-          state.clients = action.payload;
-        },
-      )
-      .addCase(fetchClients.rejected, (state, action) => {
-        state.loading = false;
-        state.error = (action.payload as string) || "Failed to fetch clients";
-      })
-      // Fetch By Id
-      .addCase(
-        fetchClientById.fulfilled,
-        (state, action: PayloadAction<Client | undefined>) => {
-          state.selectedClient = action.payload ?? null;
-        },
-      )
-      // Create
-      .addCase(
-        createClientThunk.fulfilled,
-        (state, action: PayloadAction<Client>) => {
-          state.clients.push(action.payload);
-        },
-      )
-      // Update
-      .addCase(
-        updateClient.fulfilled,
-        (state, action: PayloadAction<Client>) => {
-          const index = state.clients.findIndex(
-            (c) => c.id === action.payload.id,
-          );
-          if (index !== -1) {
-            state.clients[index] = action.payload;
-          }
-          if (state.selectedClient?.id === action.payload.id) {
-            state.selectedClient = action.payload;
-          }
-        },
-      )
-      // Delete
-      .addCase(
-        deleteClient.fulfilled,
-        (state, action: PayloadAction<string>) => {
-          state.clients = state.clients.filter((c) => c.id !== action.payload);
-          if (state.selectedClient?.id === action.payload) {
-            state.selectedClient = null;
-          }
-        },
-      );
-  },
+const emptyMenu = (): Menu => ({
+  itemIds: [],
+  mealTime: "",
 });
 
-export const { clearSelectedClient } = clientSlice.actions;
-export default clientSlice.reducer;
+const initialState: KitchenState = {
+  menuItems: [
+    { id: "item-1", name: "Cold Creal" },
+    { id: "item-2", name: "Sandwhiches" },
+    { id: "item-3", name: "Baked Beans" },
+    { id: "item-4", name: "Rice" },
+    { id: "item-5", name: "Green Beans" },
+  ],
+  breakfast: {
+    itemIds: ["item-1"],
+    mealTime: "",
+  },
+  lunch: {
+    itemIds: ["item-2"],
+    mealTime: "",
+  },
+  dinner: {
+    itemIds: ["item-3", "item-4", "item-5"],
+    mealTime: "5:30 PM",
+  },
+};
+
+export const kitchenSlice = createSlice({
+  name: "kitchen",
+  initialState,
+  reducers: {
+    addMenuItem: (state, action: PayloadAction<{ id: string; name: string
+  }>) => {
+      state.menuItems.push({
+        id: action.payload.id,
+        name: action.payload.name,
+      });
+    },
+
+    updateMenuItem: (
+      state,
+      action: PayloadAction<{ id: string; name: string }>,
+    ) => {
+      const item = state.menuItems.find((m) => m.id === action.payload.id
+  );
+      if (item) {
+        item.name = action.payload.name;
+      }
+    },
+    
+    removeMenuItem: (state, action: PayloadAction<string>) => {
+      const id = action.payload;
+      state.menuItems = state.menuItems.filter((m) => m.id !== id);
+      state.breakfast.itemIds = state.breakfast.itemIds.filter((x) => x !== id);      ;
+          state.lunch.itemIds = state.lunch.itemIds.filter((x) => x !== id);
+          state.dinner.itemIds = state.dinner.itemIds.filter((x) => x !== id);
+    },
+
+    setMealItems: (
+      state,
+      action: PayloadAction<{ meal: MealKey; itemIds: string[] }>,
+    ) => {
+      state[action.payload.meal].itemIds = action.payload.itemIds;
+    },
+    
+    clearMeal: (state, action: PayloadAction<MealKey>) => {
+      state[action.payload] = emptyMenu();
+    },
+
+    setMealTime: (
+      state,
+      action: PayloadAction<{ meal: MealKey; mealTime: string }>,
+    ) => {
+      state[action.payload.meal].mealTime = action.payload.mealTime;
+    },
+  },
+
+});
+
+export const {
+  addMenuItem,
+  updateMenuItem,
+  removeMenuItem,
+  setMealItems,
+  clearMeal,
+  setMealTime,
+} = kitchenSlice.actions;
+
+export default kitchenSlice.reducer;
+      
+    
