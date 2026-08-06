@@ -54,7 +54,7 @@ export const routesConfig: AppRouteObject[] = [
                 path: "kitchen",
                 element: <KitchenDisplayPage />,
                 handle: {
-                    title: "Kitchen",
+                    title: "Kitchen Display",
                     icon: <KitchenIcon />,
                     showInNavigation: true,
                 },
