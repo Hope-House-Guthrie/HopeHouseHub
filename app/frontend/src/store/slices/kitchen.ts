@@ -26,9 +26,9 @@ const emptyMenu = (): Menu => ({
 
 const initialState: KitchenState = {
   menuItems: [
-    { id: "item-1", name: "Cold Creal" },
-    { id: "item-2", name: "Sandwhiches" },
-    { id: "item-3", name: "Baked Beans" },
+    { id: "item-1", name: "Cold Cereal" },
+    { id: "item-2", name: "Sandwiches" },
+    { id: "item-3", name: "Baked Chicken" },
     { id: "item-4", name: "Rice" },
     { id: "item-5", name: "Green Beans" },
   ],
@@ -72,7 +72,7 @@ export const kitchenSlice = createSlice({
     removeMenuItem: (state, action: PayloadAction<string>) => {
       const id = action.payload;
       state.menuItems = state.menuItems.filter((m) => m.id !== id);
-      state.breakfast.itemIds = state.breakfast.itemIds.filter((x) => x !== id);      ;
+      state.breakfast.itemIds = state.breakfast.itemIds.filter((x) => x !== id);
           state.lunch.itemIds = state.lunch.itemIds.filter((x) => x !== id);
           state.dinner.itemIds = state.dinner.itemIds.filter((x) => x !== id);
     },

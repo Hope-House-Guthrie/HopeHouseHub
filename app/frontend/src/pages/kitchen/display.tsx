@@ -52,7 +52,7 @@ export default function KitchenDisplayPage() {
         Today&apos;s Menu
       </Typography>
       <Typography variant="h5" sx={{ mb: 6, opacity: 0.75 }}>
-        Hope House — Serving Line
+        Hope House Guthrie - Serving Line
       </Typography>
 
       <MealBlock label="Breakfast" body={menu.breakfast} />
