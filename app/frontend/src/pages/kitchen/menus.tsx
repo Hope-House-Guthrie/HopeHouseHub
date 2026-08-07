@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Box, Button, TextField, Typography } from "@mui/material";
+import { Box, Button, TextField, Typography, IconButton } from "@mui/material";
+import { Delete as DeleteIcon } from "@mui/icons-material";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { addMenuItem } from "@/store/slices/kitchen";
+import { addMenuItem, removeMenuItem, type MenuItem } from "@/store/slices/kitchen";
 
 export default function KitchenMenusPage() {
   const menuItems = useAppSelector((state) => state.kitchen.menuItems);
@@ -11,7 +12,6 @@ export default function KitchenMenusPage() {
   const handleAdd = () => {
     const trimmed = newName.trim();
     if (!trimmed) return;
-
     dispatch(
       addMenuItem({
         id: crypto.randomUUID(),
@@ -19,6 +19,12 @@ export default function KitchenMenusPage() {
       }),
     );
     setNewName("");
+  };
+
+  const handleDelete = (id: string) => {
+    if (confirm("Are you sure you want to delete this menu item?")) {
+      dispatch(removeMenuItem(id));
+    }
   };
 
   return (
@@ -51,8 +57,26 @@ export default function KitchenMenusPage() {
       </Typography>
 
       <Box sx={{ mt: 2 }}>
-        {menuItems.map((item) => (
-          <Typography key={item.id}>{item.name}</Typography>
+        {menuItems.map((item: MenuItem) => (
+          <Box
+            key={item.id}
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              py: 1,
+              borderBottom: "1px solid rgba(0,0,0,0.1)",
+            }}
+          >
+            <Typography>{item.name}</Typography>
+            <IconButton
+              color="error"
+              size="small"
+              onClick={() => handleDelete(item.id)}
+            >
+              <DeleteIcon />
+            </IconButton>
+          </Box>
         ))}
       </Box>
     </Box>
