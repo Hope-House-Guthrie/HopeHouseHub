@@ -14,6 +14,7 @@ import DashboardPage from "./pages/dashboard";
 import ClientsPage from "./pages/clients";
 import KitchenDisplayPage from "./pages/kitchen/display";
 import KitchenMenusPage from "./pages/kitchen/menus";
+import RestaurantMenuIcon from '@mui/icons-material/RestaurantMenu';
 //import AccountsPage from "./pages/accounts";
 import NotFoundPage from "./pages/not-found";
 
@@ -65,7 +66,7 @@ export const routesConfig: AppRouteObject[] = [
                 element: <KitchenMenusPage />,
                 handle: {
                     title: "Kitchen Menus",
-                    icon: <KitchenIcon />,
+                    icon: <RestaurantMenuIcon />,
                     showInNavigation: true,
                 },
             },
