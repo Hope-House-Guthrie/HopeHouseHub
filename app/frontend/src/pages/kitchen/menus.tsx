@@ -17,7 +17,7 @@ export default function KitchenMenusPage() {
   const [search, setSearch] = useState("");
 
   const handleAdd = () => {
-    const trimmed = newName.trim();
+    const trimmed = toTitleCase(newName);
     if (!trimmed) return;
     dispatch(
       addMenuItem({
@@ -53,18 +53,9 @@ export default function KitchenMenusPage() {
     setDinnerDialogOpen(false);
   };
 
-  const handleAddToDinner = (id: string) => {
-    if (dinner.itemIds.includes(id)) return;
-    dispatch(
-      setMealItems({
-        meal: "dinner",
-        itemIds: [...dinner.itemIds, id],
-      }),
-    );
-  };
-
-    const handleAddToBreakfast = (id: string) => {
+  const handleAddToBreakfast = (id: string) => {
     if (breakfast.itemIds.includes(id)) return;
+    if (breakfast.itemIds.length >= 3) return;
     dispatch(
       setMealItems({
         meal: "breakfast",
@@ -75,6 +66,7 @@ export default function KitchenMenusPage() {
 
     const handleAddToLunch = (id: string) => {
     if (lunch.itemIds.includes(id)) return;
+    if (lunch.itemIds.length >= 3) return;
     dispatch(
       setMealItems({
         meal: "lunch",
@@ -82,6 +74,54 @@ export default function KitchenMenusPage() {
       }),
     );
   };
+
+    const handleAddToDinner = (id: string) => {
+    if (dinner.itemIds.includes(id)) return;
+    if (dinner.itemIds.length >= 4) return;
+    dispatch(
+      setMealItems({
+        meal: "dinner",
+        itemIds: [...dinner.itemIds, id],
+      }),
+    );
+  };
+
+  const handleRemoveFromBreakfast = (id: string) => {
+    dispatch(
+      setMealItems({
+        meal: "breakfast",
+        itemIds: breakfast.itemIds.filter((x) => x !== id),
+      }),
+    );
+  };
+
+    const handleRemoveFromLunch = (id: string) => {
+    dispatch(
+      setMealItems({
+        meal: "lunch",
+        itemIds: lunch.itemIds.filter((x) => x !== id),
+      }),
+    );
+  };
+
+    const handleRemoveFromDinner = (id: string) => {
+    dispatch(
+      setMealItems({
+        meal: "dinner",
+        itemIds: dinner.itemIds.filter((x) => x !== id),
+      }),
+    );
+  };
+
+  const toTitleCase = (s: string) =>
+    s
+      .trim()
+      .split(/\s+/)
+      .map((word) =>
+        word.length === 0
+          ? word: word[0]?.toUpperCase() + word.slice(1).toLowerCase(),
+      )
+      .join(" ");
 
   
   const nameById = (id: string) =>
@@ -96,6 +136,8 @@ export default function KitchenMenusPage() {
     const visibleItems = q
       ? menuItems.filter((item) => item.name.toLowerCase().includes(q))
       : menuItems;
+
+  const showResults = q.length > 0;
 
   return (
     <Box sx={{ p: 3 }}>
@@ -112,8 +154,8 @@ export default function KitchenMenusPage() {
         sx={{ display: "flex", gap: 1, mt: 2, mb: 2 }}
       >
         <TextField
-          label="New food"
-          size="small"
+          label="Add New Food Item"
+          size="medium"
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
         />
@@ -122,21 +164,30 @@ export default function KitchenMenusPage() {
         </Button>
       </Box>
 
-      <Typography sx={{ mt: 2 }}>
+      <Typography sx={{ mt: 0 }}>
         Library has {menuItems.length} item(s).
       </Typography>
 
       <TextField
       label="Search Library"
-      size="small"
+      size="medium"
       value={search}
       onChange={(e) => setSearch(e.target.value)}
       sx={{ mt: 2, mb: 1, maxWidth: 360 }}
       fullWidth
     />
 
-      <Box sx={{ mt: 2 }}>
-        {visibleItems.map((item: MenuItem) => (
+      <Box sx={{ mt: 0 }}>
+        {!showResults && (
+          <Typography color="text.secondray">
+            Search for a food, then use + Breakfast / + Lunch / + Dinner.
+          </Typography>
+        )}
+        {showResults && visibleItems.length === 0 && (
+          <Typography color="text.secondary">No matches.</Typography>
+        )}
+        {showResults &&
+          visibleItems.map((item: MenuItem) => (
           <Box
             key={item.id}
             sx={{
@@ -191,41 +242,86 @@ export default function KitchenMenusPage() {
 
       {/* Meal Selection Buttons */}
       <Box sx={{ mt: 3 }}>
-        <Typography variant="h6" sx={{ mb: 2 }}>
+        <Typography variant="h2" sx={{ mb: 2 }}>
           Today's Meals
         </Typography>
 
         <Box sx={{ mb: 2 }}>
-          <Typography variant="body1">
-            <strong>Breakfast:</strong> {mealLine(breakfast)}
+          <Typography variant="h4" sx={{ mb: 0.5 }}>
+            <strong>Breakfast:</strong>
           </Typography>
-          <Typography variant="body1">
-            <strong>Lunch:</strong> {mealLine(lunch)}
+          {breakfast.itemIds.length === 0 ? (
+            <Typography color="text.secondary">Not set</Typography>
+          ) : (
+            breakfast.itemIds.map((id) => (
+              <Box
+                key={id}
+                sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}
+              >
+                <Typography variant="h6">{nameById(id)}</Typography>
+                <Button
+                  size="small"
+                  color="error"
+                  onClick={() => handleRemoveFromBreakfast(id)}
+                >
+                  Remove
+                </Button>
+              </Box>
+            ))
+          )}
+
+          <Typography variant="h4" sx={{ mb: 0.5 }}>
+            <strong>Lunch:</strong>
           </Typography>
-          <Typography variant="body1">
-            <strong>Dinner:</strong> {mealLine(dinner)}
+          {lunch.itemIds.length === 0 ? (
+            <Typography color="text.secondary">Not set</Typography>
+          ) : (
+            lunch.itemIds.map((id) => (
+              <Box
+                key={id}
+                sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}
+              >
+                <Typography variant="h6">{nameById(id)}</Typography>
+                <Button
+                  size="small"
+                  color="error"
+                  onClick={() => handleRemoveFromLunch(id)}
+                >
+                  Remove
+                </Button>
+              </Box>
+            ))
+          )}
+
+          <Typography variant="h4" sx={{ mb: 0.5 }}>
+            <strong>Dinner:</strong>
             {dinner.mealTime ? ` (${dinner.mealTime})` : ""}
           </Typography>
-        </Box>
-
-        <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
-          <Button variant="contained" color="primary" size="small">
-            Set Breakfast
-          </Button>
-          <Button variant="contained" color="success" size="small">
-            Set Lunch
-          </Button>
-          <Button 
-            variant="contained" 
-            color="warning" 
-            size="small"
-            onClick={() => setDinnerDialogOpen(true)}
-          >
-            Set Dinner
-          </Button>
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 0.5 }}>
+            Main, Sides, Salad (Up to 4)
+          </Typography>
+          {dinner.itemIds.length === 0 ? (
+            <Typography color="text.secondary">Not set</Typography>
+          ) : (
+            dinner.itemIds.map((id) => (
+              <Box
+                key={id}
+                sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}
+              >
+                <Typography variant="h6">{nameById(id)}</Typography>
+                <Button
+                  size="small"
+                  color="error"
+                  onClick={() => handleRemoveFromDinner(id)}
+                >
+                  Remove
+                </Button>
+              </Box>
+            ))
+          )}
         </Box>
       </Box>
-
+      
       {/* Dinner Selection Dialog */}
       <Dialog
         open={dinnerDialogOpen}
