@@ -179,7 +179,7 @@ export default function KitchenMenusPage() {
 
       <Box sx={{ mt: 0 }}>
         {!showResults && (
-          <Typography color="text.secondray">
+          <Typography color="text.secondary">
             Search for a food, then use + Breakfast / + Lunch / + Dinner.
           </Typography>
         )}
