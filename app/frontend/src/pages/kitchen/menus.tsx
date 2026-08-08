@@ -14,6 +14,7 @@ export default function KitchenMenusPage() {
   const breakfast = useAppSelector((state) => state.kitchen.breakfast);
   const lunch = useAppSelector((state) => state.kitchen.lunch);
   const dinner = useAppSelector((state) => state.kitchen.dinner);
+  const [search, setSearch] = useState("");
 
   const handleAdd = () => {
     const trimmed = newName.trim();
@@ -52,6 +53,37 @@ export default function KitchenMenusPage() {
     setDinnerDialogOpen(false);
   };
 
+  const handleAddToDinner = (id: string) => {
+    if (dinner.itemIds.includes(id)) return;
+    dispatch(
+      setMealItems({
+        meal: "dinner",
+        itemIds: [...dinner.itemIds, id],
+      }),
+    );
+  };
+
+    const handleAddToBreakfast = (id: string) => {
+    if (breakfast.itemIds.includes(id)) return;
+    dispatch(
+      setMealItems({
+        meal: "breakfast",
+        itemIds: [...breakfast.itemIds, id],
+      }),
+    );
+  };
+
+    const handleAddToLunch = (id: string) => {
+    if (lunch.itemIds.includes(id)) return;
+    dispatch(
+      setMealItems({
+        meal: "lunch",
+        itemIds: [...lunch.itemIds, id],
+      }),
+    );
+  };
+
+  
   const nameById = (id: string) =>
     menuItems.find((m) => m.id === id)?.name ?? "Unknown item";
 
@@ -59,6 +91,11 @@ export default function KitchenMenusPage() {
     if (meal.itemIds.length === 0) return "Not set";
     return meal.itemIds.map(nameById).join(", ");
   };
+
+  const q = search.trim().toLowerCase();
+    const visibleItems = q
+      ? menuItems.filter((item) => item.name.toLowerCase().includes(q))
+      : menuItems;
 
   return (
     <Box sx={{ p: 3 }}>
@@ -89,8 +126,17 @@ export default function KitchenMenusPage() {
         Library has {menuItems.length} item(s).
       </Typography>
 
+      <TextField
+      label="Search Library"
+      size="small"
+      value={search}
+      onChange={(e) => setSearch(e.target.value)}
+      sx={{ mt: 2, mb: 1, maxWidth: 360 }}
+      fullWidth
+    />
+
       <Box sx={{ mt: 2 }}>
-        {menuItems.map((item: MenuItem) => (
+        {visibleItems.map((item: MenuItem) => (
           <Box
             key={item.id}
             sx={{
@@ -102,7 +148,28 @@ export default function KitchenMenusPage() {
             }}
           >
             <Typography>{item.name}</Typography>
-            <Box sx={{ display: "flex", gap: 0.5 }}>
+            <Box sx={{ display: "flex", gap: 0.5, alignItems: "center" }}>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => handleAddToBreakfast(item.id)}
+            >
+              + Breakfast
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => handleAddToLunch(item.id)}
+            >
+              + Lunch
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => handleAddToDinner(item.id)}
+            >
+              + Dinner
+            </Button>
               <IconButton
                 color="primary"
                 size="small"
