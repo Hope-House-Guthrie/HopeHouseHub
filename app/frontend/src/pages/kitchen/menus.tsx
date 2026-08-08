@@ -11,6 +11,9 @@ export default function KitchenMenusPage() {
   const [editItem, setEditItem] = useState<MenuItem | null>(null);
   const [editName, setEditName] = useState("");
   const [dinnerDialogOpen, setDinnerDialogOpen] = useState(false);
+  const breakfast = useAppSelector((state) => state.kitchen.breakfast);
+  const lunch = useAppSelector((state) => state.kitchen.lunch);
+  const dinner = useAppSelector((state) => state.kitchen.dinner);
 
   const handleAdd = () => {
     const trimmed = newName.trim();
@@ -47,6 +50,14 @@ export default function KitchenMenusPage() {
     const selectedIds = menuItems.map(item => item.id);
     dispatch(setMealItems({ meal: "dinner", itemIds: selectedIds }));
     setDinnerDialogOpen(false);
+  };
+
+  const nameById = (id: string) =>
+    menuItems.find((m) => m.id === id)?.name ?? "Unknown item";
+
+  const mealLine = (meal: { itemIds: string[] }) => {
+    if (meal.itemIds.length === 0) return "Not set";
+    return meal.itemIds.map(nameById).join(", ");
   };
 
   return (
@@ -116,6 +127,19 @@ export default function KitchenMenusPage() {
         <Typography variant="h6" sx={{ mb: 2 }}>
           Today's Meals
         </Typography>
+
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="body1">
+            <strong>Breakfast:</strong> {mealLine(breakfast)}
+          </Typography>
+          <Typography variant="body1">
+            <strong>Lunch:</strong> {mealLine(lunch)}
+          </Typography>
+          <Typography variant="body1">
+            <strong>Dinner:</strong> {mealLine(dinner)}
+            {dinner.mealTime ? ` (${dinner.mealTime})` : ""}
+          </Typography>
+        </Box>
 
         <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
           <Button variant="contained" color="primary" size="small">
