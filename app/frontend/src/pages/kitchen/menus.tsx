@@ -6,15 +6,35 @@
  *
  * Soft max enforced here only: breakfast/lunch 3 foods, dinner 4
  * (Main, Sides, Salad). Library is search-first; no dump-all dinner dialog.
+ *
+ * Pattern C: one field searches as you type; if nothing matches, empty
+ * state becomes Add (case-insensitive de-dupe keeps library clean).
  */
 
-
 import { useState } from "react";
-import { Box, Button, TextField, Typography, IconButton, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
-import { Delete as DeleteIcon, Edit as EditIcon } from "@mui/icons-material";
+import {
+  Box,
+  Button,
+  TextField,
+  Typography,
+  IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+} from "@mui/material";
+import { Delete as DeleteIcon, Edit as EditIcon, Visibility } from "@mui/icons-material";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { addMenuItem, removeMenuItem, setMealItems, updateMenuItem, addKennyism, setPinnedKennyism, type MenuItem } from "@/store/slices/kitchen";
-import { LanguageVariant } from "typescript";
+import {
+  addMenuItem,
+  removeMenuItem,
+  setMealItems,
+  updateMenuItem,
+  addKennyism,
+  setPinnedKennyism,
+  type MenuItem,
+} from "@/store/slices/kitchen";
+import { setStaffNote } from "@/store/slices/ops";
 
 export default function KitchenMenusPage() {
   // --- Store: library + today's meals (write via dispatch below) ---
@@ -30,14 +50,17 @@ export default function KitchenMenusPage() {
     (state) => state.kitchen.pinnedKennyismId,
   );
 
+  const staffNote = useAppSelector((state) => state.ops.staffNote);
+
   // --- Local UI state ---
-  const [newName, setNewName] = useState("");
   const [editItem, setEditItem] = useState<MenuItem | null>(null);
   const [editName, setEditName] = useState("");
   const [search, setSearch] = useState("");
-  const [newAffirmation, setNewAffirmation] = useState("");
+  const [affirmationSearch, setAffirmationSearch] = useState("");
+  const [noteDraft, setNoteDraft] = useState(staffNote);
 
   // --- Helpers ---
+  /** Food names: Title Case each word (Mashed Potatoes). */
   const toTitleCase = (s: string) =>
     s
       .trim()
@@ -49,6 +72,22 @@ export default function KitchenMenusPage() {
       )
       .join(" ");
 
+  /**
+   * Affirmations / quotes: light sentence clean — not title case.
+   * trim, collapse spaces, capitalize first letter, ensure ending . ! or ?
+   */
+  const cleanAffirmation = (s: string) => {
+    let t = s.trim().replace(/\s+/g, " ");
+    if (!t) return "";
+    if (/[a-zA-Z]/.test(t[0] ?? "")) {
+      t = t[0]!.toUpperCase() + t.slice(1);
+    }
+    if (!/[.!?]$/.test(t)) {
+      t = `${t}.`;
+    }
+    return t;
+  };
+
   const nameById = (id: string) =>
     menuItems.find((m) => m.id === id)?.name ?? "Unknown item";
 
@@ -58,18 +97,50 @@ export default function KitchenMenusPage() {
     ? menuItems.filter((item) => item.name.toLowerCase().includes(q))
     : menuItems;
   const showResults = q.length > 0;
+  const noMatches = showResults && visibleItems.length === 0;
+  // Exact name already in library? (case-insensitive) - blocks Add "Ric" when Rice in only a partial hit
+  const exactExists =
+    showResults &&
+    menuItems.some((item) => item.name.toLowerCase() === q);
+  // Show Add when typed something that isn't already an exact item (even if partial hits exist)
+  const canAddNew = showResults && !exactExists;
+
+  // Affirmations search-first (same idea as food library)
+  const aq = affirmationSearch.trim().toLowerCase();
+  const cleanedAffirmationDraft = cleanAffirmation(affirmationSearch);
+  const visibleKennyisms = aq
+    ? kennyisms.filter((k) => k.text.toLowerCase().includes(aq))
+    : [];
+  const showAffirmationResults = aq.length > 0;
+  const exactAffirmationExists =
+    showAffirmationResults &&
+    !!cleanedAffirmationDraft &&
+    kennyisms.some(
+      (k) => k.text.toLowerCase() === cleanedAffirmationDraft.toLowerCase(),
+    );
+  const canAddAffirmation =
+    showAffirmationResults &&
+    !!cleanedAffirmationDraft &&
+    !exactAffirmationExists;
 
   // --- Library: add / edit / delete ---
   const handleAdd = () => {
-    const trimmed = toTitleCase(newName);
+    const trimmed = toTitleCase(search);
     if (!trimmed) return;
+
+    // Case-insensitive de-dupe — keep library clean
+    const exists = menuItems.some(
+      (item) => item.name.toLowerCase() === trimmed.toLowerCase(),
+    );
+    if (exists) return;
+
     dispatch(
       addMenuItem({
         id: crypto.randomUUID(),
         name: trimmed,
       }),
     );
-    setNewName("");
+    setSearch("");
   };
 
   const handleDelete = (id: string) => {
@@ -83,13 +154,20 @@ export default function KitchenMenusPage() {
     setEditName(item.name);
   };
 
+  const handleCloseEdit = () => {
+    setEditItem(null);
+    setEditName("");
+  };
+
   const handleSaveEdit = () => {
     if (!editItem) return;
     const trimmed = toTitleCase(editName);
-    if (!trimmed) return;
+    if (!trimmed) {
+      handleCloseEdit();
+      return;
+    }
     dispatch(updateMenuItem({ id: editItem.id, name: trimmed }));
-    setEditItem(null);
-    setEditName("");
+    handleCloseEdit();
   };
 
   // --- Add library item → meal (soft max: B/L 3, dinner 4) ---
@@ -154,17 +232,31 @@ export default function KitchenMenusPage() {
     );
   };
 
-  // --- Daily Affirmations (kennyisms): add + 12h pin ---
+  // --- Ops staff note (ops slice — not kitchen food) ---
+  const handleSaveStaffNote = () => {
+    dispatch(setStaffNote(noteDraft.trim()));
+  };
+
+  const handleClearStaffNote = () => {
+    setNoteDraft("");
+    dispatch(setStaffNote(""));
+  };
+
+  // --- Daily Affirmations (kennyisms): search-first add + 12h pin ---
   const handleAddAffirmation = () => {
-    const trimmed = newAffirmation.trim();
-    if (!trimmed) return;
+    const cleaned = cleanAffirmation(affirmationSearch);
+    if (!cleaned) return;
+    const exists = kennyisms.some(
+      (k) => k.text.toLowerCase() === cleaned.toLowerCase(),
+    );
+    if (exists) return;
     dispatch(
       addKennyism({
         id: crypto.randomUUID(),
-        text: trimmed,
+        text: cleaned,
       }),
     );
-    setNewAffirmation("");
+    setAffirmationSearch("");
   };
 
   return (
@@ -174,51 +266,115 @@ export default function KitchenMenusPage() {
         Kitchen Menus
       </Typography>
 
-      {/* Add to library form */}
+      {/* Staff note - state in ops slice; notify Frankie later with logins */}
+      <Box
+        sx={{
+          mt: 2,
+          mb: 2,
+          p: 2,
+          border: "1px solid rgba(0,0,0,0.12)",
+          borderRadius: 1,
+        }}
+      >
+        <Typography variant="h6" sx={{ mb: 0.5 }}>
+          Staff note
+        </Typography>
+        <Typography color="text.secondary" sx={{ mb: 1 }}>
+          Supply / kitchen message for the team. Saved in this browser session
+          only for now — real alerts come after logins.
+        </Typography>
+        <Box
+          component="form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSaveStaffNote();
+          }}
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 1,
+            maxWidth: 560,
+          }}
+        >
+          <TextField
+            label="Staff note"
+            size="medium"
+            fullWidth
+            multiline
+            minRows={2}
+            value={noteDraft}
+            onChange={(e) => setNoteDraft(e.target.value)}
+            placeholder="e.g. We are out of paper plates and forks"
+          />
+          <Box sx={{ display: "flex", gap: 1 }}>
+            <Button type="submit" variant="contained">
+              Save note
+            </Button>
+            <Button
+              type="button"
+              variant="outlined"
+              onClick={handleClearStaffNote}
+            >
+              Clear
+            </Button>
+          </Box>
+        </Box>
+        {staffNote ? (
+          <Typography sx={{ mt: 1 }}>
+            <strong>Active:</strong> {staffNote}
+          </Typography>
+        ) : (
+          <Typography color="text.secondary" sx={{ mt: 1 }}>
+            No active staff note.
+          </Typography>
+        )}
+      </Box>
+
+      {/* Library count */}
+      <Typography sx={{ mt: 2 }}>
+        Library has {menuItems.length} item(s).
+      </Typography>
+
+      {/* Library search — empty results become Add (pattern C) */}
       <Box
         component="form"
         onSubmit={(e) => {
           e.preventDefault();
-          handleAdd();
+          if (canAddNew) handleAdd();
         }}
-        sx={{ display: "flex", gap: 1, mt: 2, mb: 2 }}
+        sx={{ display: "flex", gap: 1, mt: 2, mb: 1, maxWidth: 560 }}
       >
         <TextField
-          label="Add New Food Item"
+          label="Search or add food"
           size="medium"
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
+          fullWidth
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
         />
-        <Button type="submit" variant="contained">
-          Add
-        </Button>
       </Box>
-
-      {/* Library count */}
-      <Typography sx={{ mt: 0 }}>
-        Library has {menuItems.length} item(s).
-      </Typography>
-
-      {/* Library search (search-first list below) */}
-      <TextField
-        label="Search Library"
-        size="medium"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        sx={{ mt: 2, mb: 1, maxWidth: 360 }}
-        fullWidth
-      />
 
       {/* Search results + meal add / edit / delete on each row */}
       <Box sx={{ mt: 0 }}>
         {!showResults && (
           <Typography color="text.secondary">
-            Search for a food, then use + Breakfast / + Lunch / + Dinner.
+            Search for a food, then use + Breakfast / + Lunch / + Dinner. If it
+            is new, Add appears here if the exact name is not in the library yet.
           </Typography>
         )}
-        {showResults && visibleItems.length === 0 && (
-          <Typography color="text.secondary">No matches.</Typography>
+
+        {canAddNew && (
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, py: 1 }}>
+            <Typography color="text.secondary">
+              {visibleItems.length === 0
+                ? `No matches for “${search.trim()}”. Add it to the library?`
+                : `No exact match for "${search.trim()}". Add it to the library?`}
+            </Typography>
+            <Button variant="contained" size="small" onClick={handleAdd}>
+              Add “{toTitleCase(search)}”
+            </Button>
+          </Box>
         )}
+
         {showResults &&
           visibleItems.map((item: MenuItem) => (
             <Box
@@ -279,7 +435,7 @@ export default function KitchenMenusPage() {
       {/* Today's Meals preview (manager view; TV reads same store) */}
       <Box sx={{ mt: 3 }}>
         <Typography variant="h2" sx={{ mb: 2 }}>
-          Today's Meals
+          Today&apos;s Meals
         </Typography>
 
         {/* Breakfast slot */}
@@ -306,8 +462,10 @@ export default function KitchenMenusPage() {
               </Box>
             ))
           )}
+        </Box>
 
-          {/* Lunch slot */}
+        {/* Lunch slot */}
+        <Box sx={{ mb: 2 }}>
           <Typography variant="h4" sx={{ mb: 0.5 }}>
             <strong>Lunch:</strong>
           </Typography>
@@ -330,8 +488,10 @@ export default function KitchenMenusPage() {
               </Box>
             ))
           )}
+        </Box>
 
-          {/* Dinner slot — main, sides, salad; soft max 4; optional mealTime */}
+        {/* Dinner slot — main, sides, salad; soft max 4; optional mealTime */}
+        <Box sx={{ mb: 2 }}>
           <Typography variant="h4" sx={{ mb: 0.5 }}>
             <strong>Dinner:</strong>
             {dinner.mealTime ? ` (${dinner.mealTime})` : ""}
@@ -361,114 +521,137 @@ export default function KitchenMenusPage() {
         </Box>
       </Box>
 
-          {/* Daily Affirmations manager (store: kennyisms) - pin = 12h hold on TV */}
-          <Box sx={{ mt: 4 }}>
-            <Typography variant="h2" sx={{ mb: 1 }}>
-              Daily Affirmations
-            </Typography>
-            <Typography color="text.secondary" sx={{ mb: 2 }}>
-              Pin one for the TV (holds ~12 hours, then rotates). Add new quotes anytime.
-            </Typography>
+      {/* Daily Affirmations manager (store: kennyisms) — pin = 12h hold on TV */}
+      <Box sx={{ mt: 4 }}>
+        <Typography variant="h2" sx={{ mb: 1 }}>
+          Daily Affirmations
+        </Typography>
+        <Typography color="text.secondary" sx={{ mb: 1 }}>
+          Pin one quote for the TV (holds about 12 hours, then the board
+          rotates). Use search to find a quote or add a new one.
+        </Typography>
+        <Typography sx={{ mb: 2 }}>
+          Library has {kennyisms.length} affirmation(s).
+        </Typography>
 
-            {/* Add Affirmation - same idea as Add food (form + Enter) */}
-            <Box
-              component="form"
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleAddAffirmation();
-              }}
-              sx={{ display: "flex", gap: 1, mb: 2, maxWidth: 560 }}
-            >
-              <TextField
-                label="New affirmation"
-                size="medium"
-                fullWidth
-                value={newAffirmation}
-                onChange={(e) => setNewAffirmation(e.target.value)}
-              />
-              <Button type="submit" variant="contained">
-                Add
-              </Button>
-            </Box>
-
-            {kennyisms.length === 0 ? (
-              <Typography color="text.secondary">No affirmations yet.</Typography>
-            ) : (
-              kennyisms.map((k) =>{
-                const isPinned = pinnedKennyismId === k.id;
-                return (
-                  <Box
-                    key={k.id}
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      gap: 1,
-                      py: 1,
-                      borderBottom: "1px solid rgba(0,0,0,0.1)",
-                    }}
-                  >
-                    <Typography
-                    sx={{ fontStyle: isPinned ? "italic" : "normal" }}
-                  >
-                    {isPinned ? "📌 " : ""}
-                    {k.text}
-                  </Typography>
-                  <Button
-                    size="small"
-                    variant={isPinned ? "contained" : "outlined"}
-                    onClick={() =>
-                      dispatch(setPinnedKennyism(isPinned ? null : k.id))
-                    }
-                  >
-                    {isPinned ? "Unpin" : "Pin"}
-                  </Button>
-                </Box>
-              );
-            })
-          )}
-
-          {pinnedKennyismId && (
-            <Button
-              size="small"
-              sx={{ mt: 1 }}
-              onClick={() => dispatch(setPinnedKennyism(null))}
-            >
-              Clear pin
-            </Button>
-            )}
-          </Box>
-
-
-      {/* Edit library item dialog */}
-      <Dialog
-        open={!!editItem}
-        onClose={() => setEditItem(null)}
-        maxWidth="xs"
-      >
-        <DialogTitle>Edit Menu Item</DialogTitle>
-        <DialogContent>
+        {/* Search or add — Pattern C like food library */}
+        <Box
+          component="form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (canAddAffirmation) handleAddAffirmation();
+          }}
+          sx={{ display: "flex", gap: 1, mb: 1, maxWidth: 560 }}
+        >
           <TextField
-            autoFocus
-            margin="dense"
-            label="Item name"
+            label="Search or add affirmation"
+            size="medium"
             fullWidth
-            variant="outlined"
-            size="small"
-            value={editName}
-            onChange={(e) => setEditName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleSaveEdit();
-            }}
-            sx={{ mt: 1 }}
+            value={affirmationSearch}
+            onChange={(e) => setAffirmationSearch(e.target.value)}
           />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setEditItem(null)}>Cancel</Button>
-          <Button variant="contained" onClick={handleSaveEdit}>
-            Save
+        </Box>
+
+        {!showAffirmationResults && (
+          <Typography color="text.secondary">
+            Search for a quote, then Pin. If it is new, Add appears here.
+          </Typography>
+        )}
+
+        {canAddAffirmation && (
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, py: 1 }}>
+            <Typography color="text.secondary">
+              {visibleKennyisms.length === 0
+                ? `No matches for “${affirmationSearch.trim()}”. Add it?`
+                : `No exact match for “${affirmationSearch.trim()}”. Add as its own quote?`}
+            </Typography>
+            <Button
+              variant="contained"
+              size="small"
+              onClick={handleAddAffirmation}
+            >
+              Add “{cleanedAffirmationDraft}”
+            </Button>
+          </Box>
+        )}
+
+        {showAffirmationResults &&
+          visibleKennyisms.map((k) => {
+            const isPinned = pinnedKennyismId === k.id;
+            return (
+              <Box
+                key={k.id}
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 1,
+                  py: 1,
+                  borderBottom: "1px solid rgba(0,0,0,0.1)",
+                }}
+              >
+                <Typography
+                  sx={{ fontStyle: isPinned ? "italic" : "normal" }}
+                >
+                  {isPinned ? "📌 " : ""}
+                  {k.text}
+                </Typography>
+                <Button
+                  size="small"
+                  variant={isPinned ? "contained" : "outlined"}
+                  onClick={() =>
+                    dispatch(setPinnedKennyism(isPinned ? null : k.id))
+                  }
+                >
+                  {isPinned ? "Unpin" : "Pin"}
+                </Button>
+              </Box>
+            );
+          })}
+
+        {pinnedKennyismId && (
+          <Button
+            size="small"
+            sx={{ mt: 1 }}
+            onClick={() => dispatch(setPinnedKennyism(null))}
+          >
+            Clear pin
           </Button>
-        </DialogActions>
+        )}
+      </Box>
+
+      {/* Edit library item dialog — Enter submits, always closes when done */}
+      <Dialog open={!!editItem} onClose={handleCloseEdit} maxWidth="xs">
+        <Box
+          component="form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSaveEdit();
+          }}
+        >
+          <DialogTitle>Edit Menu Item</DialogTitle>
+          <DialogContent>
+            <TextField
+              autoFocus
+              margin="dense"
+              label="Item name"
+              fullWidth
+              variant="outlined"
+              size="small"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              sx={{ mt: 1 }}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button type="button" onClick={handleCloseEdit}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="contained">
+              Save
+            </Button>
+          </DialogActions>
+        </Box>
       </Dialog>
     </Box>
   );
