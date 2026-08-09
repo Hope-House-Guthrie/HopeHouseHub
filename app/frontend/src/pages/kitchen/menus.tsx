@@ -155,7 +155,7 @@ export default function KitchenMenusPage() {
   };
 
   // --- Daily Affirmations (kennyisms): add + 12h pin ---
-  const handleaddaffirmation = () => {
+  const handleAddAffirmation = () => {
     const trimmed = newAffirmation.trim();
     if (!trimmed) return;
     dispatch(

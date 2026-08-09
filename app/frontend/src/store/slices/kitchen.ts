@@ -103,6 +103,13 @@ const initialState: KitchenState = {
       id: "k-10",
       text: "I am kind and compassionate towards myself and others.",
     },
+    { id: "k-11", text: "What you say you are is who you become." },
+    {
+      id: "k-12",
+      text: "Never make someone a priority when your only an option.",
+    },
+    { id: "k-13", text: "Love finds you when you love yourself." },
+    { id: "k-14", text: "People do better when they know better." },
   ],
   pinnedKennyismId: null,
   pinnedKennyismAt: null,
