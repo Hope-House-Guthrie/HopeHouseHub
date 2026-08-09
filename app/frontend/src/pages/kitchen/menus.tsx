@@ -22,8 +22,12 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem as MuiMenuItem,
 } from "@mui/material";
-import { Delete as DeleteIcon, Edit as EditIcon, Visibility } from "@mui/icons-material";
+import { Category, Delete as DeleteIcon, Edit as EditIcon, Input, Visibility } from "@mui/icons-material";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   addMenuItem,
@@ -33,6 +37,7 @@ import {
   addKennyism,
   setPinnedKennyism,
   type MenuItem,
+  type MenuItemCategory,
 } from "@/store/slices/kitchen";
 import { setStaffNote } from "@/store/slices/ops";
 
@@ -56,6 +61,11 @@ export default function KitchenMenusPage() {
   const [editItem, setEditItem] = useState<MenuItem | null>(null);
   const [editName, setEditName] = useState("");
   const [search, setSearch] = useState("");
+  const [newCategory, setNewCategory] =
+    useState<MenuItemCategory>("other");
+  const [categoryFilter, setCategoryFilter] = useState<
+    MenuItemCategory | "all"
+  >("all");
   const [affirmationSearch, setAffirmationSearch] = useState("");
   const [noteDraft, setNoteDraft] = useState(staffNote);
 
@@ -93,9 +103,13 @@ export default function KitchenMenusPage() {
 
   // Search-first: only show library rows when the user has typed something
   const q = search.trim().toLowerCase();
-  const visibleItems = q
-    ? menuItems.filter((item) => item.name.toLowerCase().includes(q))
-    : menuItems;
+  const visibleItems = menuItems.filter((item) => {
+    const matchesSearch = !q || item.name.toLowerCase().includes(q);
+    const matchesCategory =
+      categoryFilter === "all" || item.category === categoryFilter;
+    return matchesSearch && matchesCategory;
+  });
+  // Pattern C: only show rows when user typed a search
   const showResults = q.length > 0;
   const noMatches = showResults && visibleItems.length === 0;
   // Exact name already in library? (case-insensitive) - blocks Add "Ric" when Rice in only a partial hit
@@ -138,9 +152,11 @@ export default function KitchenMenusPage() {
       addMenuItem({
         id: crypto.randomUUID(),
         name: trimmed,
+        category: newCategory,
       }),
     );
     setSearch("");
+    setNewCategory("other");
   };
 
   const handleDelete = (id: string) => {
@@ -342,7 +358,15 @@ export default function KitchenMenusPage() {
           e.preventDefault();
           if (canAddNew) handleAdd();
         }}
-        sx={{ display: "flex", gap: 1, mt: 2, mb: 1, maxWidth: 560 }}
+        sx={{
+          display: "flex",
+          gap: 1,
+          mt: 2,
+          mb: 1,
+          maxWidth: 720,
+          alignItems: "center",
+          flexWrap: "wrap",
+        }}
       >
         <TextField
           label="Search or add food"
@@ -350,7 +374,43 @@ export default function KitchenMenusPage() {
           fullWidth
           value={search}
           onChange={(e) => setSearch(e.target.value)}
+          sx={{ flex: "1 1 220px", minWidth: 200 }}
         />
+        <FormControl size="small" sx={{ minWidth: 140 }}>
+          <InputLabel id="new-food-category-label">Category</InputLabel>
+          <Select
+            labelId="new-food-category-label"
+            label="Category"
+            value={newCategory}
+            onChange={(e) =>
+              setNewCategory(e.target.value as MenuItemCategory)
+            }
+          >
+            <MuiMenuItem value="main">Main</MuiMenuItem>
+            <MuiMenuItem value="side">Side</MuiMenuItem>
+            <MuiMenuItem value="salad">Salad</MuiMenuItem>
+            <MuiMenuItem value="bread">Bread</MuiMenuItem>
+            <MuiMenuItem value="other">Other</MuiMenuItem>
+          </Select>
+        </FormControl>
+        <FormControl size="small" sx={{ minWidth: 160 }}>
+          <InputLabel id="category-filter-label">Filter</InputLabel>
+          <Select
+            labelId="category-filter-label"
+            label="Filter"
+            value={categoryFilter}
+            onChange={(e) =>
+              setCategoryFilter(e.target.value as MenuItemCategory | "all")
+            }
+          >
+            <MuiMenuItem value="all">All categories</MuiMenuItem>
+            <MuiMenuItem value="main">Main</MuiMenuItem>
+            <MuiMenuItem value="side">Side</MuiMenuItem>
+            <MuiMenuItem value="salad">Salad</MuiMenuItem>
+            <MuiMenuItem value="bread">Bread</MuiMenuItem>
+            <MuiMenuItem value="other">Other</MuiMenuItem>
+          </Select>
+        </FormControl>
       </Box>
 
       {/* Search results + meal add / edit / delete on each row */}
@@ -367,10 +427,10 @@ export default function KitchenMenusPage() {
             <Typography color="text.secondary">
               {visibleItems.length === 0
                 ? `No matches for “${search.trim()}”. Add it to the library?`
-                : `No exact match for "${search.trim()}". Add it to the library?`}
+                : `No exact match for “${search.trim()}”. Add as its own item?`}
             </Typography>
             <Button variant="contained" size="small" onClick={handleAdd}>
-              Add “{toTitleCase(search)}”
+              Add “{toTitleCase(search)}” ({newCategory})
             </Button>
           </Box>
         )}
@@ -387,7 +447,16 @@ export default function KitchenMenusPage() {
                 borderBottom: "1px solid rgba(0,0,0,0.1)",
               }}
             >
-              <Typography>{item.name}</Typography>
+              <Typography>
+                {item.name}{" "}
+                <Typography
+                  component="span"
+                  color="text.secondary"
+                  variant="body2"
+                >
+                  ({item.category})
+                </Typography>
+              </Typography>
               <Box sx={{ display: "flex", gap: 0.5, alignItems: "center" }}>
                 {/* Meal Selection Buttons */}
                 <Button
