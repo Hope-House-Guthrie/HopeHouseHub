@@ -503,7 +503,7 @@ export default function KitchenMenusPage() {
       {/* Today's Meals preview (manager view; TV reads same store) */}
       <Box sx={{ mt: 3 }}>
         <Typography variant="h2" sx={{ mb: 2 }}>
-          Today&apos;s Meals
+          Today's Meals
         </Typography>
 
         {/* Breakfast slot */}

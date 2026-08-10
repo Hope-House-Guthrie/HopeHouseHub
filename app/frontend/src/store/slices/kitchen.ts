@@ -254,6 +254,7 @@ const initialState: KitchenState = {
     },
     { id: "k-13", text: "Love finds you when you love yourself." },
     { id: "k-14", text: "People do better when they know better." },
+    { id: "k-15", text: "Have a Beautiful Time. - Shawn" },
   ],
   pinnedKennyismId: null,
   pinnedKennyismAt: null,

@@ -5,6 +5,13 @@
  *   kitchen.ts (store)  →  this page SELECTs only  →  big TV UI
  *   menus.tsx writes the same store; guests never see menus.
  *
+ *  History restored 
+
+┌─[ducky@parrot]─[~/HopeHouseHub/app/frontend]
+└──╼ $
+
+
+
  * Shows: HHG logo, Central Time clock/date, Guthrie weather,
  * B/L/D foods, dinner time, Daily Affirmations (kennyisms).
  * Pin holds 12h from pinnedKennyismAt, then rotates (not forever).
@@ -259,8 +266,8 @@ export default function KitchenDisplayPage() {
             textAlign: "right",
             px: 2.5,
             py: 2,
-            borderRadius: 2,
-            border: "2px solid rgba(224, 225, 221, 0.25)",
+            borderRadius: 5,
+            border: "2px solid rgba(127, 161, 26, 0.25)",
             bgcolor: "rgba(0, 0, 0, 0.2)",
             minWidth: { xs: "100%", sm: 200 },
           }}
