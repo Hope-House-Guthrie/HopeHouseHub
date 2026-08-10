@@ -17,6 +17,7 @@ import KitchenMenusPage from "./pages/kitchen/menus";
 import RestaurantMenuIcon from '@mui/icons-material/RestaurantMenu';
 //import AccountsPage from "./pages/accounts";
 import NotFoundPage from "./pages/not-found";
+import KitchenResourcesPage from "./pages/kitchen/kitchen-resources";
 
 export interface AppRouteHandle {
     title: string;
@@ -66,6 +67,15 @@ export const routesConfig: AppRouteObject[] = [
                 element: <KitchenMenusPage />,
                 handle: {
                     title: "Kitchen Menus",
+                    icon: <RestaurantMenuIcon />,
+                    showInNavigation: true,
+                },
+            },
+            {
+                path: "kitchen/resources",
+                element: <KitchenResourcesPage />,
+                handle: {
+                    title: "Kitchen Resources",
                     icon: <RestaurantMenuIcon />,
                     showInNavigation: true,
                 },
