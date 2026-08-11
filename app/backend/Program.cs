@@ -26,7 +26,6 @@ builder.AddDatabase();
 var app = builder.Build();
 
 app.MapClientEndpoints();
-app.MapMaintenanceEndpoints();
 
 if (app.Environment.IsDevelopment())
 {
