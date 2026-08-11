@@ -2,6 +2,7 @@ import { configureStore } from "@reduxjs/toolkit";
 import clientReducer from "./slices/clients";
 import kitchenReducer from "./slices/kitchen";
 import opsReducer from "./slices/ops";
+import passRequestReducer from "./slices/passRequest";
 import residentsReducer from "./slices/residents";
 
 export const store = configureStore({
@@ -9,6 +10,7 @@ export const store = configureStore({
     clients: clientReducer,
     kitchen: kitchenReducer,
     ops: opsReducer,
+    passRequest: passRequestReducer,
     residents: residentsReducer,
   },
 });

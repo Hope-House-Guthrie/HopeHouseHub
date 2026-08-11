@@ -7,6 +7,7 @@ import {
     PermIdentity as ClientsIcon,
     //Settings as SettingsIcon,
     Kitchen as KitchenIcon,
+    AccessTime as PassRequestsIcon,
 } from "@mui/icons-material";
 
 import MainLayout from "./layouts/main";
@@ -18,6 +19,7 @@ import RestaurantMenuIcon from '@mui/icons-material/RestaurantMenu';
 //import AccountsPage from "./pages/accounts";
 import NotFoundPage from "./pages/not-found";
 import KitchenResourcesPage from "./pages/kitchen/kitchen-resources";
+import PassRequestsPage from "./pages/pass-request";
 
 export interface AppRouteHandle {
     title: string;
@@ -77,6 +79,15 @@ export const routesConfig: AppRouteObject[] = [
                 handle: {
                     title: "Kitchen Resources",
                     icon: <RestaurantMenuIcon />,
+                    showInNavigation: true,
+                },
+            },
+            {
+                path: "pass-requests",
+                element: <PassRequestsPage />,
+                handle: {
+                    title: "Pass Requests",
+                    icon: <PassRequestsIcon />,
                     showInNavigation: true,
                 },
             },
