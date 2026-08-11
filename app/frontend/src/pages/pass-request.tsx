@@ -1,7 +1,7 @@
 /**
  * PassRequestsPage - Manage pass request for residents.
  * 
- *  Data folw:
+ *  Data flow:
  *       passRequest.ts (store) => this page SELECTs request => displays + actions
  * 
  *  Features:
@@ -47,7 +47,6 @@ export default function PassRequestsPage() {
   const [visitorPhone, setVisitorPhone] = useState("");
   const [passDateStart, setPassDateStart] = useState("");
   const [passDateEnd, setPassDateEnd] = useState("");
-  const [is24HourPass, setIs24HourPass] = useState(false);
   const [canPassUA, setCanPassUA] = useState<"yes" | "no" | "idk">("idk");
   const [choreCovered, setChoreCovered] = useState(false);
   const [choreCoveredBy, setChoreCoveredBy] = useState("");
@@ -68,15 +67,22 @@ export default function PassRequestsPage() {
     }
   }, [passDateStart, passDuration]);
 
+  // --- Helper: Check if name has both first and last ---
+  const hasFullName = (s: string) => {
+    if (!s) return false;
+    const parts = s.trim().split(/\s+/);
+    return parts.length >= 2;
+  };
+
   // --- Validation ---
   const validateForm = (): boolean => {
     const newErrors: string[] = [];
-
     if (!residentName.trim()) newErrors.push("Resident Name is required");
+    if (!hasFullName(residentName)) newErrors.push("Resident Name: Please enter both first and last name");
     if (!visitorName.trim()) newErrors.push("Visitor Name is required");
+    if (!hasFullName(visitorName)) newErrors.push("Visitor Name: Please enter both first and last name");
     if (!visitorPhone.trim()) newErrors.push("Visitor Phone is required");
     if (!passDateStart) newErrors.push("Pass Start Date is required");
-
     // 24-hour rule validation
     if (passDateStart) {
       const start = new Date(passDateStart);
@@ -86,7 +92,6 @@ export default function PassRequestsPage() {
         newErrors.push("Pass Start Date must be at least 24 hours in advance");
       }
     }
-
     setErrors(newErrors);
     return newErrors.length === 0;
   };
@@ -94,7 +99,6 @@ export default function PassRequestsPage() {
   // --- Handlers ---
   const handleAdd = () => {
     if (!validateForm()) return;
-
     dispatch(
       addPassRequest({
         residentName: residentName.trim(),
@@ -104,7 +108,7 @@ export default function PassRequestsPage() {
         visitorPhone: visitorPhone.trim(),
         passStart: passDateStart,
         passEnd: passDateEnd,
-        is24HourPass,
+        passType: passDuration,
         canPassUA,
         choreCovered,
         choreCoveredBy: choreCoveredBy.trim(),
@@ -112,7 +116,6 @@ export default function PassRequestsPage() {
         offPremises,
       })
     );
-
     setResidentName("");
     setPurpose("");
     setClientName("");
@@ -121,8 +124,7 @@ export default function PassRequestsPage() {
     setPassDateStart("");
     setPassDateEnd("");
     setPassDuration("24h");
-    setIs24HourPass(false);
-    setCanPassUA("yes");
+    setCanPassUA("idk");
     setChoreCovered(false);
     setChoreCoveredBy("");
     setOnPremises(false);
@@ -185,7 +187,7 @@ export default function PassRequestsPage() {
           </Typography>
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
             <FormControl>
-              <FormLabel sx={{ fontSize: 20, fontWeight: 1000 }}>Client Name</FormLabel>
+              <FormLabel sx={{ fontSize: 20, fontWeight: 1000 }}>Resident Name (First & Last)</FormLabel>
               <TextField
                 value={residentName}
                 onChange={(e) => setResidentName(capitalize(e.target.value))}
@@ -195,7 +197,7 @@ export default function PassRequestsPage() {
             </FormControl>
 
             <FormControl>
-              <FormLabel sx={{ fontSize: 20, fontWeight: 1000 }}>Visitor(s) Name</FormLabel>
+              <FormLabel sx={{ fontSize: 20, fontWeight: 1000 }}>Visitor(s) Name (First & Last)</FormLabel>
               <TextField
                 value={visitorName}
                 onChange={(e) => setVisitorName(capitalize(e.target.value))}
@@ -257,12 +259,11 @@ export default function PassRequestsPage() {
                 type="datetime-local"
                 value={passDateStart}
                 onChange={(e) => setPassDateStart(e.target.value)}
-                InputLabelProps={{ shrink: true }}
               />
             </FormControl>
 
             <FormControl sx={{ display: "flex", alignItems: "center", px: 2, py: 1, bgcolor: "grey.100", borderRadius: 1 }}>
-              <FormLabel sx={{ fontSize: 14, fontWeight: 500, mb: 0 }}>End:</FormLabel>
+              <FormLabel sx={{ fontSize: 14, fontWeight: 1000, mb: 0 }}>End:</FormLabel>
               <Typography variant="body2" sx={{ ml: 1, color: passDateEnd ? "text.primary" : "text.disabled" }}>
                 {passDateEnd ? new Date(passDateEnd).toLocaleString() : "Select start date and duration"}
               </Typography>
@@ -298,7 +299,7 @@ export default function PassRequestsPage() {
             </Box>
 
             <FormControl>
-              <FormLabel sx={{ fontSize: 20, fontWeight: 500 }}>Is your chore covered? (click for yes)</FormLabel>
+              <FormLabel sx={{ fontSize: 20, fontWeight: 1000 }}>Is your chore covered? (click for yes)</FormLabel>
               <FormControlLabel
                 control={
                   <Checkbox
@@ -312,7 +313,7 @@ export default function PassRequestsPage() {
 
             {choreCovered && (
               <FormControl>
-                <FormLabel sx={{ fontSize: 20, fontWeight: 500 }}>
+                <FormLabel sx={{ fontSize: 20, fontWeight: 1000 }}>
                   Covered By (or 'self')
                 </FormLabel>
                 <TextField
@@ -365,7 +366,7 @@ export default function PassRequestsPage() {
               {req.visitorName && ` | Visitor: ${req.visitorName}`}
             </Typography>
             <Typography variant="caption">
-              {new Date(req.submittedAt).toLocaleString()}
+              {new Date(req.submittedAt).toLocaleString("en-US", { timeZone: "America/Chicago" })}
             </Typography>
             <Box sx={{ mt: 1, display: "flex", gap: 1, alignItems: "center" }}>
               <Button

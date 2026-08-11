@@ -6,7 +6,7 @@ import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 
 export type PassStatus = "pending" | "approved" | "denied";
 
-export type PassType = "12h" | "24h";
+export type PassType = "4h" | "12h" | "24h" | "48h";
 
 export interface PassRequest {
   id: string;
@@ -21,9 +21,7 @@ export interface PassRequest {
   clientName: string;
   visitorName: string;
   visitorPhone: string;
-  passDateStart: string;
-  passDateEnd: string;
-  canPassUA: "yes" | "no" | "not sure";
+  canPassUA: "yes" | "no" | "idk";
   choreCovered: boolean;
   choreCoveredBy: string;
   onPremises: boolean;
@@ -52,7 +50,7 @@ export const passRequestSlice = createSlice({
   reducers: {
     addPassRequest: (
       state,
-      action: PayloadAction<Omit<PassRequest, "id" | "submittedAt" | "status">>,
+      action: PayloadAction<Omit<PassRequest, "id" | "submittedAt" | "status">>
     ) => {
       state.requests.push({
         id: crypto.randomUUID(),
@@ -67,7 +65,7 @@ export const passRequestSlice = createSlice({
     },
     denyPassRequest: (
       state,
-      action: PayloadAction<{ id: string; comment: string }>,
+      action: PayloadAction<{ id: string; comment: string }>
     ) => {
       const request = state.requests.find((r) => r.id === action.payload.id);
       if (request) {
