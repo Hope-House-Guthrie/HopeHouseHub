@@ -5,11 +5,16 @@
  *       passRequest.ts (store) => this page SELECTs request => displays + actions
  * 
  *  Features:
- *       - Submit new pass request (clients name + purpose)
+ *       - Submit new pass request
  *       - View pending/approved/denied requests.
  *       - Approve with one click
  *       - Deny with optional comment
  *       - Enter key works on comment input (submit deny)
+ *       - 24-hour advance: warning only, not blocking
+ *       - Additional info field for emergency pass details
+ *       - Edit pending passes to correct mistakes
+ *       - Shows when a pass was last edited
+ *       - Monthly history view for clients
  */
 
 import { useState, useEffect } from "react";
@@ -24,11 +29,12 @@ import {
   FormControlLabel,
   FormLabel,
   Checkbox,
-  Radio,
-  RadioGroup,
+  IconButton,
+  Tooltip,
 } from "@mui/material";
+import { Edit as EditIcon } from "@mui/icons-material";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { addPassRequest, approvePassRequest, denyPassRequest } from "@/store/slices/passRequest";
+import { addPassRequest, approvePassRequest, denyPassRequest, updatePassRequest } from "@/store/slices/passRequest";
 import type { PassRequest } from "@/store/slices/passRequest";
 
 // ---------------------------------------------------------------------------
@@ -40,6 +46,10 @@ export default function PassRequestsPage() {
   const dispatch = useAppDispatch();
   const requests = useAppSelector((state) => state.passRequest.requests);
 
+  // Edit mode tracking
+  const [editingPendingId, setEditingPendingId] = useState<string | null>(null);
+
+  // Form state
   const [residentName, setResidentName] = useState("");
   const [purpose, setPurpose] = useState("");
   const [clientName, setClientName] = useState("");
@@ -53,6 +63,7 @@ export default function PassRequestsPage() {
   const [onPremises, setOnPremises] = useState(false);
   const [offPremises, setOffPremises] = useState(false);
   const [passDuration, setPassDuration] = useState<"4h" | "12h" | "24h" | "48h">("24h");
+  const [additionalInfo, setAdditionalInfo] = useState("");
   const [showComment, setShowComment] = useState<Record<string, boolean>>({});
   const [denyComments, setDenyComments] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<string[]>([]);
@@ -66,6 +77,30 @@ export default function PassRequestsPage() {
       setPassDateEnd(end.toISOString());
     }
   }, [passDateStart, passDuration]);
+
+  // --- Load pending pass into form when editing ---
+  useEffect(() => {
+    if (editingPendingId) {
+      const pendingPass = requests.find((r) => r.id === editingPendingId);
+      if (pendingPass) {
+        setResidentName(pendingPass.residentName);
+        setPurpose(pendingPass.purpose);
+        setClientName(pendingPass.clientName);
+        setVisitorName(pendingPass.visitorName);
+        setVisitorPhone(formatPhone(pendingPass.visitorPhone));
+        setPassDateStart(pendingPass.passStart);
+        setPassDateEnd(pendingPass.passEnd);
+        setCanPassUA(pendingPass.canPassUA);
+        setChoreCovered(pendingPass.choreCovered);
+        setChoreCoveredBy(pendingPass.choreCoveredBy);
+        setOnPremises(pendingPass.onPremises);
+        setOffPremises(pendingPass.offPremises);
+        setPassDuration(pendingPass.passType);
+        setAdditionalInfo(pendingPass.comment || "");
+        setErrors([]);
+      }
+    }
+  }, [editingPendingId, requests]);
 
   // --- Helper: Check if name has both first and last ---
   const hasFullName = (s: string) => {
@@ -83,24 +118,30 @@ export default function PassRequestsPage() {
     if (!hasFullName(visitorName)) newErrors.push("Visitor Name: Please enter both first and last name");
     if (!visitorPhone.trim()) newErrors.push("Visitor Phone is required");
     if (!passDateStart) newErrors.push("Pass Start Date is required");
-    // 24-hour rule validation
-    if (passDateStart) {
-      const start = new Date(passDateStart);
-      const now = new Date();
-      const hoursDiff = (start.getTime() - now.getTime()) / (1000 * 3600);
-      if (hoursDiff < 24) {
-        newErrors.push("Pass Start Date must be at least 24 hours in advance");
-      }
-    }
     setErrors(newErrors);
     return newErrors.length === 0;
+  };
+
+  // --- 24-hour warning check ---
+  const getAdvanceNoticeWarning = (): string | null => {
+    if (!passDateStart) return null;
+    const start = new Date(passDateStart);
+    const now = new Date();
+    const hoursDiff = (start.getTime() - now.getTime()) / (1000 * 3600);
+    if (hoursDiff < 24) {
+      return `Pass Start Date is less than 24 hours in advance (${hoursDiff.toFixed(1)} hours). If this is an emergency, please provide details in the comment box below.`;
+    }
+    return null;
   };
 
   // --- Handlers ---
   const handleAdd = () => {
     if (!validateForm()) return;
-    dispatch(
-      addPassRequest({
+    
+    if (editingPendingId) {
+      // Update existing pending pass
+      dispatch(updatePassRequest({
+        id: editingPendingId,
         residentName: residentName.trim(),
         purpose: purpose.trim(),
         clientName: clientName.trim(),
@@ -114,8 +155,32 @@ export default function PassRequestsPage() {
         choreCoveredBy: choreCoveredBy.trim(),
         onPremises,
         offPremises,
-      })
-    );
+        comment: additionalInfo.trim(),
+      }));
+      setEditingPendingId(null);
+    } else {
+      // Create new pass
+      dispatch(
+        addPassRequest({
+          residentName: residentName.trim(),
+          purpose: purpose.trim(),
+          clientName: clientName.trim(),
+          visitorName: visitorName.trim(),
+          visitorPhone: visitorPhone.trim(),
+          passStart: passDateStart,
+          passEnd: passDateEnd,
+          passType: passDuration,
+          canPassUA,
+          choreCovered,
+          choreCoveredBy: choreCoveredBy.trim(),
+          onPremises,
+          offPremises,
+          comment: additionalInfo.trim(),
+        })
+      );
+    }
+    
+    // Reset form
     setResidentName("");
     setPurpose("");
     setClientName("");
@@ -129,7 +194,16 @@ export default function PassRequestsPage() {
     setChoreCoveredBy("");
     setOnPremises(false);
     setOffPremises(false);
+    setAdditionalInfo("");
     setErrors([]);
+  };
+
+  const handleEdit = (id: string) => {
+    setEditingPendingId(id);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingPendingId(null);
   };
 
   const handleApproved = (id: string) => {
@@ -145,7 +219,7 @@ export default function PassRequestsPage() {
   const capitalize = (s: string) => {
     if (!s) return s;
     return s.split(' ').map(word =>
-      word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+      word.charAt(0).toUpperCase() + word.slice(1)
     ).join(' ');
   };
 
@@ -157,10 +231,21 @@ export default function PassRequestsPage() {
     return value;
   };
 
-  // --- Render ---
+  // --- Monthly History Filter ---
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+  
   const pending = requests.filter((r) => r.status === "pending");
   const history = requests.filter((r) => r.status !== "pending");
+  
+  // Filter history to show only current month
+  const currentMonthHistory = history.filter((req) => {
+    const passDate = new Date(req.submittedAt);
+    return passDate.getMonth() === currentMonth && passDate.getFullYear() === currentYear;
+  });
 
+  // --- Render ---
   return (
     <Box sx={{ p: 3, maxWidth: 800 }}>
       {/* Error Messages */}
@@ -175,6 +260,17 @@ export default function PassRequestsPage() {
                 <li key={i}>{err}</li>
               ))}
             </ul>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Edit Mode Indicator */}
+      {editingPendingId && (
+        <Card sx={{ mb: 2, bgcolor: "info.light" }}>
+          <CardContent>
+            <Typography variant="subtitle2" color="info.dark">
+              Editing pending pass. Click "Submit Request" to save changes or click "Cancel Edit" to discard.
+            </Typography>
           </CardContent>
         </Card>
       )}
@@ -217,16 +313,20 @@ export default function PassRequestsPage() {
               />
             </FormControl>
 
+            {/* 24-hour advance notice warning */}
+            {getAdvanceNoticeWarning() && (
+              <Card sx={{ mb: 2, bgcolor: "warning.light", border: "1px solid", borderColor: "warning.main" }}>
+                <CardContent>
+                  <Typography variant="subtitle2" color="warning.dark">
+                    {getAdvanceNoticeWarning()}
+                  </Typography>
+                </CardContent>
+              </Card>
+            )}
+
             <FormControl>
               <FormLabel sx={{ fontSize: 20, fontWeight: 500 }}>Pass Duration</FormLabel>
               <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                <Button
-                  variant={passDuration === "4h" ? "contained" : "outlined"}
-                  sx={{ bgcolor: passDuration === "4h" ? "action" : "transparent" }}
-                  onClick={() => setPassDuration("4h")}
-                >
-                  4h
-                </Button>
                 <Button
                   variant={passDuration === "12h" ? "contained" : "outlined"}
                   color="warning"
@@ -299,7 +399,7 @@ export default function PassRequestsPage() {
             </Box>
 
             <FormControl>
-              <FormLabel sx={{ fontSize: 20, fontWeight: 1000 }}>Is your chore covered? (click for yes)</FormLabel>
+              <FormLabel sx={{ fontSize: 20, fontWeight: 1000 }}>Is your chore covered? (check box)</FormLabel>
               <FormControlLabel
                 control={
                   <Checkbox
@@ -344,30 +444,80 @@ export default function PassRequestsPage() {
               />
             </Box>
 
-            <Button variant="contained" onClick={handleAdd}>
-              Submit Request
-            </Button>
+            {/* Additional Info / Reason for Emergency Pass */}
+            <FormControl>
+              <FormLabel sx={{ fontSize: 20, fontWeight: 1000 }}>
+                Additional Info / Reason for Pass (optional - e.g., emergency, special circumstances)
+              </FormLabel>
+              <TextField
+                multiline
+                rows={3}
+                value={additionalInfo}
+                onChange={(e) => setAdditionalInfo(e.target.value)}
+                placeholder="Provide any additional details or reason for this pass..."
+              />
+            </FormControl>
+
+            <Box sx={{ display: "flex", gap: 2 }}>
+              {editingPendingId && (
+                <Button variant="outlined" onClick={handleCancelEdit}>
+                  Cancel Edit
+                </Button>
+              )}
+              <Button variant="contained" onClick={handleAdd}>
+                {editingPendingId ? "Update Request" : "Submit Request"}
+              </Button>
+            </Box>
           </Box>
         </CardContent>
       </Card>
 
-      {/* Pending Requests */}
+      {/* Pending Requests with Edit Capability */}
       <Typography variant="h5" gutterBottom>
         Pending Requests
       </Typography>
       {pending.map((req: PassRequest) => (
         <Card key={req.id} sx={{ mb: 2 }}>
           <CardContent>
-            <Typography>
-              <strong>{req.residentName}</strong> - {req.purpose}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {req.clientName && `Client: ${req.clientName}`}
-              {req.visitorName && ` | Visitor: ${req.visitorName}`}
-            </Typography>
-            <Typography variant="caption">
-              {new Date(req.submittedAt).toLocaleString("en-US", { timeZone: "America/Chicago" })}
-            </Typography>
+            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <Box sx={{ flexGrow: 1 }}>
+                <Typography>
+                  <strong>{req.residentName}</strong> - {req.purpose}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {req.visitorName && `Visitor: ${req.visitorName}`}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Pass: {new Date(req.passStart).toLocaleString("en-US", { timeZone: "America/Chicago", dateStyle: "medium", timeStyle: "short" })}
+                  {" - "}
+                  {new Date(req.passEnd).toLocaleString("en-US", { timeZone: "America/Chicago", dateStyle: "medium", timeStyle: "short" })}
+                </Typography>
+                {req.comment && (
+                  <Typography variant="caption" color="text.secondary">
+                    <br />
+                    Note: {req.comment}
+                  </Typography>
+                )}
+                <Typography variant="caption">
+                  <br />
+                  Submitted: {new Date(req.submittedAt).toLocaleString("en-US", { timeZone: "America/Chicago" })}
+                </Typography>
+                {req.lastEditedAt && (
+                  <Typography variant="caption" color="text.secondary">
+                    <br />
+                    Edited: {new Date(req.lastEditedAt).toLocaleString("en-US", { timeZone: "America/Chicago" })}
+                  </Typography>
+                )}
+              </Box>
+              <Tooltip title="Edit Pass">
+                <IconButton
+                  onClick={() => handleEdit(req.id)}
+                  disabled={editingPendingId !== null}
+                >
+                  <EditIcon />
+                </IconButton>
+              </Tooltip>
+            </Box>
             <Box sx={{ mt: 1, display: "flex", gap: 1, alignItems: "center" }}>
               <Button
                 variant="contained"
@@ -410,28 +560,25 @@ export default function PassRequestsPage() {
         </Card>
       ))}
 
-      {/* History */}
-      {history.length > 0 && (
+      {/* Current Month History */}
+      {currentMonthHistory.length > 0 && (
         <Box sx={{ mt: 4 }}>
           <Typography variant="h5" gutterBottom>
-            History
+            History (Current Month: {now.toLocaleString('default', { month: 'long', year: 'numeric' })})
           </Typography>
-          {history.map((req: PassRequest) => (
-            <Card key={req.id} variant="outlined">
+          {currentMonthHistory.map((req: PassRequest) => (
+            <Card key={req.id} variant="outlined" sx={{ mb: 1 }}>
               <CardContent sx={{ display: "flex", gap: 2 }}>
                 <Box sx={{ flexGrow: 1 }}>
                   <Typography>
                     <strong>{req.residentName}</strong> - {req.purpose}
                   </Typography>
-                  {req.clientName && (
-                    <Typography variant="body2">Client: {req.clientName}</Typography>
-                  )}
-                  {req.visitorName && (
-                    <Typography variant="body2">Visitor: {req.visitorName}</Typography>
-                  )}
+                  <Typography variant="body2" color="text.secondary">
+                    Visitor: {req.visitorName} | {new Date(req.passStart).toLocaleString("en-US", { timeZone: "America/Chicago", dateStyle: "short", timeStyle: "short" })}
+                  </Typography>
                   {req.comment && (
                     <Typography variant="caption" color="text.secondary">
-                      Comment: {req.comment}
+                      Note: {req.comment}
                     </Typography>
                   )}
                 </Box>

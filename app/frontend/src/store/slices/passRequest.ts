@@ -15,6 +15,7 @@ export interface PassRequest {
   submittedAt: string;
   status: PassStatus;
   comment?: string;
+  lastEditedAt?: string;
   passStart: string;
   passEnd: string;
   passType: PassType;
@@ -28,21 +29,32 @@ export interface PassRequest {
   offPremises: boolean;
 }
 
-export interface PassRequestsState {
-  requests: PassRequest[];
-}
-
-// ---------------------------------------------------------------------------
-// Initial state
-// ---------------------------------------------------------------------------
-
-const initialState: PassRequestsState = {
-  requests: [],
+// Updated type for updating a pass (includes id, excludes submittedAt and status from being overwritten)
+export type PassRequestUpdateInput = {
+  id: string;
+  residentName: string;
+  purpose: string;
+  clientName: string;
+  visitorName: string;
+  visitorPhone: string;
+  passStart: string;
+  passEnd: string;
+  passType: PassType;
+  canPassUA: "yes" | "no" | "idk";
+  choreCovered: boolean;
+  choreCoveredBy: string;
+  onPremises: boolean;
+  offPremises: boolean;
+  comment?: string;
 };
 
 // ---------------------------------------------------------------------------
 // Slice with reducers
 // ---------------------------------------------------------------------------
+
+const initialState = {
+  requests: [] as PassRequest[],
+};
 
 export const passRequestSlice = createSlice({
   name: "passRequest",
@@ -73,9 +85,34 @@ export const passRequestSlice = createSlice({
         request.comment = action.payload.comment;
       }
     },
+    updatePassRequest: (
+      state,
+      action: PayloadAction<PassRequestUpdateInput>
+    ) => {
+      const request = state.requests.find((r) => r.id === action.payload.id);
+      if (request) {
+        request.residentName = action.payload.residentName;
+        request.purpose = action.payload.purpose;
+        request.clientName = action.payload.clientName;
+        request.visitorName = action.payload.visitorName;
+        request.visitorPhone = action.payload.visitorPhone;
+        request.passStart = action.payload.passStart;
+        request.passEnd = action.payload.passEnd;
+        request.passType = action.payload.passType;
+        request.canPassUA = action.payload.canPassUA;
+        request.choreCovered = action.payload.choreCovered;
+        request.choreCoveredBy = action.payload.choreCoveredBy;
+        request.onPremises = action.payload.onPremises;
+        request.offPremises = action.payload.offPremises;
+        request.lastEditedAt = new Date().toISOString();
+        if (action.payload.comment !== undefined) {
+          request.comment = action.payload.comment;
+        }
+      }
+    },
   },
 });
 
-export const { addPassRequest, approvePassRequest, denyPassRequest } =
+export const { addPassRequest, approvePassRequest, denyPassRequest, updatePassRequest } =
   passRequestSlice.actions;
 export default passRequestSlice.reducer;
