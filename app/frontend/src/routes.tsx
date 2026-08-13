@@ -8,6 +8,7 @@ import {
     //Settings as SettingsIcon,
     Kitchen as KitchenIcon,
     AccessTime as PassRequestsIcon,
+    Biotech as UAFormIcon,
 } from "@mui/icons-material";
 
 import MainLayout from "./layouts/main";
@@ -20,6 +21,7 @@ import RestaurantMenuIcon from '@mui/icons-material/RestaurantMenu';
 import NotFoundPage from "./pages/not-found";
 import KitchenResourcesPage from "./pages/kitchen/kitchen-resources";
 import PassRequestsPage from "./pages/pass-request";
+import UAFormPage from "./pages/ua-form";
 
 export interface AppRouteHandle {
     title: string;
@@ -88,6 +90,15 @@ export const routesConfig: AppRouteObject[] = [
                 handle: {
                     title: "Pass Requests",
                     icon: <PassRequestsIcon />,
+                    showInNavigation: true,
+                },
+            },
+                        {
+                path: "ua-form",
+                element: <UAFormPage />,
+                handle: {
+                    title: "UA Form",
+                    icon: <UAFormIcon />,
                     showInNavigation: true,
                 },
             },
