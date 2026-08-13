@@ -4,6 +4,7 @@ import kitchenReducer from "./slices/kitchen";
 import opsReducer from "./slices/ops";
 import passRequestReducer from "./slices/passRequest";
 import residentsReducer from "./slices/residents";
+import incidentReportsReducer from "./slices/incidentReports";
 
 export const store = configureStore({
   reducer: {
@@ -12,6 +13,7 @@ export const store = configureStore({
     ops: opsReducer,
     passRequest: passRequestReducer,
     residents: residentsReducer,
+    incidentReports: incidentReportsReducer,
   },
 });
 
