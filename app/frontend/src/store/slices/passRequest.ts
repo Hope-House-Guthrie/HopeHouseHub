@@ -6,7 +6,7 @@ import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 
 export type PassStatus = "pending" | "approved" | "denied";
 
-export type PassType = "4h" | "12h" | "24h" | "48h";
+export type PassType = "12h" | "24h" | "48h";
 
 export interface PassRequest {
   id: string;
@@ -62,7 +62,7 @@ export const passRequestSlice = createSlice({
   reducers: {
     addPassRequest: (
       state,
-      action: PayloadAction<Omit<PassRequest, "id" | "submittedAt" | "status">>
+      action: PayloadAction<Omit<PassRequest, "id" | "submittedAt" | "status">>,
     ) => {
       state.requests.push({
         id: crypto.randomUUID(),
@@ -77,7 +77,7 @@ export const passRequestSlice = createSlice({
     },
     denyPassRequest: (
       state,
-      action: PayloadAction<{ id: string; comment: string }>
+      action: PayloadAction<{ id: string; comment: string }>,
     ) => {
       const request = state.requests.find((r) => r.id === action.payload.id);
       if (request) {
@@ -87,7 +87,7 @@ export const passRequestSlice = createSlice({
     },
     updatePassRequest: (
       state,
-      action: PayloadAction<PassRequestUpdateInput>
+      action: PayloadAction<PassRequestUpdateInput>,
     ) => {
       const request = state.requests.find((r) => r.id === action.payload.id);
       if (request) {
@@ -113,6 +113,10 @@ export const passRequestSlice = createSlice({
   },
 });
 
-export const { addPassRequest, approvePassRequest, denyPassRequest, updatePassRequest } =
-  passRequestSlice.actions;
+export const {
+  addPassRequest,
+  approvePassRequest,
+  denyPassRequest,
+  updatePassRequest,
+} = passRequestSlice.actions;
 export default passRequestSlice.reducer;
