@@ -71,8 +71,19 @@ export default function PassRequestsPage() {
   // --- Auto-fill End Date based on Start + Duration ---
   useEffect(() => {
     if (passDateStart && passDuration) {
-      const start = new Date(passDateStart);
+      // datetime-local input returns value in format "YYYY-MM-DDTHH:MM" (local time)
+      // We must parse this as LOCAL time to avoid timezone interpretation issues
       const hours = parseInt(passDuration.replace('h', ''), 10);
+      
+      // Split and create Date treating the input as local time
+      const parts = passDateStart.split('T');
+      const datePart = parts[0] ?? '';
+      const timePart = parts[1] ?? '';
+      const [year, month, day] = datePart.split('-').map(Number) as [number, number, number];
+      const [hour, minute] = timePart.split(':').map(Number) as [number, number];
+      
+      // Create Date using local time constructor (year, month-1, day, hour, minute)
+      const start = new Date(year, month - 1, day, hour, minute);
       const end = new Date(start.getTime() + hours * 60 * 60 * 1000);
       setPassDateEnd(end.toISOString());
     }
@@ -123,13 +134,22 @@ export default function PassRequestsPage() {
   };
 
   // --- 24-hour warning check ---
+  // Check if there's less than 24 hours notice from NOW to PASS END time
+  // This ensures the entire pass duration is covered by advance notice
   const getAdvanceNoticeWarning = (): string | null => {
-    if (!passDateStart) return null;
-    const start = new Date(passDateStart);
+    if (!passDateStart || !passDateEnd) return null;
+    
     const now = new Date();
-    const hoursDiff = (start.getTime() - now.getTime()) / (1000 * 3600);
+    const endTime = new Date(passDateEnd);
+    
+    // Calculate hours from now to pass end time
+    const hoursDiff = (endTime.getTime() - now.getTime()) / (1000 * 3600);
+    
     if (hoursDiff < 24) {
-      return `Pass Start Date is less than 24 hours in advance (${hoursDiff.toFixed(1)} hours). If this is an emergency, please provide details in the comment box below.`;
+      const durationHours = parseInt(passDuration.replace('h', ''), 10);
+      const startFormatted = new Date(passDateStart).toLocaleString("en-US", { timeZone: "America/Chicago", dateStyle: "medium", timeStyle: "short" });
+      const endFormatted = new Date(passDateEnd).toLocaleString("en-US", { timeZone: "America/Chicago", dateStyle: "medium", timeStyle: "short" });
+      return `Pass (${durationHours}h: ${startFormatted} - ${endFormatted}) ends in less than 24 hours (${hoursDiff.toFixed(1)} hours left). If this is an emergency, please provide details in the comment box below.`;
     }
     return null;
   };
@@ -365,7 +385,7 @@ export default function PassRequestsPage() {
             <FormControl sx={{ display: "flex", alignItems: "center", px: 2, py: 1, bgcolor: "grey.100", borderRadius: 1 }}>
               <FormLabel sx={{ fontSize: 14, fontWeight: 1000, mb: 0 }}>End:</FormLabel>
               <Typography variant="body2" sx={{ ml: 1, color: passDateEnd ? "text.primary" : "text.disabled" }}>
-                {passDateEnd ? new Date(passDateEnd).toLocaleString() : "Select start date and duration"}
+                {passDateEnd ? new Date(passDateEnd).toLocaleString("en-US", { timeZone: "America/Chicago", dateStyle: "medium", timeStyle: "short" }) : "Select start date and duration"}
               </Typography>
             </FormControl>
 
