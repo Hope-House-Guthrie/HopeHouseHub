@@ -82,32 +82,7 @@ const createDrugPanels = (): DrugPanel[] => {
 };
 
 // --- Initial State ---
-const initialState: UAForm = {
-  id: crypto.randomUUID(), // Use built-in crypto API instead of uuid package
-  clientName: "",
-  intakeDate: "",
-  lastUaDate: "",
-  drugPanels: createDrugPanels(),
-  observedBy: {
-    staffName: "",
-    time: "",
-    observed: "Yes",
-  },
-  uaReason: "Random",
-  remarks: "",
-  collectorInfo: {
-    collectorName: "",
-    collectorPhone: "",
-    collectionDate: "",
-  },
-  specimenTemp: "In Range",
-  clientSignature: "",
-  clientSignatureDate: "",
-  adminSignature: "",
-  adminSignatureDate: "",
-  submittedAt: new Date().toISOString(),
-  status: "pending",
-};
+const initialState = { requests: [] as UAForm[] };
 
 // ---------------------------------------------------------------------------
 // Redux Slice
@@ -117,73 +92,11 @@ export const uaFormSlice = createSlice({
   name: "uaForm",
   initialState,
   reducers: {
-    // Reset form to initial state
     resetUAForm: (state) => {
-      return initialState;
+      state.requests = [];
     },
-    // Update specific fields
-    updateClientInfo: (
-      state,
-      action: PayloadAction<{
-        clientName: string;
-        intakeDate: string;
-        lastUaDate?: string;
-      }>,
-    ) => {
-      state.clientName = action.payload.clientName;
-      state.intakeDate = action.payload.intakeDate;
-      if (action.payload.lastUaDate !== undefined) {
-        state.lastUaDate = action.payload.lastUaDate;
-      }
-    },
-    updateDrugPanel: (
-      state,
-      action: PayloadAction<{ id: string; result: DrugResult }>,
-    ) => {
-      const panel = state.drugPanels.find((p) => p.id === action.payload.id);
-      if (panel) {
-        panel.result = action.payload.result;
-      }
-    },
-    updateObservedBy: (
-      state,
-      action: PayloadAction<{
-        staffName: string;
-        time: string;
-        observed: "Yes" | "No";
-      }>,
-    ) => {
-      state.observedBy = action.payload;
-    },
-    updateUAReason: (
-      state,
-      action: PayloadAction<"Random" | "Pass Return" | "Intake">,
-    ) => {
-      state.uaReason = action.payload;
-    },
-    updateRemarks: (state, action: PayloadAction<string>) => {
-      state.remarks = action.payload;
-    },
-    updateCollectorInfo: (
-      state,
-      action: PayloadAction<{
-        collectorName: string;
-        collectorPhone: string;
-        collectionDate: string;
-      }>,
-    ) => {
-      state.collectorInfo = action.payload;
-    },
-    updateSpecimenTemp: (
-      state,
-      action: PayloadAction<"In Range" | "Not In Range">,
-    ) => {
-      state.specimenTemp = action.payload;
-    },
-    // Submit/create the UA form
-    submitUAForm: (state) => {
-      state.submittedAt = new Date().toISOString();
-      state.status = "approved";
+    addUAForm: (state, action: PayloadAction<UAForm>) => {
+      state.requests.push(action.payload);
     },
   },
 });
@@ -192,16 +105,6 @@ export const uaFormSlice = createSlice({
 // Exports
 // ---------------------------------------------------------------------------
 
-export const {
-  resetUAForm,
-  updateClientInfo,
-  updateDrugPanel,
-  updateObservedBy,
-  updateUAReason,
-  updateRemarks,
-  updateCollectorInfo,
-  updateSpecimenTemp,
-  submitUAForm,
-} = uaFormSlice.actions;
+export const { resetUAForm, addUAForm } = uaFormSlice.actions;
 
 export default uaFormSlice.reducer;

@@ -45,18 +45,24 @@ export default function SignatureCanvas({
       const canvas = canvasRef.current;
       const rect = canvas?.getBoundingClientRect();
       if (!canvas || !rect) return null;
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      if (!canvas || !rect) return null;
       return {
-        x: touch.clientX - rect.left,
-        y: touch.clientY - rect.top,
+        x: (touch.clientX - rect.left) * scaleX,
+        y: (touch.clientY - rect.top) * scaleY,
       };
     } else {
       const mouse = e as React.MouseEvent;
       const canvas = canvasRef.current;
       const rect = canvas?.getBoundingClientRect();
       if (!canvas || !rect) return null;
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      if (!canvas || !rect) return null;
       return {
-        x: mouse.clientX - rect.left,
-        y: mouse.clientY - rect.top,
+        x: (mouse.clientX - rect.left) * scaleX,
+        y: (mouse.clientY - rect.top) * scaleY,
       };
     }
   }, []);
@@ -66,7 +72,14 @@ export default function SignatureCanvas({
     if (disabled) return;
     setIsDrawing(true);
     const coords = getEventCoords(e);
-    if (coords) drawAtPoint(coords.x, coords.y);
+    if (coords) {
+      const canvas = canvasRef.current;
+      const ctx = canvas?.getContext("2d");
+      if (canvas && ctx) {
+        ctx.beginPath();
+        ctx.moveTo(coords.x, coords.y);
+      }
+    }
   };
 
   const stopDrawing = () => {

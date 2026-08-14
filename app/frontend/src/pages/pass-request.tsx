@@ -399,7 +399,7 @@ export default function PassRequestsPage() {
             </Box>
 
             <FormControl>
-              <FormLabel sx={{ fontSize: 20, fontWeight: 1000 }}>Is your chore covered? (check box)</FormLabel>
+              <FormLabel sx={{ fontSize: 20, fontWeight: 1000 }}>Is your chore covered? (check box    )</FormLabel>
               <FormControlLabel
                 control={
                   <Checkbox

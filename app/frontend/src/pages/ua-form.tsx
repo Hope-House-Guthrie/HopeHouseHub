@@ -34,12 +34,13 @@ import {
   FormControlLabel,
   Radio,
   InputLabel,
+  Button,
 } from "@mui/material";
 import { useAppDispatch } from "@/store/hooks";
 import type { UAForm, DrugResult } from "@/store/slices/uaForm";
 
 // Import the slice for creating initial form state
-import { uaFormSlice, updateSpecimenTemp } from "@/store/slices/uaForm";
+import { addUAForm } from "@/store/slices/uaForm";
 import SignatureCanvas from "@/components/SignatureCanvas";
 
 // Create initial form state (mirrors uaForm.ts slice structure)
@@ -99,6 +100,8 @@ export default function UAFormPage() {
   
   // Local form state (will connect to Redux when needed)
   const [form, setForm] = useState<UAForm>(createInitialForm);
+  const [errors, setErrors] = useState<string[]>([]);
+  const [submitted, setSubmitted] = useState(false);
   
   // --- Handler: Update drug panel result ---
   const handleDrugResultChange = (panelId: string, result: DrugResult) => {
@@ -110,11 +113,58 @@ export default function UAFormPage() {
     }));
   };
 
+  const validateForm = (): boolean => {
+    const newErrors: string[] = [];
+    if (!form.clientName.trim()) newErrors.push("Client Name is required");
+    if (!form.observedBy.staffName.trim()) newErrors.push("Observed By Staff Name is required");
+    if (!form.observedBy.time) newErrors.push("Observed By Time is required");
+    if (!form.collectorInfo.collectorName.trim()) newErrors.push("Collector Name is required");
+    if (!form.collectorInfo.collectorPhone.trim()) newErrors.push("Collector Phone is required");
+    if (!form.collectorInfo.collectionDate) newErrors.push("Collection Date is required");
+    if (!form.clientSignature) newErrors.push("Client Signature is required");
+    if (!form.clientSignatureDate) newErrors.push("Client Signature Date is required");
+    setErrors(newErrors);
+    return newErrors.length === 0;
+  };
+
+  const handleSubmit = () => {
+    if (!validateForm()) return;
+    dispatch(addUAForm(form));
+    setSubmitted(true);
+    setForm(createInitialForm());
+  };
+
   return (
     <Box sx={{ p: 3, maxWidth: 800 }}>
       <Typography variant="h4" gutterBottom>
         UA / Rapid Drug Screen Form
       </Typography>
+
+      {/* Error Messages */}
+      {errors.length > 0 && (
+        <Card sx={{ mb: 3, bgcolor: "error.light" }}>
+          <CardContent>
+            <Typography variant="subtitle2" color="error.darker">
+              Please fix the following:
+            </Typography>
+            <ul style={{ margin: "8px 0 0 20px", paddingLeft: 0 }}>
+              {errors.map((err, i) => (
+                <li key={i}>{err}</li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
+    {submitted && (
+      <Card sx={{ mb: 3, bgcolor: "success.light" }}>
+        <CardContent>
+          <Typography variant="subtitle2" color="success.dark">
+            UA form submitted successfully!
+          </Typography>
+        </CardContent>
+      </Card>
+    )}
       
       {/* Step 3.4: Client Information Section */}
       <Card sx={{ mb: 3 }}>
@@ -159,49 +209,25 @@ export default function UAFormPage() {
           </Box>
         </CardContent>
       </Card>
-      
+
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Typography variant="h5" gutterBottom sx={{ fontSize: 20, fontWeight: 1000 }}>
-            Rapid Drug Screen Results
+            UA Reason
           </Typography>
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-            {form.drugPanels.map((panel, index) => (
-              <Box 
-                key={panel.id} 
-                sx={{ 
-                  display: "flex", 
-                  alignItems: "center", 
-                  gap: 2,
-                  justifyContent: "space-between",
-                  backgroundColor: index % 2 === 0 ? "white" : "grey.100"
-                }}
-              >
-                <Typography variant="body2" sx={{ minWidth: 180 }}>
-                  {panel.abbreviation} - {panel.full_name}
-                </Typography>
-                <Select
-                  value={panel.result}
-                  onChange={(e) => handleDrugResultChange(panel.id, e.target.value as DrugResult)}
-                  sx={{ 
-                    minWidth: 120,
-                    backgroundColor: panel.result === "Negative" ? "#d4edda" :
-                                       panel.result === "Positive" ? "#f8d7da" : "white",
-                    '&.MuiSelect-select': {
-                      color: panel.result === "Negative" ? "#155724" :
-                             panel.result === "Positive" ? "#d32f2f" : "text.primary"
-                    }
-                  }}
-                >
-                  <MenuItem value="Positive">Positive</MenuItem>
-                  <MenuItem value="Negative">Negative</MenuItem>
-                </Select>
-              </Box>
-            ))}
-          </Box>
-        </CardContent>    
+          <FormControl fullWidth>
+            <Select
+              value={form.uaReason}
+              onChange={(e) => setForm({ ...form, uaReason: e.target.value as "Random" | "Pass Return" | "Intake" })}
+            >
+              <MenuItem value="Random">Random</MenuItem>
+              <MenuItem value="Pass Return">Pass Return</MenuItem>
+              <MenuItem value="Intake">Intake</MenuItem>
+            </Select>
+          </FormControl>
+        </CardContent>
       </Card>
-      
+
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Typography variant="h5" gutterBottom sx={{ fontSize: 20, fontWeight: 1000 }}>
@@ -245,31 +271,7 @@ export default function UAFormPage() {
           </Box>
         </CardContent>
       </Card>
-      
-      <FormControl fullWidth>
-        <InputLabel sx={{ fontSize: 20, fontWeight: 1000 }}>UA Reason</InputLabel>
-        <Select
-          value={form.uaReason}
-          onChange={(e) => setForm({ ...form, uaReason: e.target.value as "Random" | "Pass Return" | "Intake" })}
-          label="UA Reason"
-        >
-          <MenuItem value="Random">Random</MenuItem>
-          <MenuItem value="Pass Return">Pass Return</MenuItem>
-          <MenuItem value="Intake">Intake</MenuItem>
-        </Select>
-      </FormControl>
 
-      <FormControl fullWidth>
-        <FormLabel sx={{ fontSize: 20, fontWeight: 1000 }}>Remarks</FormLabel>
-        <TextField
-          multiline
-          rows={4}
-          value={form.remarks}
-          onChange={(e) => setForm({ ...form, remarks: e.target.value })}
-          placeholder="Enter notes, explanations, or other relevant information..."
-        />
-      </FormControl>
-      
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Typography variant="h5" gutterBottom sx={{ fontSize: 20, fontWeight: 1000 }}>
@@ -301,19 +303,83 @@ export default function UAFormPage() {
           </Box>
         </CardContent>
       </Card>
-
-      <FormControl component="fieldset">
-        <FormLabel sx={{ fontSize: 20, fontWeight: 1000 }}>Specimen Temperature</FormLabel>
-        <RadioGroup
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Typography variant="h5" gutterBottom sx={{ fontSize: 20, fontWeight: 1000 }}>
+            Specimen Temperature
+          </Typography>
+          <FormControl component="fieldset">
+          <RadioGroup
           row
           value={form.specimenTemp}
           onChange={(e) => setForm({ ...form, specimenTemp: e.target.value as "In Range" | "Not In Range" })}
         >
           <FormControlLabel value="In Range" control={<Radio />} label="In Range" />
           <FormControlLabel value="Not In Range" control={<Radio />} label="Not In Range" />
-        </RadioGroup>
-      </FormControl>
-      
+          </RadioGroup>
+          </FormControl>
+        </CardContent>
+      </Card>
+
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Typography variant="h5" gutterBottom sx={{ fontSize: 20, fontWeight: 1000 }}>
+            Rapid Drug Screen Results
+          </Typography>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+            {form.drugPanels.map((panel, index) => (
+              <Box 
+                key={panel.id} 
+                sx={{ 
+                  display: "flex", 
+                  alignItems: "center", 
+                  gap: 2,
+                  justifyContent: "space-between",
+                  backgroundColor: index % 2 === 0 ? "white" : "grey.100"
+                }}
+              >
+                <Typography variant="body2" sx={{ minWidth: 180 }}>
+                  {panel.abbreviation} - {panel.full_name}
+                </Typography>
+                <Select
+                  value={panel.result}
+                  onChange={(e) => handleDrugResultChange(panel.id, e.target.value as DrugResult)}
+                  sx={{ 
+                    minWidth: 120,
+                    backgroundColor: panel.result === "Negative" ? "#d4edda" :
+                                       panel.result === "Positive" ? "#f8d7da" : "white",
+                    '&.MuiSelect-select': {
+                      color: panel.result === "Negative" ? "#155724" :
+                             panel.result === "Positive" ? "#d32f2f" : "text.primary"
+                    }
+                  }}
+                >
+                  <MenuItem value="Positive">Positive</MenuItem>
+                  <MenuItem value="Negative">Negative</MenuItem>
+                </Select>
+              </Box>
+            ))}
+          </Box>
+        </CardContent>    
+      </Card>
+
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Typography variant="h5" gutterBottom sx={{ fontSize: 20, fontWeight: 1000 }}>
+            Remarks
+          </Typography>
+          <FormControl fullWidth>
+            <TextField
+              multiline
+              rows={4}
+              value={form.remarks}
+              onChange={(e) => setForm({ ...form, remarks: e.target.value })}
+              placeholder="Enter notes, explanations, or other relevant information..."
+            />
+          </FormControl>
+        </CardContent>
+      </Card>
+            
       {/* Step 3.11: Client Signature Section */}
       <Card sx={{ mb: 3 }}>
         <CardContent>
@@ -389,6 +455,12 @@ export default function UAFormPage() {
           )}
         </CardContent>
       </Card>
+
+        <Box sx={{ display: "flex", gap: 2, mt: 2 }}>
+        <Button variant="contained" onClick={handleSubmit}>
+          Submit UA Form
+        </Button>
+      </Box>
     </Box>
   );
 }

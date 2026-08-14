@@ -5,6 +5,7 @@ import opsReducer from "./slices/ops";
 import passRequestReducer from "./slices/passRequest";
 import residentsReducer from "./slices/residents";
 import incidentReportsReducer from "./slices/incidentReports";
+import uaFormReducer from "./slices/uaForm";
 
 export const store = configureStore({
   reducer: {
@@ -14,6 +15,7 @@ export const store = configureStore({
     passRequest: passRequestReducer,
     residents: residentsReducer,
     incidentReports: incidentReportsReducer,
+    uaForm: uaFormReducer,
   },
 });
 
