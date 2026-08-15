@@ -1,11 +1,15 @@
 {
+  inputs,
+  self,
   stdenv,
-  bun2nix,
   version,
-  backend,
   ...
 }:
-
+let
+  system = stdenv.hostPlatform.system;
+  bun2nix = inputs.bun2nix.packages.${system}.default;
+  backend = self.packages.${system}.backend;
+in
 stdenv.mkDerivation {
   inherit version;
 
