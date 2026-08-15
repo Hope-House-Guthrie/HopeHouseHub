@@ -1,17 +1,18 @@
 {
-  stdenv,
   pkgs,
-  nuget-packageslock2nix,
-  dotnet-sdk,
-  dotnet-runtime,
+  inputs,
+  stdenv,
   version,
   ...
 }:
 
 pkgs.buildDotnetModule {
-  inherit version dotnet-sdk dotnet-runtime;
+  inherit version;
 
-  nugetDeps = nuget-packageslock2nix.lib {
+  dotnet-runtime = pkgs.dotnet-runtime;
+  dotnet-sdk = pkgs.dotnet-sdk;
+
+  nugetDeps = inputs.nuget-packageslock2nix.lib {
     system = stdenv.hostPlatform.system;
     name = "backend";
     lockfiles = [

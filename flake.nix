@@ -4,15 +4,8 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-26.05";
 
-    super-laptop.url = "github:tj-super/super-laptop";
-
-    disko = {
-      url = "github:nix-community/disko?ref=v1.13.0";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
-    nixos-anywhere = {
-      url = "github:nix-community/nixos-anywhere?ref=1.13.0";
+    terranix = {
+      url = "github:terranix/terranix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -35,81 +28,116 @@
   outputs =
     {
       self,
-      nixpkgs,
-      super-laptop,
-      disko,
-      agenix,
-      bun2nix,
-      nuget-packageslock2nix,
       ...
-    }:
+    }@inputs:
     let
       system = "x86_64-linux";
-      pkgs = import nixpkgs { inherit system; };
-
       version = "0.1.0";
 
-      dotnet-sdk = pkgs.dotnet-sdk_10;
-      dotnet-runtime = pkgs.dotnet-aspnetcore_10;
+      pkgs = import inputs.nixpkgs {
+        inherit system;
+
+        overlays = [
+          (final: prev: {
+            dotnet-sdk = pkgs.dotnet-sdk_10;
+            dotnet-runtime = pkgs.dotnet-aspnetcore_10;
+          })
+        ];
+      };
 
       backend = pkgs.callPackage ./app/backend/package.nix {
         inherit
+          inputs
+          pkgs
+          self
           version
-          nuget-packageslock2nix
-          dotnet-sdk
-          dotnet-runtime
           ;
-
-        pkgs = pkgs;
       };
 
       frontend = pkgs.callPackage ./app/frontend/package.nix {
-        inherit version backend;
-
-        bun2nix = bun2nix.packages.${system}.default;
+        inherit
+          inputs
+          pkgs
+          self
+          version
+          ;
       };
 
-      adminPubKeys = [
-        super-laptop.pubKeys.ssh.users.super
-      ];
+      adminPublicKeys = (import ./secrets.nix).adminPublicKeys;
 
-      hosts = {
-        hub-server = (import ./host/server/host.nix) {
-          inherit
-            self
-            nixpkgs
-            agenix
-            disko
-            adminPubKeys
-            frontend
-            backend
-            ;
+      hub-gateway-ipv4Address = "104.215.78.1";
+      hub-services-ipv4Address = "192.168.0.90";
 
-          vmSSHPort = 3022;
-          stateVersion = "26.05";
-          ipv4Address = "192.168.0.90";
+      wireguardNetwork = {
+        hub-gateway = {
+          ipv4Address = "172.16.42.1";
+          publicKey = "9QMnhUpKuHnPoFLDtZnY6vu1B1iG6OrZFvqGvvEBpEE=";
+          endpoint = hub-gateway-ipv4Address;
+        };
+        hub-services = {
+          ipv4Address = "172.16.42.2";
+          publicKey = "vjsUWQojwUtD/+WRcY7zM8UTBoxVvKWk/rCZhCKUFi4=";
         };
       };
 
+      hub-gateway = (import ./host/gateway/host.nix) {
+        inherit
+          adminPublicKeys
+          inputs
+          self
+          system
+          wireguardNetwork
+          ;
+
+        ipv4Address = hub-gateway-ipv4Address;
+      };
+
+      hub-services = (import ./host/services/host.nix) {
+        inherit
+          adminPublicKeys
+          inputs
+          self
+          system
+          wireguardNetwork
+          ;
+
+        ipv4Address = hub-services-ipv4Address;
+      };
+
+      hosts = [
+        hub-gateway
+        hub-services
+      ];
+
       devShell = (import ./shell/dev-shell/default.nix) {
         inherit
+          adminPublicKeys
+          hosts
+          inputs
           pkgs
           self
-          agenix
-          adminPubKeys
-          dotnet-sdk
           system
-          bun2nix
-          hosts
           ;
       };
     in
     {
       packages.${system} = {
         inherit frontend backend;
+
+        hub-gateway-image = hub-gateway.imagePackage;
+        hub-gateway-provisioner = hub-gateway.provisioner;
+
+        hub-services-image = hub-services.imagePackage;
+        hub-services-provisioner = hub-services.provisioner;
       };
 
-      nixosConfigurations = builtins.mapAttrs (_name: host: host.nixosConfiguration) hosts;
+      lib = {
+        hub-gateway.imageConfiguration = hub-gateway.imageConfiguration;
+        hub-services.imageConfiguration = hub-services.imageConfiguration;
+      };
+
+      nixosConfigurations.hub-gateway = hub-gateway.nixosConfiguration;
+      nixosConfigurations.hub-services = hub-services.nixosConfiguration;
 
       devShells.${system}.default = devShell;
     };

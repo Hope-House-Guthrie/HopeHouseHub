@@ -4,3 +4,6 @@ result
 .postgresql
 node_modules
 NOTES.md
+.env
+.terraform
+.provision

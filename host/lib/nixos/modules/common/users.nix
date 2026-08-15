@@ -1,4 +1,4 @@
-{ lib, adminPubKeys, ... }:
+{ lib, adminPublicKeys, ... }:
 {
   users = {
     mutableUsers = false;
@@ -8,7 +8,7 @@
     users.admin = {
       isNormalUser = true;
       hashedPassword = "!";
-      openssh.authorizedKeys.keys = adminPubKeys;
+      openssh.authorizedKeys.keys = adminPublicKeys;
       extraGroups = [
         "wheel"
       ];
