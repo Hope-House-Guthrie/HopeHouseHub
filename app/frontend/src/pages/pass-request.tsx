@@ -1,21 +1,24 @@
 /**
- * PassRequestsPage - Manage pass request for residents.
- * 
- *  Data flow:
- *       passRequest.ts (store) => this page SELECTs request => displays + actions
- * 
- *  Features:
- *       - Submit new pass request
- *       - View pending/approved/denied requests.
- *       - Approve with one click
- *       - Deny with optional comment
- *       - Enter key works on comment input (submit deny)
- *       - 24-hour advance: warning only, not blocking
- *       - Additional info field for emergency pass details
- *       - Edit pending passes to correct mistakes
- *       - Shows when a pass was last edited
- *       - Monthly history view for clients
- */
+* PassRequestsPage - Manage pass requests for residents.
+*
+* Workflow (house):
+* - Client (later: their login): fill form → Submit. No client signature on Pass.
+* - Administration: open pending → see full details → signature + date →
+*   Approve or Deny → result back to client (notify later).
+*
+* Phase 1 (this FE work): review panel + Administration sign + decide.
+* Still mock Redux until backend.
+*
+* ---------------------------------------------------------------------------
+* BACKEND TODO / FUTURE INTEGRATION:
+* - POST pass on client submit; PATCH /pass-requests/:id/decide (sig + decision)
+* - Role gate: client submit only; Administration review/decide only
+* - Notify Administration on new submit; notify client on approve/deny
+* - Real auth decidedByName on decidePassRequest
+* ---------------------------------------------------------------------------
+*
+* Data flow: passRequest.ts store => this page selects requests => form + lists
+*/
 
 import { useState, useEffect } from "react";
 import {
@@ -33,9 +36,15 @@ import {
   Tooltip,
 } from "@mui/material";
 import { Edit as EditIcon } from "@mui/icons-material";
+import SignatureCanvas from "@/components/SignatureCanvas";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { addPassRequest, approvePassRequest, denyPassRequest, updatePassRequest } from "@/store/slices/passRequest";
-import type { PassRequest } from "@/store/slices/passRequest";
+import {
+  addPassRequest,
+  decidePassRequest,
+  queueClientPassNotify,
+  updatePassRequest,
+} from "@/store/slices/passRequest";
+import type { PassRequest, PassType } from "@/store/slices/passRequest";
 
 // ---------------------------------------------------------------------------
 // Component
@@ -48,6 +57,18 @@ export default function PassRequestsPage() {
 
   // Edit mode tracking
   const [editingPendingId, setEditingPendingId] = useState<string | null>(null);
+
+  /**
+  * Administration review mode: id of pending pass being reviewed.
+  * null = not reviewing. Separate from editingPendingId (fix edit).
+  * FUTURE: only Administration role can set this.
+  */
+  const [reviewingId, setReviewingId] = useState<string | null>(null);
+
+  /** Live row for the open review (pending only) */
+  const reviewingRequest = reviewingId
+    ? requests.find((r) => r.id === reviewingId) ?? null
+    : null;
 
   // Form state
   const [residentName, setResidentName] = useState("");
@@ -62,11 +83,21 @@ export default function PassRequestsPage() {
   const [choreCoveredBy, setChoreCoveredBy] = useState("");
   const [onPremises, setOnPremises] = useState(false);
   const [offPremises, setOffPremises] = useState(false);
-  const [passDuration, setPassDuration] = useState<"4h" | "12h" | "24h" | "48h">("24h");
+  const [passDuration, setPassDuration] = useState<PassType>("24h");
   const [additionalInfo, setAdditionalInfo] = useState("");
-  const [showComment, setShowComment] = useState<Record<string, boolean>>({});
-  const [denyComments, setDenyComments] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<string[]>([]);
+
+  /** Administration signature pad state (review mode only) */
+  const [adminSignature, setAdminSignature] = useState("");
+  const [adminSignatureDate, setAdminSignatureDate] = useState("");
+  /** Remount SignatureCanvas when opening a different review */
+  const [reviewSigKey, setReviewSigKey] = useState(0);
+  /** Deny reason while in Administration review panel */
+  const [reviewDenyComment, setReviewDenyComment] = useState("");
+  /** Flash after decide / notify stub */
+  const [actionNotice, setActionNotice] = useState<string | null>(null);
+  /** Decision errors shown on the review card */
+  const [reviewErrors, setReviewErrors] = useState<string[]>([]);
 
   // --- Auto-fill End Date based on Start + Duration ---
   useEffect(() => {
@@ -120,6 +151,27 @@ export default function PassRequestsPage() {
     return parts.length >= 2;
   };
 
+  // --- Helper: parse datetime-local as LOCAL wall clock (not UTC) ---
+  const parseLocalDateTime = (value: string): Date | null => {
+    if (!value) return null;
+    // "YYYY-MM-DDTHH:MM" from <input type="datetime-local" />
+    const [datePart, timePart = "0:0"] = value.split("T");
+    if (!datePart) return null;
+    const [year, month, day] = datePart.split("-").map(Number);
+    const [hour, minute] = timePart.split(":").map(Number);
+    if (!year || !month || !day) return null;
+    return new Date(year, month - 1, day, hour || 0, minute || 0);
+  };
+
+  /** Today's date as YYYY-MM-DD for type="date" signature fields */
+  const todayDateString = () => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, "0");
+    const d = String(now.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  };
+
   // --- Validation ---
   const validateForm = (): boolean => {
     const newErrors: string[] = [];
@@ -133,23 +185,43 @@ export default function PassRequestsPage() {
     return newErrors.length === 0;
   };
 
-  // --- 24-hour warning check ---
-  // Check if there's less than 24 hours notice from NOW to PASS END time
-  // This ensures the entire pass duration is covered by advance notice
+  /**
+   * 24-hour advance notice warning.
+   * House rule: warn when the pass START is less than 24 hours from now.
+   * (Previously used END time, so 24h/48h duration often hid the warning.)
+   * Warning only — does not block submit.
+   */
   const getAdvanceNoticeWarning = (): string | null => {
-    if (!passDateStart || !passDateEnd) return null;
-    
+    if (!passDateStart) return null;
+
     const now = new Date();
-    const endTime = new Date(passDateEnd);
-    
-    // Calculate hours from now to pass end time
-    const hoursDiff = (endTime.getTime() - now.getTime()) / (1000 * 3600);
-    
-    if (hoursDiff < 24) {
-      const durationHours = parseInt(passDuration.replace('h', ''), 10);
-      const startFormatted = new Date(passDateStart).toLocaleString("en-US", { timeZone: "America/Chicago", dateStyle: "medium", timeStyle: "short" });
-      const endFormatted = new Date(passDateEnd).toLocaleString("en-US", { timeZone: "America/Chicago", dateStyle: "medium", timeStyle: "short" });
-      return `Pass (${durationHours}h: ${startFormatted} - ${endFormatted}) ends in less than 24 hours (${hoursDiff.toFixed(1)} hours left). If this is an emergency, please provide details in the comment box below.`;
+    const startTime = parseLocalDateTime(passDateStart);
+    if (!startTime) return null;
+
+    // Hours from now until the pass begins
+    const hoursUntilStart =
+      (startTime.getTime() - now.getTime()) / (1000 * 3600);
+
+    // Already started or in the past still counts as short notice
+    if (hoursUntilStart < 24) {
+      const durationHours = parseInt(passDuration.replace("h", ""), 10);
+      const startFormatted = startTime.toLocaleString("en-US", {
+        timeZone: "America/Chicago",
+        dateStyle: "medium",
+        timeStyle: "short",
+      });
+      const endFormatted = passDateEnd
+        ? new Date(passDateEnd).toLocaleString("en-US", {
+            timeZone: "America/Chicago",
+            dateStyle: "medium",
+            timeStyle: "short",
+          })
+        : "—";
+      const hoursLabel =
+        hoursUntilStart < 0
+          ? "start time is already past"
+          : `${hoursUntilStart.toFixed(1)} hours until start`;
+      return `Less than 24 hours notice before pass start (${hoursLabel}). Pass (${durationHours}h: ${startFormatted} - ${endFormatted}). If this is an emergency, add details in the comment box below.`;
     }
     return null;
   };
@@ -219,6 +291,8 @@ export default function PassRequestsPage() {
   };
 
   const handleEdit = (id: string) => {
+    // Don't mix form edit and Administration review
+    setReviewingId(null);
     setEditingPendingId(id);
   };
 
@@ -226,13 +300,79 @@ export default function PassRequestsPage() {
     setEditingPendingId(null);
   };
 
-  const handleApproved = (id: string) => {
-    dispatch(approvePassRequest(id));
+  /** Open Administration review for one pending pass (full detail + sign + decide) */
+  const handleOpenReview = (id: string) => {
+    // Don't mix edit-form and review
+    setEditingPendingId(null);
+    setReviewingId(id);
+    setErrors([]);
+    setReviewErrors([]);
+    setAdminSignature("");
+    setAdminSignatureDate("");
+    setReviewDenyComment("");
+    setReviewSigKey((k) => k + 1);
+    setActionNotice(null);
   };
 
-  const handleDenySubmit = (id: string) => {
-    dispatch(denyPassRequest({ id, comment: denyComments[id] || "" }));
-    setShowComment((prev) => ({ ...prev, [id]: false }));
+  /** Close review panel without deciding */
+  const handleCloseReview = () => {
+    setReviewingId(null);
+    setAdminSignature("");
+    setAdminSignatureDate("");
+    setReviewDenyComment("");
+    setReviewErrors([]);
+  };
+
+  /**
+   * Administration Approve or Deny with required signature + date.
+   * FUTURE: role gate — Administration only; decidedByName from login.
+   */
+  const handleDecide = (decision: "approved" | "denied") => {
+    if (!reviewingId) return;
+
+    const errs: string[] = [];
+    if (!adminSignature.trim()) {
+      errs.push("Administration signature is required.");
+    }
+    if (!adminSignatureDate.trim()) {
+      errs.push("Administration signature date is required.");
+    }
+    if (decision === "denied" && !reviewDenyComment.trim()) {
+      errs.push("Deny requires a comment for the client.");
+    }
+    if (errs.length) {
+      setReviewErrors(errs);
+      return;
+    }
+
+    dispatch(
+      decidePassRequest({
+        id: reviewingId,
+        decision,
+        adminSignature,
+        adminSignatureDate,
+        denyComment:
+          decision === "denied" ? reviewDenyComment.trim() : undefined,
+      })
+    );
+
+    const name =
+      reviewingRequest?.residentName?.trim() ||
+      reviewingRequest?.clientName?.trim() ||
+      "client";
+    setActionNotice(
+      decision === "approved"
+        ? `Pass approved for ${name}. Client notify queued (FE stub — no message until backend).`
+        : `Pass denied for ${name}. Client notify queued (FE stub — no message until backend).`
+    );
+
+    // Close review cleanly
+    setReviewingId(null);
+    setAdminSignature("");
+    setAdminSignatureDate("");
+    setReviewDenyComment("");
+    setReviewErrors([]);
+    setReviewSigKey((k) => k + 1);
   };
 
   // --- Helper ---
@@ -268,6 +408,27 @@ export default function PassRequestsPage() {
   // --- Render ---
   return (
     <Box sx={{ p: 3, maxWidth: 800 }}>
+      {/* Flash after Administration decide / notify stub */}
+      {actionNotice && (
+        <Card sx={{ mb: 2, bgcolor: "success.light" }}>
+          <CardContent
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 2,
+              py: 1.5,
+              "&:last-child": { pb: 1.5 },
+            }}
+          >
+            <Typography variant="body2">{actionNotice}</Typography>
+            <Button size="small" onClick={() => setActionNotice(null)}>
+              Dismiss
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Error Messages */}
       {errors.length > 0 && (
         <Card sx={{ mb: 3, bgcolor: "error.light" }}>
@@ -492,131 +653,413 @@ export default function PassRequestsPage() {
         </CardContent>
       </Card>
 
-      {/* Pending Requests with Edit Capability */}
-      <Typography variant="h5" gutterBottom>
-        Pending Requests
-      </Typography>
-      {pending.map((req: PassRequest) => (
-        <Card key={req.id} sx={{ mb: 2 }}>
+      {/* Pending Requests — Review opens full Administration decide flow */}
+            <Typography variant="h5" gutterBottom>
+              Pending Requests
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Administration: open <strong>Review</strong> to see full details, sign,
+              and Approve or Deny. One-click approve/deny is disabled so every decision
+              is signed. FUTURE: this queue is Administration-only after login.
+            </Typography>
+            {pending.length === 0 && (
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                No pending passes.
+              </Typography>
+            )}
+            {pending.map((req: PassRequest) => (
+              <Card
+                key={req.id}
+                sx={{
+                  mb: 2,
+                  ...(reviewingId === req.id
+                    ? { border: "2px solid", borderColor: "primary.main" }
+                    : {}),
+                }}
+              >
+                <CardContent>
+                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                    <Box sx={{ flexGrow: 1 }}>
+                      <Typography>
+                        <strong>{req.residentName}</strong> - {req.purpose}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {req.visitorName && `Visitor: ${req.visitorName}`}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Pass: {new Date(req.passStart).toLocaleString("en-US", { timeZone: "America/Chicago", dateStyle: "medium", timeStyle: "short" })}
+                        {" - "}
+                        {new Date(req.passEnd).toLocaleString("en-US", { timeZone: "America/Chicago", dateStyle: "medium", timeStyle: "short" })}
+                      </Typography>
+                      {req.comment && (
+                        <Typography variant="caption" color="text.secondary">
+                          <br />
+                          Note: {req.comment}
+                        </Typography>
+                      )}
+                      <Typography variant="caption">
+                        <br />
+                        Submitted: {new Date(req.submittedAt).toLocaleString("en-US", { timeZone: "America/Chicago" })}
+                      </Typography>
+                      {req.lastEditedAt && (
+                        <Typography variant="caption" color="text.secondary">
+                          <br />
+                          Edited: {new Date(req.lastEditedAt).toLocaleString("en-US", { timeZone: "America/Chicago" })}
+                        </Typography>
+                      )}
+                    </Box>
+                    <Tooltip title="Edit pending pass details">
+                      <IconButton
+                        onClick={() => handleEdit(req.id)}
+                        disabled={editingPendingId !== null || reviewingId !== null}
+                      >
+                        <EditIcon />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
+                  <Box sx={{ mt: 1, display: "flex", flexWrap: "wrap", gap: 1, alignItems: "center" }}>
+                    <Button
+                      variant={reviewingId === req.id ? "contained" : "outlined"}
+                      onClick={() => handleOpenReview(req.id)}
+                    >
+                      {reviewingId === req.id ? "Reviewing…" : "Review & decide"}
+                    </Button>
+                  </Box>
+                </CardContent>
+              </Card>
+            ))}
+
+      {/* ---------- Administration review (full detail) ---------- */}
+      {reviewingRequest && reviewingRequest.status === "pending" && (
+        <Card sx={{ mb: 3, border: "2px solid", borderColor: "primary.main" }}>
           <CardContent>
-            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-              <Box sx={{ flexGrow: 1 }}>
-                <Typography>
-                  <strong>{req.residentName}</strong> - {req.purpose}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {req.visitorName && `Visitor: ${req.visitorName}`}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Pass: {new Date(req.passStart).toLocaleString("en-US", { timeZone: "America/Chicago", dateStyle: "medium", timeStyle: "short" })}
-                  {" - "}
-                  {new Date(req.passEnd).toLocaleString("en-US", { timeZone: "America/Chicago", dateStyle: "medium", timeStyle: "short" })}
-                </Typography>
-                {req.comment && (
-                  <Typography variant="caption" color="text.secondary">
-                    <br />
-                    Note: {req.comment}
-                  </Typography>
-                )}
-                <Typography variant="caption">
-                  <br />
-                  Submitted: {new Date(req.submittedAt).toLocaleString("en-US", { timeZone: "America/Chicago" })}
-                </Typography>
-                {req.lastEditedAt && (
-                  <Typography variant="caption" color="text.secondary">
-                    <br />
-                    Edited: {new Date(req.lastEditedAt).toLocaleString("en-US", { timeZone: "America/Chicago" })}
-                  </Typography>
-                )}
-              </Box>
-              <Tooltip title="Edit Pass">
-                <IconButton
-                  onClick={() => handleEdit(req.id)}
-                  disabled={editingPendingId !== null}
-                >
-                  <EditIcon />
-                </IconButton>
-              </Tooltip>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                flexWrap: "wrap",
+                gap: 1,
+                mb: 2,
+              }}
+            >
+              <Typography variant="h5">
+                Review pass — Administration
+              </Typography>
+              <Button variant="outlined" color="inherit" onClick={handleCloseReview}>
+                Close review
+              </Button>
             </Box>
-            <Box sx={{ mt: 1, display: "flex", gap: 1, alignItems: "center" }}>
+
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Client submitted this request (no client signature on Pass). Check
+              every field, sign below, then Approve or Deny. Both decisions need
+              Administration signature + date; Deny also needs a comment.
+            </Typography>
+
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+              <Typography>
+                <strong>Resident:</strong> {reviewingRequest.residentName}
+              </Typography>
+              <Typography>
+                <strong>Client name on form:</strong>{" "}
+                {reviewingRequest.clientName || "—"}
+              </Typography>
+              <Typography>
+                <strong>Purpose:</strong> {reviewingRequest.purpose || "—"}
+              </Typography>
+              <Typography>
+                <strong>Visitor:</strong> {reviewingRequest.visitorName} —{" "}
+                {reviewingRequest.visitorPhone}
+              </Typography>
+              <Typography>
+                <strong>Pass type:</strong> {reviewingRequest.passType}
+              </Typography>
+              <Typography>
+                <strong>Start:</strong>{" "}
+                {new Date(reviewingRequest.passStart).toLocaleString("en-US", {
+                  timeZone: "America/Chicago",
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                })}
+              </Typography>
+              <Typography>
+                <strong>End:</strong>{" "}
+                {new Date(reviewingRequest.passEnd).toLocaleString("en-US", {
+                  timeZone: "America/Chicago",
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                })}
+              </Typography>
+              <Typography>
+                <strong>Can pass UA:</strong> {reviewingRequest.canPassUA}
+              </Typography>
+              <Typography>
+                <strong>Chore covered:</strong>{" "}
+                {reviewingRequest.choreCovered
+                  ? `Yes${
+                      reviewingRequest.choreCoveredBy
+                        ? ` - ${reviewingRequest.choreCoveredBy}`
+                        : ""
+                    }`
+                  : "No"}
+              </Typography>
+              <Typography>
+                <strong>On premises:</strong>{" "}
+                {reviewingRequest.onPremises ? "Yes" : "No"}
+                {" · "}
+                <strong>Off premises:</strong>{" "}
+                {reviewingRequest.offPremises ? "Yes" : "No"}
+              </Typography>
+              {reviewingRequest.comment ? (
+                <Typography>
+                  <strong>Note:</strong> {reviewingRequest.comment}
+                </Typography>
+              ) : null}
+              <Typography variant="caption" color="text.secondary">
+                Submitted:{" "}
+                {new Date(reviewingRequest.submittedAt).toLocaleString("en-US", {
+                  timeZone: "America/Chicago",
+                })}
+                {reviewingRequest.lastEditedAt
+                  ? ` - Edited: ${new Date(
+                      reviewingRequest.lastEditedAt
+                    ).toLocaleString("en-US", {
+                      timeZone: "America/Chicago",
+                    })}`
+                  : ""}
+              </Typography>
+            </Box>
+
+            {/* Administration signature — required for Approve and Deny */}
+            <Box sx={{ mt: 3 }}>
+              <Typography variant="h6" gutterBottom>
+                Administration signature
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                Sign with finger or stylus, then set the date. Required for both
+                Approve and Deny.
+              </Typography>
+              <SignatureCanvas
+                key={`admin-pass-sig-${reviewSigKey}`}
+                height={150}
+                onSignatureChange={(base64) => {
+                  setAdminSignature(base64);
+                  setAdminSignatureDate((prev) =>
+                    base64 ? prev || todayDateString() : ""
+                  );
+                }}
+              />
+              <TextField
+                fullWidth
+                type="date"
+                label="Administration signature date"
+                value={adminSignatureDate}
+                onChange={(e) => setAdminSignatureDate(e.target.value)}
+                disabled={!adminSignature}
+                required={Boolean(adminSignature)}
+                slotProps={{ inputLabel: { shrink: true } }}
+                sx={{ mt: 1, maxWidth: 320 }}
+              />
+              {adminSignature && (
+                <Box
+                  component="img"
+                  src={`data:image/png;base64,${adminSignature}`}
+                  alt="Administration signature preview"
+                  sx={{
+                    display: "block",
+                    maxWidth: 220,
+                    border: "1px solid",
+                    borderColor: "divider",
+                    p: 0.5,
+                    mt: 1,
+                    bgcolor: "common.white",
+                  }}
+                />
+              )}
+            </Box>
+
+            {/* Deny reason (only needed when denying) */}
+            <TextField
+              fullWidth
+              multiline
+              minRows={2}
+              label="Deny comment (required if denying)"
+              placeholder="Reason the client will see…"
+              value={reviewDenyComment}
+              onChange={(e) => setReviewDenyComment(e.target.value)}
+              sx={{ mt: 2 }}
+            />
+
+            {reviewErrors.length > 0 && (
+              <Card sx={{ mt: 2, bgcolor: "error.light" }}>
+                <CardContent sx={{ py: 1.5, "&:last-child": { pb: 1.5 } }}>
+                  {reviewErrors.map((msg) => (
+                    <Typography key={msg} variant="body2">
+                      {msg}
+                    </Typography>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+
+            <Box sx={{ mt: 2, display: "flex", flexWrap: "wrap", gap: 1 }}>
               <Button
                 variant="contained"
-                onClick={() => handleApproved(req.id)}
+                color="success"
+                onClick={() => handleDecide("approved")}
               >
-                Approve
+                Approve (signed)
               </Button>
               <Button
-                variant="outlined"
+                variant="contained"
                 color="error"
-                onClick={() => setShowComment((prev) => ({ ...prev, [req.id]: true }))}
+                onClick={() => handleDecide("denied")}
               >
-                Deny
+                Deny (signed)
               </Button>
-              {showComment[req.id] && (
-                <>
-                  <TextField
-                    size="small"
-                    placeholder="Comment..."
-                    value={denyComments[req.id] || ""}
-                    onChange={(e) =>
-                      setDenyComments((prev) => ({
-                        ...prev,
-                        [req.id]: e.target.value,
-                      }))
-                    }
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        handleDenySubmit(req.id);
-                      }
-                    }}
-                  />
-                  <Button size="small" onClick={() => handleDenySubmit(req.id)}>
-                    Submit
-                  </Button>
-                </>
-              )}
+              <Button variant="outlined" color="inherit" onClick={handleCloseReview}>
+                Cancel
+              </Button>
             </Box>
           </CardContent>
         </Card>
-      ))}
+      )}
 
       {/* Current Month History */}
       {currentMonthHistory.length > 0 && (
         <Box sx={{ mt: 4 }}>
           <Typography variant="h5" gutterBottom>
-            History (Current Month: {now.toLocaleString('default', { month: 'long', year: 'numeric' })})
+            History (Current Month:{" "}
+            {now.toLocaleString("default", { month: "long", year: "numeric" })})
           </Typography>
-          {currentMonthHistory.map((req: PassRequest) => (
-            <Card key={req.id} variant="outlined" sx={{ mb: 1 }}>
-              <CardContent sx={{ display: "flex", gap: 2 }}>
-                <Box sx={{ flexGrow: 1 }}>
-                  <Typography>
-                    <strong>{req.residentName}</strong> - {req.purpose}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Visitor: {req.visitorName} | {new Date(req.passStart).toLocaleString("en-US", { timeZone: "America/Chicago", dateStyle: "short", timeStyle: "short" })}
-                  </Typography>
-                  {req.comment && (
-                    <Typography variant="caption" color="text.secondary">
-                      Note: {req.comment}
-                    </Typography>
-                  )}
-                </Box>
-                <Box
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Decided passes this month. Client result notify is stubbed until
+            backend. FUTURE: client portal only sees their own rows.
+          </Typography>
+          {currentMonthHistory.map((req: PassRequest) => {
+            const signed = Boolean(req.adminSignature);
+            return (
+              <Card key={req.id} variant="outlined" sx={{ mb: 1 }}>
+                <CardContent
                   sx={{
-                    py: 0.5,
-                    px: 1,
-                    borderRadius: 1,
-                    bgcolor:
-                      req.status === "approved" ? "success.light" : "error.light",
-                    fontWeight: "bold",
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: 2,
+                    alignItems: "flex-start",
+                    justifyContent: "space-between",
                   }}
                 >
-                  {req.status}
-                </Box>
-              </CardContent>
-            </Card>
-          ))}
+                  <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                    <Typography>
+                      <strong>{req.residentName}</strong> - {req.purpose}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Visitor: {req.visitorName} |{" "}
+                      {new Date(req.passStart).toLocaleString("en-US", {
+                        timeZone: "America/Chicago",
+                        dateStyle: "short",
+                        timeStyle: "short",
+                      })}
+                    </Typography>
+                    {req.comment && (
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        component="p"
+                        sx={{ display: "block", m: 0 }}
+                      >
+                        Note: {req.comment}
+                      </Typography>
+                    )}
+                    {req.decidedAt && (
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        component="p"
+                        sx={{ display: "block", m: 0 }}
+                      >
+                        Decided:{" "}
+                        {new Date(req.decidedAt).toLocaleString("en-US", {
+                          timeZone: "America/Chicago",
+                        })}
+                        {req.adminSignatureDate
+                          ? ` · Sig date: ${req.adminSignatureDate}`
+                          : ""}
+                      </Typography>
+                    )}
+                    {signed && (
+                      <Box
+                        component="img"
+                        src={`data:image/png;base64,${req.adminSignature}`}
+                        alt="Administration signature"
+                        sx={{
+                          display: "block",
+                          maxWidth: 160,
+                          border: "1px solid",
+                          borderColor: "divider",
+                          p: 0.5,
+                          mt: 1,
+                          bgcolor: "common.white",
+                        }}
+                      />
+                    )}
+                  </Box>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 1,
+                      alignItems: "flex-end",
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        py: 0.5,
+                        px: 1,
+                        borderRadius: 1,
+                        bgcolor:
+                          req.status === "approved"
+                            ? "success.light"
+                            : "error.light",
+                        fontWeight: "bold",
+                        textTransform: "capitalize",
+                      }}
+                    >
+                      {req.status}
+                    </Box>
+                    <Typography variant="caption" color="text.secondary">
+                      {signed
+                        ? "Administration signed"
+                        : "No signature on file"}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Notify: {req.clientNotifyStatus || "not_sent"}
+                    </Typography>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      disabled={
+                        req.clientNotifyStatus === "queued" ||
+                        req.clientNotifyStatus === "sent"
+                      }
+                      onClick={() => {
+                        dispatch(queueClientPassNotify({ id: req.id }));
+                        setActionNotice(
+                          `Client notify queued for ${req.residentName} (FE stub only).`
+                        );
+                      }}
+                    >
+                      {req.clientNotifyStatus === "queued" ||
+                      req.clientNotifyStatus === "sent"
+                        ? "Notify queued"
+                        : "Notify client (stub)"}
+                    </Button>
+                  </Box>
+                </CardContent>
+              </Card>
+            );
+          })}
         </Box>
       )}
     </Box>
