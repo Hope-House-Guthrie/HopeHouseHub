@@ -12,6 +12,8 @@ using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
 using System.Reflection;
 
+// todo: listen on port 3002 instead of default 5000 for vscodium debugging
+
 var isOpenApiBuildReflectionStep = Assembly.GetEntryAssembly()?.GetName().Name == "GetDocument.Insider";
 
 var builder = WebApplication.CreateBuilder(args);

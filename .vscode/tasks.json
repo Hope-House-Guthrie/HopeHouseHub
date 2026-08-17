@@ -3,11 +3,11 @@
     "tasks": [
         {
             "label": "build",
-            "command": "dotnet",
+            "command": "${env:DOTNET_ROOT}/dotnet",
             "type": "process",
             "args": [
                 "build",
-                "${workspaceFolder}/app/backend/backend.csproj",
+                "${workspaceFolder}/app/backend/H3.Server/H3.Server.csproj",
                 "/property:GenerateFullPaths=true",
                 "/consoleloggerparameters:NoSummary;ForceNoAlign"
             ],
@@ -19,7 +19,7 @@
             "type": "process",
             "args": [
                 "publish",
-                "${workspaceFolder}/app/backend/backend.csproj",
+                "${workspaceFolder}/app/backend/H3.Server/H3.Server.csproj",
                 "/property:GenerateFullPaths=true",
                 "/consoleloggerparameters:NoSummary;ForceNoAlign"
             ],
@@ -33,7 +33,7 @@
                 "watch",
                 "run",
                 "--project",
-                "${workspaceFolder}/app/backend/backend.csproj"
+                "${workspaceFolder}/app/backend/H3.Server/H3.Server.csproj"
             ],
             "problemMatcher": "$msCompile"
         }
