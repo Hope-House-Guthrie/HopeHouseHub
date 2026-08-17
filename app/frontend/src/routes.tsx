@@ -2,28 +2,27 @@ import { type RouteObject } from "react-router";
 import { type ReactNode } from "react";
 import {
     Dashboard as DashboardIcon,
-    //People as AccountsIcon,
-    //PhoneCallback as IncomingCallsIcon,
-    PermIdentity as ClientsIcon,
-    //Settings as SettingsIcon,
+    PermIdentity as UsersIcon,
     Kitchen as KitchenIcon,
     AccessTime as PassRequestsIcon,
     Biotech as UAFormIcon,
     Folder as IncidentReportsIcon,
+    RestaurantMenu as RestaurantMenuIcon,
 } from "@mui/icons-material";
 
 import MainLayout from "./layouts/main";
 import DashboardPage from "./pages/dashboard";
-import ClientsPage from "./pages/clients";
+import UsersPage from "./pages/users";
 import KitchenDisplayPage from "./pages/kitchen/display";
 import KitchenMenusPage from "./pages/kitchen/menus";
-import RestaurantMenuIcon from '@mui/icons-material/RestaurantMenu';
-//import AccountsPage from "./pages/accounts";
-import NotFoundPage from "./pages/not-found";
 import KitchenResourcesPage from "./pages/kitchen/kitchen-resources";
 import PassRequestsPage from "./pages/pass-request";
 import UAFormPage from "./pages/ua-form";
 import IncidentReportsPage from "./pages/incident-reports";
+import LoginPage from "./pages/login";
+import LogoutPage from "./pages/logout";
+import PasswordPage from "./pages/password";
+import NotFoundPage from "./pages/not-found";
 
 export interface AppRouteHandle {
     title: string;
@@ -38,6 +37,22 @@ export type AppRouteObject = RouteObject & {
 
 export const routesConfig: AppRouteObject[] = [
     {
+        path: "/login",
+        element: <LoginPage />,
+        handle: {
+            title: "Sign In",
+            showInNavigation: false,
+        },
+    },
+    {
+        path: "/logout",
+        element: <LogoutPage />,
+        handle: {
+            title: "Sign Out",
+            showInNavigation: false,
+        },
+    },
+    {
         path: "/",
         element: <MainLayout />,
         children: [
@@ -51,11 +66,11 @@ export const routesConfig: AppRouteObject[] = [
                 },
             },
             {
-                path: "clients",
-                element: <ClientsPage />,
+                path: "users",
+                element: <UsersPage />,
                 handle: {
-                    title: "Clients",
-                    icon: <ClientsIcon />,
+                    title: "Users",
+                    icon: <UsersIcon />,
                     showInNavigation: true,
                 },
             },
@@ -111,6 +126,14 @@ export const routesConfig: AppRouteObject[] = [
                     title: "Incident Reports",
                     icon: <IncidentReportsIcon />,
                     showInNavigation: true,
+                },
+            },
+            {
+                path: "/password",
+                element: <PasswordPage />,
+                handle: {
+                    title: "Change Password",
+                    showInNavigation: false,
                 },
             },
             {

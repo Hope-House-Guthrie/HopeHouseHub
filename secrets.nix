@@ -9,12 +9,16 @@ let
 in
 {
   inherit adminPublicKeys;
-  
+
   "host/gateway/secrets/wg_key.age".publicKeys = adminPublicKeys ++ [
     gatewayPublicKey
   ];
 
   "host/services/secrets/wg_key.age".publicKeys = adminPublicKeys ++ [
+    servicesPublicKey
+  ];
+
+  "host/services/secrets/jwt_secret.age".publicKeys = adminPublicKeys ++ [
     servicesPublicKey
   ];
 }
