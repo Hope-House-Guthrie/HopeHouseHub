@@ -8,9 +8,8 @@
 {
   age.secrets.jwt_secret = {
     file = ../../secrets/jwt_secret.age;
-    mode = "0400";
-    owner = "backend";
-    group = "backend";
+    mode = "0440";
+    group = "caddy";
   };
 
   systemd.services.backend =
