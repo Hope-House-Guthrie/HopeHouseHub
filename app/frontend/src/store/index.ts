@@ -8,6 +8,7 @@ import residentsReducer from "./slices/residents";
 import incidentReportsReducer from "./slices/incidentReports";
 import uaFormReducer from "./slices/uaForm";
 import usersReducer from "./slices/users";
+import maintenanceRequestsReducer from "./slices/maintenanceRequests";
 
 export const store = configureStore({
   reducer: {
@@ -20,6 +21,7 @@ export const store = configureStore({
     incidentReports: incidentReportsReducer,
     uaForm: uaFormReducer,
     users: usersReducer,
+    maintenanceRequests: maintenanceRequestsReducer,
   },
 });
 

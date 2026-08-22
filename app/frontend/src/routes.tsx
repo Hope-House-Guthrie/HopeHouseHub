@@ -8,6 +8,7 @@ import {
     Biotech as UAFormIcon,
     Folder as IncidentReportsIcon,
     RestaurantMenu as RestaurantMenuIcon,
+    Handyman as MaintenanceRequestsIcon,
 } from "@mui/icons-material";
 
 import MainLayout from "./layouts/main";
@@ -23,6 +24,7 @@ import LoginPage from "./pages/login";
 import LogoutPage from "./pages/logout";
 import PasswordPage from "./pages/password";
 import NotFoundPage from "./pages/not-found";
+import MaintenanceRequestsPage from "./pages/maintenance-requests";
 
 export interface AppRouteHandle {
     title: string;
@@ -125,6 +127,15 @@ export const routesConfig: AppRouteObject[] = [
                 handle: {
                     title: "Incident Reports",
                     icon: <IncidentReportsIcon />,
+                    showInNavigation: true,
+                },
+            },
+            {
+                path: "maintenance-requests",
+                element: <MaintenanceRequestsPage />,
+                handle: {
+                    title: "Maintenance Requests",
+                    icon: <MaintenanceRequestsIcon />,
                     showInNavigation: true,
                 },
             },
