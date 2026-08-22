@@ -144,8 +144,8 @@ export const routesConfig: NavigationNode[] = [
                             title: "Kitchen Menus",
                             icon: <KitchenMenusIcon />,
                             showInNavigation: true,
-                            group: "Kitchen Prototype",
-                            roles: ["ADMIN", "KITCHEN"],
+                            group: "Prototype",
+                            roles: ["PROTOTYPE"],
                         },
                     },
                     {
