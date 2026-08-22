@@ -2,9 +2,9 @@
  * ============================================================================
  * MAINTENANCE REQUESTS — living STATUS (authoritative for this feature)
  * Branch: feature/maintenance-requests (off develop)
- * Updated: 2026-08-22 — Phase 2 + free-text normalize on blur/submit
- * STOPPING POINT: Phase 2 complete (submit + optional area + text cleanup).
- *   Next = Phase 3 photos only after user approves. Do not auto-start Phase 3.
+ * Updated: 2026-08-22 — Phase 2 COMPLETE (approved)
+ * STOPPING POINT: Phase 2 done and committed. Do not start Phase 3 until
+ *   user explicitly approves photos work.
  * ============================================================================
  * MODEL
  * - Client submits one item per request (MR-YYYY-#### mock FE; BE later).
@@ -14,26 +14,27 @@
  * - Locations seeded; staff catalog admin later. Specific Area/Room optional
  *   free text (helps locate; blank OK). Item free text later suggestions.
  * - Dup/recurring advisory only (parked Phase 6). No Mike UI in client v1.
- * - Confirm copy: submitted to queue — never claim Maintenance acknowledged.
+ * - Confirm copy: includes real MR# + in queue — never claim acknowledged.
  *
  * DONE — Phase 1 (commit 08d1ff3)
  * - features/maintenance-requests: types, config, devFixtures, api notes
  * - Redux slice + store register; route/nav Handyman
  * - Page shell New|My; one-item notice; DEV as-client + reset
  *
- * DONE — Phase 2
+ * DONE — Phase 2 COMPLETE (e30fb00 form · bf48e01 normalize · + confirm MR#)
  * - SubmitMaintenanceRequestInput + mrNumber helper (MR-YYYY-####, Chicago year)
  * - slice submitMaintenanceRequest + DEV persist; timeline “submitted” event
  * - New Request form fields 1–7 (no photos)
  * - Specific Area / Room optional (not required; blank valid)
  * - Validation; Safety=No warning; Anything else Yes → notes
- * - Success alert: in queue, not acknowledged; form clear; count bumps
+ * - Success alert shows real MR# + queue wording (not acknowledged); form clear
+ * - DEV panel keeps mock request count (not in client success copy)
  * - saveDevMrPersisted restored in devFixtures
  * - Free-text cleanup (normalizeClientText): area, item, problem, notes
  *   on blur + submit — trim, spaces, accidental ALL CAPS, light punctuation
  *
- * NEXT
- * - Phase 3 photos when user approves (up to 3 optional)
+ * NEXT — Phase 3 (not started)
+ * - Up to 3 optional photos on submit (camera/file mock) — only when approved
  *
  * PARKED
  * - Photos (Ph3), My list/detail/timeline UI (Ph4), Add info + cancel (Ph5)
@@ -95,6 +96,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { store } from "@/store";
 import {
   resetDevMrState,
   setDevActiveClient,
@@ -227,9 +229,12 @@ export default function MaintenanceRequestsPage() {
       })
     );
 
-    const nextCount = requests.length + 1;
+    // Actual MR# from the ticket just created (slice unshifts newest first)
+    const created =
+      store.getState().maintenanceRequests.requests[0] ?? null;
+    const mrLabel = created?.requestNumber ?? "MR-????-????";
     setSubmitConfirmation(
-      `Your maintenance request was submitted to the queue (${nextCount} request(s) on file for testing). Maintenance has not acknowledged it yet. Check My Requests later for status.`
+      `Maintenance request ${mrLabel} was submitted. Your request has been added to the maintenance queue. Maintenance has not acknowledged it yet. You can check My Requests for updates.`
     );
     clearNewRequestForm();
   };
