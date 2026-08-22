@@ -418,24 +418,66 @@ export const incidentReportsSlice = createSlice({
     },
     submitReport: (state) => {
       if (state.pendingReport) {
-        state.pendingReport.status = "pending";
-        state.reports.push({ ...state.pendingReport });
+        // Mock status so Pending can show *why* it is still open
+        const report = state.pendingReport;
+        const clientNeedsSig = report.clients.some(
+          (c) => !c.signature && !c.unableOrRefusedToSign
+        );
+        if (clientNeedsSig) {
+          report.status = "awaitingSignature";
+        } else if (!report.adminSignature) {
+          report.status = "awaitingAdmin";
+        } else if (report.followUp.requiresFollowUp) {
+          report.status = "followUpNeeded";
+        } else {
+          report.status = "pending";
+        }
+        // Deep-ish copy so later edits to a resumed draft do not mutate the list row oddly
+        state.reports.push(JSON.parse(JSON.stringify(report)) as IncidentReport);
         state.pendingReport = null;
       }
     },
+    /**
+     * Pull a submitted report back into the form for more signatures / edits.
+     * Removes it from reports[] so a later submit does not duplicate the id.
+     */
+    resumeReport: (state, action: PayloadAction<string>) => {
+      const index = state.reports.findIndex((r) => r.id === action.payload);
+      if (index === -1) return;
+      const [report] = state.reports.splice(index, 1);
+      if (report) {
+        state.pendingReport = JSON.parse(JSON.stringify(report)) as IncidentReport;
+      }
+    },
+    /** Mark one report complete (or follow-up needed) by id */
+    completeReportById: (state, action: PayloadAction<string>) => {
+      const report = state.reports.find((r) => r.id === action.payload);
+      if (!report) return;
+      if (report.followUp.requiresFollowUp) {
+        report.status = "followUpNeeded";
+      } else {
+        report.status = "complete";
+      }
+    },
+    /** @deprecated prefer completeReportById — kept so old imports do not break */
     completeReport: (state) => {
       const lastReport = state.reports[state.reports.length - 1];
       if (lastReport) {
-        lastReport.status = "complete";
+        lastReport.status = lastReport.followUp.requiresFollowUp
+          ? "followUpNeeded"
+          : "complete";
       }
     },
     archiveReport: (state, action: PayloadAction<string>) => {
+      // Can archive from active reports OR already-complete rows still in reports[]
       const report = state.reports.find((r) => r.id === action.payload);
       if (report) {
         state.reports = state.reports.filter((r) => r.id !== action.payload);
         report.status = "closed";
         state.archivedReports.push(report);
+        return;
       }
+      // Also allow closing something already flagged complete sitting only in reports
     },
     setFollowUpNeeded: (state, action: PayloadAction<{ notes: string }>) => {
       const lastReport = state.reports[state.reports.length - 1];
@@ -447,6 +489,19 @@ export const incidentReportsSlice = createSlice({
           notes: action.payload.notes,
         };
       }
+    },
+    setFollowUpNeededById: (
+      state,
+      action: PayloadAction<{ id: string; notes?: string }>
+    ) => {
+      const report = state.reports.find((r) => r.id === action.payload.id);
+      if (!report) return;
+      report.status = "followUpNeeded";
+      report.followUp = {
+        ...report.followUp,
+        requiresFollowUp: true,
+        notes: action.payload.notes ?? report.followUp.notes ?? "",
+      };
     },
   },
 });
@@ -480,9 +535,12 @@ export const {
   markClientUnableOrRefused,
   updateAdminSignature,
   submitReport,
+  resumeReport,
+  completeReportById,
   completeReport,
   archiveReport,
   setFollowUpNeeded,
+  setFollowUpNeededById,
 } = incidentReportsSlice.actions;
 
 export default incidentReportsSlice.reducer;

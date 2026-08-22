@@ -43,8 +43,8 @@ import {
   decidePassRequest,
   queueClientPassNotify,
   updatePassRequest,
-} from "@/store/slices/passRequest";
-import type { PassRequest, PassType } from "@/store/slices/passRequest";
+} from "@/store/slices/prototype/passRequest";
+import type { PassRequest, PassType } from "@/store/slices/prototype/passRequest";
 
 // ---------------------------------------------------------------------------
 // Component
@@ -83,7 +83,7 @@ export default function PassRequestsPage() {
   const [choreCoveredBy, setChoreCoveredBy] = useState("");
   const [onPremises, setOnPremises] = useState(false);
   const [offPremises, setOffPremises] = useState(false);
-  const [passDuration, setPassDuration] = useState<PassType>("24h");
+  const [passDuration, setPassDuration] = useState<"12h" | "24h" | "48h">("24h");
   const [additionalInfo, setAdditionalInfo] = useState("");
   const [errors, setErrors] = useState<string[]>([]);
 

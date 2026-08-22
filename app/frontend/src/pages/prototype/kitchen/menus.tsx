@@ -38,8 +38,8 @@ import {
   setPinnedKennyism,
   type MenuItem,
   type MenuItemCategory,
-} from "@/store/slices/kitchen";
-import { setStaffNote } from "@/store/slices/ops";
+} from "@/store/slices/prototype/kitchen";
+import { setStaffNote } from "@/store/slices/prototype/ops";
 
 export default function KitchenMenusPage() {
   // --- Store: library + today's meals (write via dispatch below) ---

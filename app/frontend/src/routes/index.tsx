@@ -6,6 +6,13 @@ import {
     Biotech as UAFormIcon,
     Folder as IncidentReportsIcon,
     RestaurantMenu as RestaurantMenuIcon,
+    VolunteerActivism as WalkInServicesIcon,
+    DirectionsCar as VehiclesIcon,
+    AssignmentInd as DailyDutiesIcon,
+    NotificationImportant as FriendlyRemindersIcon, 
+    History as HistoryIcon,
+    PendingActions as PendingActionsIcon,
+    Science as UaManagementIcon,
 } from "@mui/icons-material";
 
 import type { NavigationNode } from "./navigation";
@@ -15,16 +22,30 @@ import ProtectedRoute from "@/components/protected-route";
 import MainLayout from "@/layouts/main";
 import DashboardPage from "@/pages/dashboard";
 import UsersPage from "@/pages/users";
-import KitchenDisplayPage from "@/pages/kitchen/display";
-import KitchenMenusPage from "@/pages/kitchen/menus";
-import KitchenResourcesPage from "@/pages/kitchen/kitchen-resources";
-import PassRequestsPage from "@/pages/pass-request";
-import UAFormPage from "@/pages/ua-form";
-import IncidentReportsPage from "@/pages/incident-reports";
+import KitchenDisplayPage from "@/pages/prototype/kitchen/display";
+import KitchenMenusPage from "@/pages/prototype/kitchen/menus";
+import KitchenResourcesPage from "@/pages/prototype/kitchen/kitchen-resources";
+import PassRequestsPage from "@/pages/prototype/pass-request";
+import UAFormPage from "@/pages/prototype/ua-form";
+import IncidentReportsPage from "@/pages/prototype/incident-reports";
 import LoginPage from "@/pages/login";
 import LogoutPage from "@/pages/logout";
 import PasswordPage from "@/pages/password";
 import NotFoundPage from "@/pages/not-found";
+import WalkInServicesPage from "@/pages/prototype/walk-in-services";
+import VehiclesPage from "@/pages/prototype/vehicles";
+import DailyDutiesPage from "@/pages/prototype/daily-duties";
+import RollCallPage from "@/pages/prototype/daily-duties/roll-call";
+import ClassAttendancePage from "@/pages/prototype/daily-duties/class-attendance";
+import RoomInspectionsPage from "@/pages/prototype/daily-duties/room-inspections";
+import ChoreCheckOffPage from "@/pages/prototype/daily-duties/chore-check-off";
+import ChoreLibraryPage from "@/pages/prototype/daily-duties/chore-library";
+import WeeklyChoreAssignPage from "@/pages/prototype/daily-duties/weekly-chore-assign";
+import ClassLibraryPage from "@/pages/prototype/daily-duties/class-library";
+import FriendlyRemindersPage from "@/pages/prototype/friendly-reminders";
+import IncidentReportsPendingPage from "@/pages/prototype/incident-reports/pending";
+import IncidentReportsHistoryPage from "@/pages/prototype/incident-reports/history";
+import UaManagementPage from "@/pages/prototype/ua-management";
 
 
 export const routesConfig: NavigationNode[] = [
@@ -65,66 +86,216 @@ export const routesConfig: NavigationNode[] = [
                         },
                     },
                     {
-                        path: "kitchen",
+                        path: "prototype/kitchen",
                         element: <KitchenDisplayPage />,
                         config: {
                             title: "Kitchen Display",
                             icon: <KitchenIcon />,
                             showInNavigation: true,
-                            group: "Kitchen",
-                            roles: ["ADMIN", "KITCHEN"],
+                            group: "Prototype",
+                            roles: ["PROTOTYPE"],
                         },
                     },
                     {
-                        path: "kitchen/menus",
+                        path: "prototype/kitchen/menus",
                         element: <KitchenMenusPage />,
                         config: {
                             title: "Kitchen Menus",
                             icon: <RestaurantMenuIcon />,
                             showInNavigation: true,
-                            group: "Kitchen",
-                            roles: ["ADMIN", "KITCHEN"],
+                            group: "Prototype",
+                            roles: ["PROTOTYPE"],
                         },
                     },
                     {
-                        path: "kitchen/resources",
+                        path: "prototype/kitchen/resources",
                         element: <KitchenResourcesPage />,
                         config: {
                             title: "Kitchen Resources",
                             icon: <RestaurantMenuIcon />,
                             showInNavigation: true,
-                            group: "Kitchen",
-                            roles: ["ADMIN", "KITCHEN"],
+                            group: "Prototype",
+                            roles: ["PROTOTYPE"],
                         },
                     },
                     {
-                        path: "pass-requests",
+                        path: "prototype/pass-requests",
                         element: <PassRequestsPage />,
                         config: {
                             title: "Pass Requests",
                             icon: <PassRequestsIcon />,
                             showInNavigation: true,
-                            roles: ["ADMIN", "CLIENT"],
+                            group: "Prototype",
+                            roles: ["PROTOTYPE"],
                         },
                     },
                     {
-                        path: "ua-form",
+                        path: "prototype/ua-form",
                         element: <UAFormPage />,
                         config: {
                             title: "UA Form",
                             icon: <UAFormIcon />,
                             showInNavigation: true,
-                            roles: ["ADMIN", "CLIENT", "LEADER"],
+                            group: "Prototype",
+                            roles: ["PROTOTYPE"],
                         },
                     },
                     {
-                        path: "incident-reports",
+                        path: "prototype/incident-reports",
                         element: <IncidentReportsPage />,
                         config: {
                             title: "Incident Reports",
                             icon: <IncidentReportsIcon />,
                             showInNavigation: true,
-                            roles: ["ADMIN", "LEADER"],
+                            group: "Prototype",
+                            roles: ["PROTOTYPE"],
+                        },
+                    },
+                    {
+                        path: "prototype/walk-in-services",
+                        element: <WalkInServicesPage />,
+                        handle: {
+                            title: "Walk-In Services",
+                            icon: <WalkInServicesIcon />,
+                            showInNavigation: true,
+                            group: "Prototype",
+                            roles: ["PROTOTYPE"],
+                        },
+                    },
+                    {
+                        path: "prototype/vehicles",
+                        element: <VehiclesPage />,
+                        handle: {
+                            title: "Vehicles",
+                            icon: <VehiclesIcon />,
+                            showInNavigation: true,
+                            group: "Prototype",
+                            roles: ["PROTOTYPE"],
+                        },
+                    },
+                    {
+                        path: "prototype/daily-duties",
+                        element: <DailyDutiesPage />,
+                        handle: {
+                            title: "Daily Duties",
+                            icon: <DailyDutiesIcon />,
+                            showInNavigation: true,
+                            group: "Prototype",
+                            roles: ["PROTOTYPE"],
+                        },
+                    },
+                    {
+                        path: "prototype/daily-duties/roll-call",
+                        element: <RollCallPage />,
+                        handle: {
+                            title: "Morning Roll Call",
+                            showInNavigation: false,
+                            group: "Prototype",
+                            roles: ["PROTOTYPE"],
+                        },
+                    },
+                    {
+                        path: "prototype/daily-duties/class-attendance",
+                        element: <ClassAttendancePage />,
+                        handle: {
+                            title: "Class Attendance",
+                            showInNavigation: false,
+                            group: "Prototype",
+                            roles: ["PROTOTYPE"],
+                        },
+                    },
+                    {
+                        path: "prototype/daily-duties/class-library",
+                        element: <ClassLibraryPage />,
+                        handle: {
+                            title: "Class Library",
+                            showInNavigation: false,
+                            group: "Prototype",
+                            roles: ["PROTOTYPE"],
+                        },
+                    },
+                    {
+                        path: "prototype/daily-duties/room-inspections",
+                        element: <RoomInspectionsPage />,
+                        handle: {
+                            title: "Room Inspections",
+                            showInNavigation: false,
+                            group: "Prototype",
+                            roles: ["PROTOTYPE"],
+                        },
+                    },
+                    {
+                        path: "prototype/daily-duties/chore-check-off",
+                        element: <ChoreCheckOffPage />,
+                        handle: {
+                            title: "Chore Check-Off",
+                            showInNavigation: false,
+                            group: "Prototype",
+                            roles: ["PROTOTYPE"],
+                        },
+                    },
+                    {
+                        path: "prototype/daily-duties/chore-library",
+                        element: <ChoreLibraryPage />,
+                        handle: {
+                            title: "Chore Library",
+                            showInNavigation: false,
+                            group: "Prototype",
+                            roles: ["PROTOTYPE"],
+                        },
+                    },
+                    {
+                        path: "prototype/daily-duties/weekly-chore-assign",
+                        element: <WeeklyChoreAssignPage />,
+                        handle: {
+                            title: "Weekly Chore Assign",
+                            showInNavigation: false,
+                            group: "Prototype",
+                            roles: ["PROTOTYPE"],
+                        },
+                    },
+                    {
+                        path: "prototype/friendly-reminders",
+                        element: <FriendlyRemindersPage />,
+                        handle: {
+                            title: "Friendly Reminders",
+                            icon: <FriendlyRemindersIcon />,
+                            showInNavigation: true,
+                            group: "Prototype",
+                            roles: ["PROTOTYPE"],
+                        },
+                    },
+                    {
+                        path: "prototype/incident-reports/pending",
+                        element: <IncidentReportsPendingPage />,
+                        handle: {
+                            title: "IR Pending",
+                            icon: <PendingActionsIcon />,
+                            showInNavigation: false,
+                            group: "Prototype",
+                            roles: ["PROTOTYPE"],
+                        },
+                    },
+                    {
+                        path: "prototype/incident-reports/history",
+                        element: <IncidentReportsHistoryPage />,
+                        handle: {
+                            title: "IR History",
+                            icon: <HistoryIcon />,
+                            showInNavigation: false,
+                            group: "Prototype",
+                            roles: ["PROTOTYPE"],
+                        },
+                    },
+                    {
+                        path: "prototype/ua-management",
+                        element: <UaManagementPage />,
+                        handle: {
+                            title: "UA Management",
+                            icon: <UaManagementIcon />,
+                            showInNavigation: true,
+                            group: "Prototype",
+                            roles: ["PROTOTYPE"],
                         },
                     },
                     {

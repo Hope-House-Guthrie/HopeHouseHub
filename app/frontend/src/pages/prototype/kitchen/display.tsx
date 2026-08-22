@@ -21,7 +21,7 @@ import { useEffect, useState } from "react";
 import { Box, Typography } from "@mui/material";
 import Logo from "@assets/hhg-logo.svg";
 import { useAppSelector } from "@/store/hooks";
-import type { MenuItem } from "@/store/slices/kitchen";
+import type { MenuItem } from "@/store/slices/prototype/kitchen";
 
 /** 12h: rotate step AND how long a staff pin holds on the TV. */
 const AFFIRMATION_ROTATE_MS = 12 * 60 * 60 * 1000;

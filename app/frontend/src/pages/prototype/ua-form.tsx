@@ -17,7 +17,7 @@
  * ---------------------------------------------------------------------------
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Box,
   Typography,
@@ -34,6 +34,11 @@ import {
   Button,
   Chip,
   Divider,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Alert,
 } from "@mui/material";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
@@ -43,7 +48,7 @@ import {
   uaStatusLabel,
   type UAForm,
   type DrugResult,
-} from "@/store/slices/uaForm";
+} from "@/store/slices/prototype/uaForm";
 import SignatureCanvas from "@/components/SignatureCanvas";
 
 /** Fresh blank form every New / after submit */
@@ -96,6 +101,29 @@ function todayDateString(): string {
   return `${y}-${m}-${d}`;
 }
 
+/** HH:MM in America/Chicago for type="time" */
+function chicagoTimeHHMM(now: Date = new Date()): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Chicago",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(now);
+  const hour = parts.find((p) => p.type === "hour")?.value ?? "00";
+  const minute = parts.find((p) => p.type === "minute")?.value ?? "00";
+  return `${hour.padStart(2, "0")}:${minute.padStart(2, "0")}`;
+}
+
+const UA_WAIT_MS = 5 * 60 * 1000;
+
+/** mm:ss from remaining ms (never below 0) */
+function formatWaitCountdown(msLeft: number): string {
+  const totalSec = Math.max(0, Math.ceil(msLeft / 1000));
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
 export default function UAFormPage() {
   const dispatch = useAppDispatch();
   const requests = useAppSelector((state) => state.uaForm.requests);
@@ -111,6 +139,17 @@ export default function UAFormPage() {
   /** Remount SignatureCanvas when starting new or opening history */
   const [sigPadKey, setSigPadKey] = useState(0);
   const [historyFilter, setHistoryFilter] = useState("");
+
+  /**
+   * 5-minute UA wait - page-level so field edits / re-renders do not reset it.
+   * endsAt = Date.now() deadline; null = not running / not started.
+   */
+  const [waitEndsAt, setWaitEndsAt] = useState<number | null>(null);
+  const [waitComplete, setWaitComplete] = useState(false);
+  const [waitNow, setWaitNow] = useState(() => Date.now());
+  const [restartTimerOpen, setRestartTimerOpen] = useState(false);
+  /** Avoid focus+click both starting the timer in one gesture */
+  const timeActivateLock = useRef(false);
 
   const isEditingExisting = editingId !== null;
 
@@ -129,6 +168,9 @@ export default function UAFormPage() {
     setErrors([]);
     setActionNotice(null);
     setSigPadKey((k) => k + 1);
+    setWaitEndsAt(null);
+    setWaitComplete(false);
+    setRestartTimerOpen(false);
   };
 
   /** Open existing UA for Administration / staff to finish signatures */
@@ -147,6 +189,9 @@ export default function UAFormPage() {
     setErrors([]);
     setActionNotice(null);
     setSigPadKey((k) => k + 1);
+    setWaitEndsAt(null);
+    setWaitComplete(false);
+    setRestartTimerOpen(false);
     // Scroll form into view for tablet admin
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -226,6 +271,9 @@ export default function UAFormPage() {
     setForm(createInitialForm());
     setErrors([]);
     setSigPadKey((k) => k + 1);
+    setWaitEndsAt(null);
+    setWaitComplete(false);
+    setRestartTimerOpen(false);
   };
 
   /** Resume: update signatures only */
@@ -255,9 +303,73 @@ export default function UAFormPage() {
     setForm(createInitialForm());
     setErrors([]);
     setSigPadKey((k) => k + 1);
+    setWaitEndsAt(null);
+    setWaitComplete(false);
+    setRestartTimerOpen(false);
   };
 
   const fieldDisabled = isEditingExisting;
+
+  // 1s tick only while a deadline is set and not yet complete
+  useEffect(() => {
+    if (waitEndsAt === null || waitComplete) return;
+
+    const id = window.setInterval(() => {
+      const now = Date.now();
+      setWaitNow(now);
+      if (now >= waitEndsAt) {
+        setWaitComplete(true);
+        setWaitEndsAt(null);
+      }
+    }, 1000);
+
+    return () => window.clearInterval(id);
+  }, [waitEndsAt, waitComplete]);
+
+  const waitMsLeft =
+    waitEndsAt !== null ? Math.max(0, waitEndsAt - waitNow) : 0;
+  const waitRunning = waitEndsAt !== null && !waitComplete;
+
+  /** Stamp CT time + start fresh 5:00 wait (or after Restart confirm). */
+  const startUaWaitTimer = () => {
+    const now = Date.now();
+    setForm((prev) => ({
+      ...prev,
+      observedBy: {
+        ...prev.observedBy,
+        time: chicagoTimeHHMM(new Date(now)),
+      },
+    }));
+    setWaitComplete(false);
+    setWaitNow(now);
+    setWaitEndsAt(now + UA_WAIT_MS);
+    setRestartTimerOpen(false);
+  };
+
+  /**
+   * Time field click/focus:
+   * - idle / complete → start (or restart after complete)
+   * - running → open restart confirm
+   */
+  const handleTimeFieldActivate = () => {
+    if (fieldDisabled) return;
+    // One physical click often fires focus then click — only handle once
+    if (timeActivateLock.current) return;
+    timeActivateLock.current = true;
+    window.setTimeout(() => {
+      timeActivateLock.current = false;
+    }, 300);
+
+    if (waitRunning) {
+      setRestartTimerOpen(true);
+      return;
+    }
+    startUaWaitTimer();
+  };
+
+  const handleCloseRestartTimer = () => {
+    setRestartTimerOpen(false);
+  };
 
   return (
     <Box sx={{ p: 3, maxWidth: 800 }}>
@@ -559,44 +671,33 @@ export default function UAFormPage() {
             />
             <FormControl>
               <FormLabel sx={{ fontSize: 20, fontWeight: 1000 }}>Time</FormLabel>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                Click when the observer returns. Starts the required 5-minute wait timer.             </Typography>
               <TextField
                 type="time"
                 value={form.observedBy.time}
                 disabled={fieldDisabled}
-                onFocus={() => {
-                  if (fieldDisabled) return;
-                  if (!form.observedBy.time) {
-                    const now = new Date().toLocaleString("en-US", {
-                      timeZone: "America/Chicago",
-                    });
-                    const centralDate = new Date(now);
-                    const hours = String(centralDate.getHours()).padStart(
-                      2,
-                      "0"
-                    );
-                    const minutes = String(centralDate.getMinutes()).padStart(
-                      2,
-                      "0"
-                    );
-                    setForm((prev) => ({
-                      ...prev,
-                      observedBy: {
-                        ...prev.observedBy,
-                        time: `${hours}:${minutes}`,
-                      },
-                    }));
-                  }
+                onClick={handleTimeFieldActivate}
+                onFocus={handleTimeFieldActivate}
+                // Set only via timer start — avoids accidental manual edits mid-wait
+                slotProps={{
+                  htmlInput: { readOnly: true },
                 }}
-                onChange={(e) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    observedBy: {
-                      ...prev.observedBy,
-                      time: e.target.value,
-                    },
-                  }))
-                }
               />
+              {waitRunning && (
+                <Typography
+                  variant="h6"
+                  sx={{ mt: 1, fontWeight: 700, letterSpacing: 1 }}
+                  aria-live="polite"
+                >
+                  UA wait: {formatWaitCountdown(waitMsLeft)}
+                </Typography>
+              )}
+              {waitComplete && !waitRunning && (
+                <Alert severity="success" sx={{ mt: 1 }}>
+                  ✓ 5-Minute Wait Complete
+                </Alert>
+              )}
             </FormControl>
             <FormControl component="fieldset" disabled={fieldDisabled}>
               <FormLabel sx={{ fontSize: 20, fontWeight: 1000 }}>
@@ -968,6 +1069,54 @@ export default function UAFormPage() {
           </Button>
         )}
       </Box>
+
+      {/* Restart 5-minute UA wait while timer is still running */}
+      <Dialog
+        open={restartTimerOpen}
+        onClose={handleCloseRestartTimer}
+        fullWidth
+        maxWidth="sm"
+        aria-labelledby="ua-restart-timer-title"
+      >
+        <Box
+          component="form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            startUaWaitTimer();
+          }}
+        >
+          <DialogTitle id="ua-restart-timer-title">
+            Restart UA wait timer?
+          </DialogTitle>
+          <DialogContent>
+            <Typography>
+              The 5-minute UA timer is currently running. Restart the timer and
+              update the observation time?
+            </Typography>
+          </DialogContent>
+          <DialogActions
+            sx={{
+              px: 3,
+              pb: 2,
+              gap: 1,
+              flexWrap: "wrap",
+              justifyContent: "space-between",
+            }}
+          >
+            <Button
+              type="button"
+              variant="outlined"
+              size="large"
+              onClick={handleCloseRestartTimer}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" variant="contained" size="large" color="primary">
+              Restart Timer
+            </Button>
+          </DialogActions>
+        </Box>
+      </Dialog>
     </Box>
   );
 }
