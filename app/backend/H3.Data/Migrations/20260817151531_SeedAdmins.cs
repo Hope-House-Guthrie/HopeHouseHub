@@ -66,16 +66,26 @@ namespace H3.Data.Migrations
             migrationBuilder.InsertData(
                 table: "UserRoles",
                 columns: new[] { "UserId", "RoleId" },
-                values: new object[] { SuperAdminUserId, (int)Enums.SystemRole.Admin });
+                values: new object[,]
+                {
+                    { SuperAdminUserId, 1 },
+                    { SuperAdminUserId, 2 },
+                    { SuperAdminUserId, 3 },
+                    { SuperAdminUserId, 4 },
+                    { SuperAdminUserId, 5 }
+                });
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DeleteData(
-                table: "UserRoles",
-                keyColumns: new[] { "UserId", "RoleId" },
-                keyValues: new object[] { SuperAdminUserId, (int)Enums.SystemRole.Admin });
+            for (var roleId = 1; roleId <= 5; roleId++)
+            {
+                migrationBuilder.DeleteData(
+                    table: "UserRoles",
+                    keyColumns: new[] { "UserId", "RoleId" },
+                    keyValues: new object[] { SuperAdminUserId, roleId });
+            }
 
             migrationBuilder.DeleteData(
                 table: "Users",

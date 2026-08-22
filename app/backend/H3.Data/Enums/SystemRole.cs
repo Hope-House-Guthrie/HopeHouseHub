@@ -15,5 +15,11 @@ public enum SystemRole
     Leader = 4,
 
     [SystemRole("Board Member", "BOARD")]
-    Board = 5
+    Board = 5,
+
+    [SystemRole("Prototype", "PROTOTYPE")]
+    Prototype = 6,
+
+    [SystemRole("Preview", "PREVIEW")]
+    Preview = 7,
 }

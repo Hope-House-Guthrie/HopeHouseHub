@@ -12,33 +12,17 @@ public partial class SeedRoles : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)
     {
-        var roleData = Enum.GetValues<SystemRole>()
-            .Select(role =>
-            {
-                var attr = role.GetAttribute<SystemRoleAttribute>();
-                return new object[]
-                {
-                    (int)role,
-                    attr?.Name ?? role.ToString(),
-                    attr?.NormalizedName ?? role.ToString().ToUpperInvariant(),
-                    Guid.NewGuid().ToString()
-                };
-            })
-            .ToArray();
-
-        var valuesMatrix = new object[roleData.Length, 4];
-        for (var i = 0; i < roleData.Length; i++)
-        {
-            for (var j = 0; j < 4; j++)
-            {
-                valuesMatrix[i, j] = roleData[i][j];
-            }
-        }
-
         migrationBuilder.InsertData(
             table: "Roles",
-            columns: ["Id", "Name", "NormalizedName", "ConcurrencyStamp"],
-            values: valuesMatrix);
+            columns: new[] { "Id", "Name", "NormalizedName", "ConcurrencyStamp" },
+            values: new object[,]
+            {
+                { 1, "Admin Staff", "ADMIN", Guid.NewGuid().ToString() },
+                { 2, "Client", "CLIENT", Guid.NewGuid().ToString() },
+                { 3, "Kitchen Staff", "KITCHEN", Guid.NewGuid().ToString() },
+                { 4, "House Leader", "LEADER", Guid.NewGuid().ToString() },
+                { 5, "Board Member", "BOARD", Guid.NewGuid().ToString() }
+            });
     }
 
     protected override void Down(MigrationBuilder migrationBuilder)
