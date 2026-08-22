@@ -127,7 +127,7 @@ export const routesConfig: NavigationNode[] = [
                         },
                     },
                     {
-                        path: "prototype/kitchen",
+                        path: "prototype/kitchen/display",
                         element: <KitchenDisplayPage />,
                         config: {
                             title: "Kitchen Display",

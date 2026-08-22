@@ -27,7 +27,7 @@ export const store = configureStore({
     walkInServices: walkInServicesReducer,
     dailyDuties: dailyDutiesReducer,
     friendlyReminders: friendlyRemindersReducer,
-    "kitchen-prototype": kitchenPrototypeReducer,
+    kitchen: kitchenPrototypeReducer,
     [kennyismsApi.reducerPath]: kennyismsApi.reducer,
     [menuItemsApi.reducerPath]: menuItemsApi.reducer,
     [mealsApi.reducerPath]: mealsApi.reducer,
