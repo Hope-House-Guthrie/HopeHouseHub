@@ -43,16 +43,16 @@ import { setStaffNote } from "@/store/slices/prototype/ops";
 
 export default function KitchenMenusPage() {
   // --- Store: library + today's meals (write via dispatch below) ---
-  const menuItems = useAppSelector((state) => state["kitchen-prototype"].menuItems);
-  const breakfast = useAppSelector((state) => state["kitchen-prototype"].breakfast);
-  const lunch = useAppSelector((state) => state["kitchen-prototype"].lunch);
-  const dinner = useAppSelector((state) => state["kitchen-prototype"].dinner);
+  const menuItems = useAppSelector((state) => state.kitchen.menuItems);
+  const breakfast = useAppSelector((state) => state.kitchen.breakfast);
+  const lunch = useAppSelector((state) => state.kitchen.lunch);
+  const dinner = useAppSelector((state) => state.kitchen.dinner);
   const dispatch = useAppDispatch();
 
   // Code: kennyisms. Guest label on TV: Daily Affirmations
-  const kennyisms = useAppSelector((state) => state["kitchen-prototype"].kennyisms);
+  const kennyisms = useAppSelector((state) => state.kitchen.kennyisms);
   const pinnedKennyismId = useAppSelector(
-    (state) => state["kitchen-prototype"].pinnedKennyismId,
+    (state) => state.kitchen.pinnedKennyismId,
   );
 
   const staffNote = useAppSelector((state) => state.ops.staffNote);
