@@ -6,6 +6,8 @@
  * BACKEND TODO: server owns ids, MR numbers, auth identity, photos, status.
  */
 
+import type { BlockLike } from "typescript";
+
 /** Client-visible ticket status (staff/Mike drives transitions later). */
 export type MaintenanceRequestStatus =
   | "Submitted"
@@ -100,6 +102,10 @@ export interface MaintenanceRequest {
   locationId: string;
   /** Snapshot at submit so rename/archive does not rewrite history */
   locationName: string;
+  /**
+   * Specific Area / Room — optional free text (blank OK).
+   * BACKEND: nullable/optional; never required by location.
+   */
   areaOrRoom: string;
   item: string;
   category: MaintenanceCategory;
@@ -124,3 +130,20 @@ export interface DevMockClient {
 
 /** Page chrome: New Request vs My Requests. */
 export type MaintenanceRequestsView = "new" | "mine";
+
+/**
+ * Client form payload for create (Phase 2).
+ * Slice fills id, requestNumber, status, submitter, submittedAt, photos, timeline.
+ */
+export interface SubmitMaintenanceRequestInput {
+  locationId: string;
+  /** Optional; blank string is valid */
+  areaOrRoom: string;
+  item: string;
+  category: MaintenanceCategory;
+  stillUsableSafely: SafetyUsableAnswer;
+  problemDescription: string;
+  hasAdditionalNotes: boolean;
+  /** Required trim non-empty when hasAdditionalNotes is true */
+  additionalNotes?: string;
+}

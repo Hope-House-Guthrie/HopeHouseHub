@@ -28,7 +28,7 @@ export interface DevMrPersistedV1 {
 }
 
 export function defaultDevPersisted(
-  activeDevClientId: string = DEV_MOCK_CLIENTS[0]?.id ?? "dev-client-alex"
+  activeDevClientId: string = DEV_MOCK_CLIENTS[0]?.id ?? "dev-client-alex",
 ): DevMrPersistedV1 {
   return {
     version: 1,

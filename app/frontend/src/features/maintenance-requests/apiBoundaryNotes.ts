@@ -2,6 +2,18 @@
  * Maintenance Requests — Backend Handoff notes (file only; not Hub chrome)
  *
  * FE is client mock. Real auth, MR numbers, photos, and staff status are API.
+ *
+ * Phase 2 FE submit (mock):
+ * - Client POST body ≈ SubmitMaintenanceRequestInput
+ *   locationId, areaOrRoom (optional string; empty OK), item, category,
+ *   stillUsableSafely, problemDescription, hasAdditionalNotes, additionalNotes?
+ * - areaOrRoom / Specific Area/Room: nullable/optional on backend; never required
+ * - Server should assign: id, requestNumber (MR-YYYY-####), submittedAt,
+ *   submitter from auth, status=Submitted, empty photos[], timeline
+ *   event kind=submitted
+ * - locationName snapshot from locationId at submit time
+ * - Response should return full ticket so UI can show real MR#
+ * - Do not auto-acknowledge; client copy must stay “in queue”
  */
 
 /**

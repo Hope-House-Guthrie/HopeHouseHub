@@ -1,8 +1,8 @@
 /**
  * Maintenance Requests — Redux slice (client FE mock)
  *
- * Phase 1: catalog + DEV client identity + empty requests list.
- * Submit / timeline / cancel reducers come in later phases.
+ * Phase 1: catalog + DEV client identity.
+ * Phase 2: submitMaintenanceRequest (client create).
  *
  * ---------------------------------------------------------------------------
  * BACKEND TODO / FUTURE INTEGRATION
@@ -29,7 +29,12 @@ import type {
   DevMockClient,
   MaintenanceLocation,
   MaintenanceRequest,
+  SubmitMaintenanceRequestInput,
 } from "@/features/maintenance-requests/types";
+import {
+  chicagoYearNow,
+  formatMaintenanceRequestNumber,
+} from "@/features/maintenance-requests/mrNumber";
 
 // ============================================================================
 // State
@@ -38,7 +43,7 @@ import type {
 export interface MaintenanceRequestsState {
   /** Seeded locations (active + archived later) */
   locations: MaintenanceLocation[];
-  /** Client tickets (empty until submit phase) */
+  /** Client tickets */
   requests: MaintenanceRequest[];
   /** Mock sequence for MR-YYYY-#### (FE only) */
   mrSeq: number;
@@ -90,6 +95,17 @@ function buildInitialState(): MaintenanceRequestsState {
 
 const initialState: MaintenanceRequestsState = buildInitialState();
 
+/** DEV-only: write current slice fields used by localStorage mock. */
+function persistDevMrState(state: MaintenanceRequestsState): void {
+  if (!import.meta.env.DEV) return;
+  saveDevMrPersisted({
+    version: 1,
+    activeDevClientId: state.activeDevClientId,
+    requests: state.requests,
+    mrSeq: state.mrSeq,
+  });
+}
+
 // ============================================================================
 // Slice
 // ============================================================================
@@ -108,22 +124,15 @@ export const maintenanceRequestsSlice = createSlice({
       state.activeDevClientName = client.displayName;
 
       if (import.meta.env.DEV) {
-        saveDevMrPersisted({
-          version: 1,
-          activeDevClientId: state.activeDevClientId,
-          requests: state.requests,
-          mrSeq: state.mrSeq,
-        });
+        persistDevMrState(state);
       }
     },
 
     /**
      * DEV only: reset requests/seq and active mock client to Alex (first default).
      * Full seed pack lives in a later phase.
-     * Uses literal default ids so reset never depends on array lookup quirks.
      */
     resetDevMrState: (state) => {
-      // Hard default = first DEV mock client (Alex) — must match config DEV_MOCK_CLIENTS[0]
       const defaultId = "dev-client-alex";
       const defaultName = "Alex (DEV Client)";
       const client = resolveDevClient(defaultId);
@@ -135,14 +144,77 @@ export const maintenanceRequestsSlice = createSlice({
       state.locations = buildInitialLocationCatalog();
 
       if (import.meta.env.DEV) {
-        // Clear first so a failed/partial write cannot leave the previous client
         clearDevMrPersisted();
         saveDevMrPersisted(defaultDevPersisted(defaultId));
       }
     },
+
+    /**
+     * Client submit (Phase 2). Builds full MaintenanceRequest.
+     * Does not validate UI — page validates before dispatch.
+     * BACKEND: POST; server assigns id + MR# + submittedAt + submitter.
+     */
+    submitMaintenanceRequest: (
+      state,
+      action: PayloadAction<SubmitMaintenanceRequestInput>
+    ) => {
+      const input = action.payload;
+      const location = state.locations.find((l) => l.id === input.locationId);
+      const locationName = location?.name ?? "Unknown location";
+      const submittedAt = new Date().toISOString();
+
+      state.mrSeq += 1;
+      const year = chicagoYearNow();
+      const requestNumber = formatMaintenanceRequestNumber(year, state.mrSeq);
+
+      const id =
+        typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `mr-${submittedAt}-${state.mrSeq}`;
+
+      const notes =
+        input.hasAdditionalNotes && input.additionalNotes
+          ? input.additionalNotes.trim()
+          : undefined;
+
+      const timelineEvent = {
+        id:
+          typeof crypto !== "undefined" && crypto.randomUUID
+            ? crypto.randomUUID()
+            : `tl-${submittedAt}`,
+        kind: "submitted" as const,
+        at: submittedAt,
+        summary: "Request submitted to Maintenance queue",
+        status: "Submitted" as const,
+        actorLabel: state.activeDevClientName,
+      };
+
+      const request: MaintenanceRequest = {
+        id,
+        requestNumber,
+        status: "Submitted",
+        submittedByClientId: state.activeDevClientId,
+        submittedByDisplayName: state.activeDevClientName,
+        submittedAt,
+        locationId: input.locationId,
+        locationName,
+        areaOrRoom: input.areaOrRoom.trim(),
+        item: input.item.trim(),
+        category: input.category,
+        stillUsableSafely: input.stillUsableSafely,
+        problemDescription: input.problemDescription.trim(),
+        hasAdditionalNotes: Boolean(input.hasAdditionalNotes && notes),
+        additionalNotes: notes,
+        photos: [],
+        timeline: [timelineEvent],
+      };
+
+      state.requests.unshift(request);
+      persistDevMrState(state);
+    },
   },
 });
 
-export const { setDevActiveClient, resetDevMrState } =
+export const { setDevActiveClient, resetDevMrState, submitMaintenanceRequest } =
   maintenanceRequestsSlice.actions;
 export default maintenanceRequestsSlice.reducer;

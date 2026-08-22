@@ -2,82 +2,101 @@
  * ============================================================================
  * MAINTENANCE REQUESTS — living STATUS (authoritative for this feature)
  * Branch: feature/maintenance-requests (off develop)
- * Updated: 2026-08-22 — Phase 1 scaffold
- * STOPPING POINT: Phase 1 only. Wait for user test + approve before Phase 2.
+ * Updated: 2026-08-22 — Phase 2 client submit form COMPLETE (optional area)
+ * STOPPING POINT: Phase 2 done + committed (or pending push). Next = Phase 3
+ *   photos only after user approves. Do not auto-start Phase 3.
  * ============================================================================
  * MODEL
  * - Client submits one item per request (MR-YYYY-#### mock FE; BE later).
  * - Client-visible statuses: Submitted → … → Completed / Cancellation
  *   Requested / Closed - No Work Needed.
  * - Original request immutable; Add Information / cancel = timeline later.
- * - Locations seeded; staff catalog admin later. Area/Item free text later.
+ * - Locations seeded; staff catalog admin later. Specific Area/Room optional
+ *   free text (helps locate; blank OK). Item free text later suggestions.
  * - Dup/recurring advisory only (parked Phase 6). No Mike UI in client v1.
+ * - Confirm copy: submitted to queue — never claim Maintenance acknowledged.
  *
- * DONE — Phase 1
- * - features/maintenance-requests: types, config, devFixtures shell, api notes
- * - Redux slice maintenanceRequests + store register
- * - Route /maintenance-requests + nav “Maintenance Requests” (Handyman)
- * - Page shell: New Request | My Requests placeholders
- * - One-item-per-request notice on New
- * - DEV foundation: as-client chips, DEV storage key/helpers, reset control
- * - Initial locations + categories + statuses in config
+ * DONE — Phase 1 (commit 08d1ff3)
+ * - features/maintenance-requests: types, config, devFixtures, api notes
+ * - Redux slice + store register; route/nav Handyman
+ * - Page shell New|My; one-item notice; DEV as-client + reset
  *
- * NEXT — Phase 2 (not started)
- * - Working submit form (fields 1–7), mock MR#, confirm “in queue” (no ack claim)
- * - Safety = No client warning copy (config already has string)
+ * DONE — Phase 2 (code on disk; committing with optional Specific Area/Room)
+ * - SubmitMaintenanceRequestInput + mrNumber helper (MR-YYYY-####, Chicago year)
+ * - slice submitMaintenanceRequest + DEV persist; timeline “submitted” event
+ * - New Request form fields 1–7 (no photos)
+ * - Specific Area / Room optional (not required; blank valid)
+ * - Validation; Safety=No warning; Anything else Yes → notes
+ * - Success alert: in queue, not acknowledged; form clear; count bumps
+ * - saveDevMrPersisted restored in devFixtures
+ *
+ * NEXT
+ * - User smoke after commit if desired; then Phase 3 photos when approved
+ * - Phase 3 later: up to 3 optional photos
  *
  * PARKED
- * - Photos (Ph3), My list/detail/timeline (Ph4), Add info + cancel (Ph5)
- * - Dup/recurring window (Ph6), full DEV seed + Mike status sim (Ph7)
- * - Staff-on-behalf submit; location Add/Rename/Archive UI; backend/API
- * - Open/Closed filters (closed stay in history)
+ * - Photos (Ph3), My list/detail/timeline UI (Ph4), Add info + cancel (Ph5)
+ * - Dup/recurring (Ph6), full DEV seed + Mike status sim (Ph7)
+ * - Staff-on-behalf; location admin UI; backend/API; Open/Closed filters
  *
  * DEV NOTES
  * - import.meta.env.DEV only for as-client UI + localStorage
- * - Key: hhg-dev-maintenance-requests-v1 (config DEV_MR_STORAGE_KEY)
- * - File: features/maintenance-requests/devFixtures.ts
+ * - Key: hhg-dev-maintenance-requests-v1 (DEV_MR_STORAGE_KEY)
+ * - devFixtures.ts load/save/clear; Reset → Alex + empty requests
  * - Not security; removable for production
- * - Full multi-status fixture pack NOT in Phase 1
  *
  * PATHS
  * - pages/maintenance-requests/index.tsx     ← UI + this STATUS
  * - features/maintenance-requests/types.ts
  * - features/maintenance-requests/config.ts
+ * - features/maintenance-requests/mrNumber.ts
  * - features/maintenance-requests/devFixtures.ts
  * - features/maintenance-requests/apiBoundaryNotes.ts
  * - store/slices/maintenanceRequests.ts
  * - routes.tsx → /maintenance-requests
  *
  * HARD LOCKS
- * - Client-side only this branch phase; no Mike management UI
+ * - Client-side only; no Mike management UI this phase
  * - Single route /maintenance-requests
- * - America/Chicago for display when dates exist
+ * - America/Chicago for MR year + display when dates shown
  * - FE hide / DEV chips ≠ security
  * - Ignore removed old MaintenanceTicket model
+ * - Confirmation must NOT say Maintenance acknowledged
  *
  * ============================================================================
  * Backend Handoff / Notes for TJ
  * ============================================================================
- * See features/maintenance-requests/apiBoundaryNotes.ts (authoritative short list).
+ * See features/maintenance-requests/apiBoundaryNotes.ts
  * Current: in-memory + DEV localStorage mock; no API.
+ * Submit payload shape: SubmitMaintenanceRequestInput + server fills
+ *   id, requestNumber, submittedAt, submitter, status=Submitted, timeline.
  * ============================================================================
  */
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import {
   Alert,
   Box,
   Button,
   Chip,
+  FormControl,
+  FormControlLabel,
+  FormHelperText,
+  FormLabel,
+  MenuItem,
   Paper,
+  Radio,
+  RadioGroup,
   Tab,
   Tabs,
+  TextField,
   Typography,
 } from "@mui/material";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   resetDevMrState,
   setDevActiveClient,
+  submitMaintenanceRequest,
 } from "@/store/slices/maintenanceRequests";
 import {
   DEV_MOCK_CLIENTS,
@@ -86,19 +105,101 @@ import {
   MAINTENANCE_CATEGORIES,
   INITIAL_MAINTENANCE_LOCATIONS,
   MAINTENANCE_REQUEST_STATUSES,
+  SAFETY_UNSAFE_CLIENT_WARNING,
 } from "@/features/maintenance-requests/config";
-import type { MaintenanceRequestsView } from "@/features/maintenance-requests/types";
+import type {
+  MaintenanceCategory,
+  MaintenanceRequestsView,
+  SafetyUsableAnswer,
+} from "@/features/maintenance-requests/types";
 
 export default function MaintenanceRequestsPage() {
   const dispatch = useAppDispatch();
-  const {
-    activeDevClientId,
-    activeDevClientName,
-    locations,
-    requests,
-  } = useAppSelector((s) => s.maintenanceRequests);
+  const { activeDevClientId, activeDevClientName, locations, requests } =
+    useAppSelector((s) => s.maintenanceRequests);
 
   const [view, setView] = useState<MaintenanceRequestsView>("new");
+
+  // --- New Request form (Phase 2; no photos yet) ---
+  const [locationId, setLocationId] = useState("");
+  const [areaOrRoom, setAreaOrRoom] = useState("");
+  const [item, setItem] = useState("");
+  const [category, setCategory] = useState<MaintenanceCategory | "">("");
+  const [stillUsableSafely, setStillUsableSafely] = useState<
+    SafetyUsableAnswer | ""
+  >("");
+  const [problemDescription, setProblemDescription] = useState("");
+  const [hasAdditionalNotes, setHasAdditionalNotes] = useState<"yes" | "no">(
+    "no"
+  );
+  const [additionalNotes, setAdditionalNotes] = useState("");
+  const [formErrors, setFormErrors] = useState<string[]>([]);
+  /** Set after successful submit — queue message only (not acknowledged). */
+  const [submitConfirmation, setSubmitConfirmation] = useState<string | null>(
+    null
+  );
+
+  const activeLocations = useMemo(
+    () => locations.filter((l) => !l.archived),
+    [locations]
+  );
+
+  const clearNewRequestForm = () => {
+    setLocationId("");
+    setAreaOrRoom("");
+    setItem("");
+    setCategory("");
+    setStillUsableSafely("");
+    setProblemDescription("");
+    setHasAdditionalNotes("no");
+    setAdditionalNotes("");
+    setFormErrors([]);
+  };
+
+  const handleSubmitNewRequest = (e: FormEvent) => {
+    e.preventDefault();
+    setSubmitConfirmation(null);
+
+    const errors: string[] = [];
+    if (!locationId) errors.push("Location is required.");
+    if (!item.trim()) errors.push("Item is required.");
+    if (!category) errors.push("Category is required.");
+    if (!stillUsableSafely) {
+      errors.push(
+        "Please answer whether the area/item can still be used safely."
+      );
+    }
+    if (!problemDescription.trim()) {
+      errors.push("Describe the problem is required.");
+    }
+
+    if (errors.length > 0) {
+      setFormErrors(errors);
+      return;
+    }
+
+    setFormErrors([]);
+
+    dispatch(
+      submitMaintenanceRequest({
+        locationId,
+        areaOrRoom: areaOrRoom.trim(),
+        item: item.trim(),
+        category: category as MaintenanceCategory,
+        stillUsableSafely: stillUsableSafely as SafetyUsableAnswer,
+        problemDescription: problemDescription.trim(),
+        hasAdditionalNotes: hasAdditionalNotes === "yes",
+        additionalNotes:
+          hasAdditionalNotes === "yes" ? additionalNotes.trim() : undefined,
+      })
+    );
+
+    const nextCount = requests.length + 1;
+    setSubmitConfirmation(
+      `Your maintenance request was submitted to the queue (${nextCount} request(s) on file for testing). Maintenance has not acknowledged it yet. Check My Requests later for status.`
+    );
+    clearNewRequestForm();
+  };
 
   const isDev = import.meta.env.DEV;
 
@@ -151,9 +252,8 @@ export default function MaintenanceRequestsPage() {
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
             Catalog check: {activeLocationCount} locations ·{" "}
             {MAINTENANCE_CATEGORIES.length} categories ·{" "}
-            {MAINTENANCE_REQUEST_STATUSES.length} statuses ·{" "}
-            {requests.length} mock request(s) · seed names:{" "}
-            {INITIAL_MAINTENANCE_LOCATIONS.length}
+            {MAINTENANCE_REQUEST_STATUSES.length} statuses · {requests.length}{" "}
+            mock request(s) · seed names: {INITIAL_MAINTENANCE_LOCATIONS.length}
           </Typography>
           <Button
             type="button"
@@ -161,9 +261,7 @@ export default function MaintenanceRequestsPage() {
             variant="outlined"
             color="warning"
             onClick={() => {
-              // Full DEV wipe: empty tickets/seq + force default client (Alex)
               dispatch(resetDevMrState());
-              // Belt-and-suspenders if HMR left a stale reset reducer
               dispatch(setDevActiveClient("dev-client-alex"));
             }}
           >
@@ -186,20 +284,193 @@ export default function MaintenanceRequestsPage() {
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
           <Alert severity="info">{ONE_ITEM_PER_REQUEST_NOTICE}</Alert>
 
+          {submitConfirmation && (
+            <Alert
+              severity="success"
+              onClose={() => setSubmitConfirmation(null)}
+            >
+              {submitConfirmation}
+            </Alert>
+          )}
+
+          {formErrors.length > 0 && (
+            <Alert severity="error">
+              {formErrors.map((err) => (
+                <div key={err}>{err}</div>
+              ))}
+            </Alert>
+          )}
+
           <Paper variant="outlined" sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom>
               New Request
             </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Form fields (location, area/room, item, category, safety,
-              description, notes, photos) land in Phase 2+. This tab is a
-              placeholder only.
-            </Typography>
             {isDev && (
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                Submit will use DEV client: {activeDevClientName}
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Submitting as DEV client: {activeDevClientName}
               </Typography>
             )}
+
+            <Box
+              component="form"
+              id="mr-new-request-form"
+              sx={{ display: "flex", flexDirection: "column", gap: 2 }}
+              onSubmit={handleSubmitNewRequest}
+            >
+              {/* 1. Location */}
+              <TextField
+                select
+                required
+                label="Location"
+                value={locationId}
+                onChange={(e) => setLocationId(e.target.value)}
+                fullWidth
+              >
+                <MenuItem value="">
+                  <em>Select location</em>
+                </MenuItem>
+                {activeLocations.map((loc) => (
+                  <MenuItem key={loc.id} value={loc.id}>
+                    {loc.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+
+              {/* 2. Specific Area / Room (optional) */}
+              <TextField
+                label="Specific Area / Room (optional)"
+                value={areaOrRoom}
+                onChange={(e) => setAreaOrRoom(e.target.value)}
+                fullWidth
+                helperText="Add a room number or more specific area only if it helps locate the problem."
+              />
+
+              {/* 3. Item */}
+              <TextField
+                required
+                label="Item"
+                value={item}
+                onChange={(e) => setItem(e.target.value)}
+                fullWidth
+              />
+
+              {/* 4. Category */}
+              <TextField
+                select
+                required
+                label="Category"
+                value={category}
+                onChange={(e) =>
+                  setCategory(e.target.value as MaintenanceCategory | "")
+                }
+                fullWidth
+              >
+                <MenuItem value="">
+                  <em>Select category</em>
+                </MenuItem>
+                {MAINTENANCE_CATEGORIES.map((cat) => (
+                  <MenuItem key={cat} value={cat}>
+                    {cat}
+                  </MenuItem>
+                ))}
+              </TextField>
+
+              {/* 5. Safety */}
+              <FormControl required>
+                <FormLabel id="mr-safety-label">
+                  Can this area/item still be used safely?
+                </FormLabel>
+                <RadioGroup
+                  row
+                  aria-labelledby="mr-safety-label"
+                  value={stillUsableSafely}
+                  onChange={(e) =>
+                    setStillUsableSafely(e.target.value as SafetyUsableAnswer)
+                  }
+                >
+                  <FormControlLabel
+                    value="Yes"
+                    control={<Radio />}
+                    label="Yes"
+                  />
+                  <FormControlLabel value="No" control={<Radio />} label="No" />
+                  <FormControlLabel
+                    value="Not Sure"
+                    control={<Radio />}
+                    label="Not Sure"
+                  />
+                </RadioGroup>
+                {stillUsableSafely === "No" && (
+                  <Alert severity="warning" sx={{ mt: 1 }}>
+                    {SAFETY_UNSAFE_CLIENT_WARNING}
+                  </Alert>
+                )}
+              </FormControl>
+
+              {/* 6. Describe the problem */}
+              <TextField
+                required
+                label="Describe the problem"
+                value={problemDescription}
+                onChange={(e) => setProblemDescription(e.target.value)}
+                fullWidth
+                multiline
+                minRows={3}
+              />
+
+              {/* 7. Anything else */}
+              <FormControl>
+                <FormLabel id="mr-extra-label">
+                  Anything else Maintenance should know?
+                </FormLabel>
+                <RadioGroup
+                  row
+                  aria-labelledby="mr-extra-label"
+                  value={hasAdditionalNotes}
+                  onChange={(e) =>
+                    setHasAdditionalNotes(e.target.value as "yes" | "no")
+                  }
+                >
+                  <FormControlLabel
+                    value="yes"
+                    control={<Radio />}
+                    label="Yes"
+                  />
+                  <FormControlLabel value="no" control={<Radio />} label="No" />
+                </RadioGroup>
+              </FormControl>
+
+              {hasAdditionalNotes === "yes" && (
+                <TextField
+                  label="Additional notes (optional detail)"
+                  value={additionalNotes}
+                  onChange={(e) => setAdditionalNotes(e.target.value)}
+                  fullWidth
+                  multiline
+                  minRows={2}
+                />
+              )}
+
+              <FormHelperText>
+                Photos come in a later phase. One item per request.
+              </FormHelperText>
+
+              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                <Button type="submit" variant="contained">
+                  Submit request
+                </Button>
+                <Button
+                  type="button"
+                  variant="outlined"
+                  onClick={() => {
+                    clearNewRequestForm();
+                    setSubmitConfirmation(null);
+                  }}
+                >
+                  Clear form
+                </Button>
+              </Box>
+            </Box>
           </Paper>
         </Box>
       )}
