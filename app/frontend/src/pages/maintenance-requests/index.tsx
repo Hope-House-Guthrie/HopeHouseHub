@@ -2,9 +2,9 @@
  * ============================================================================
  * MAINTENANCE REQUESTS — living STATUS (authoritative for this feature)
  * Branch: feature/maintenance-requests (off develop)
- * Updated: 2026-08-22 — Phase 2 client submit form COMPLETE (optional area)
- * STOPPING POINT: Phase 2 done + committed (or pending push). Next = Phase 3
- *   photos only after user approves. Do not auto-start Phase 3.
+ * Updated: 2026-08-22 — Phase 2 + free-text normalize on blur/submit
+ * STOPPING POINT: Phase 2 complete (submit + optional area + text cleanup).
+ *   Next = Phase 3 photos only after user approves. Do not auto-start Phase 3.
  * ============================================================================
  * MODEL
  * - Client submits one item per request (MR-YYYY-#### mock FE; BE later).
@@ -21,7 +21,7 @@
  * - Redux slice + store register; route/nav Handyman
  * - Page shell New|My; one-item notice; DEV as-client + reset
  *
- * DONE — Phase 2 (code on disk; committing with optional Specific Area/Room)
+ * DONE — Phase 2
  * - SubmitMaintenanceRequestInput + mrNumber helper (MR-YYYY-####, Chicago year)
  * - slice submitMaintenanceRequest + DEV persist; timeline “submitted” event
  * - New Request form fields 1–7 (no photos)
@@ -29,10 +29,11 @@
  * - Validation; Safety=No warning; Anything else Yes → notes
  * - Success alert: in queue, not acknowledged; form clear; count bumps
  * - saveDevMrPersisted restored in devFixtures
+ * - Free-text cleanup (normalizeClientText): area, item, problem, notes
+ *   on blur + submit — trim, spaces, accidental ALL CAPS, light punctuation
  *
  * NEXT
- * - User smoke after commit if desired; then Phase 3 photos when approved
- * - Phase 3 later: up to 3 optional photos
+ * - Phase 3 photos when user approves (up to 3 optional)
  *
  * PARKED
  * - Photos (Ph3), My list/detail/timeline UI (Ph4), Add info + cancel (Ph5)
@@ -50,6 +51,7 @@
  * - features/maintenance-requests/types.ts
  * - features/maintenance-requests/config.ts
  * - features/maintenance-requests/mrNumber.ts
+ * - features/maintenance-requests/normalizeClientText.ts
  * - features/maintenance-requests/devFixtures.ts
  * - features/maintenance-requests/apiBoundaryNotes.ts
  * - store/slices/maintenanceRequests.ts
@@ -112,6 +114,7 @@ import type {
   MaintenanceRequestsView,
   SafetyUsableAnswer,
 } from "@/features/maintenance-requests/types";
+import { normalizeClientText } from "@/features/maintenance-requests/normalizeClientText";
 
 export default function MaintenanceRequestsPage() {
   const dispatch = useAppDispatch();
@@ -156,20 +159,50 @@ export default function MaintenanceRequestsPage() {
     setFormErrors([]);
   };
 
+  /** Blur/submit free-text cleanup (formatting only). */
+  const blurAreaOrRoom = () => {
+    setAreaOrRoom((v) => normalizeClientText(v, "phrase"));
+  };
+  const blurItem = () => {
+    setItem((v) => normalizeClientText(v, "phrase"));
+  };
+  const blurProblemDescription = () => {
+    setProblemDescription((v) => normalizeClientText(v, "sentence"));
+  };
+  const blurAdditionalNotes = () => {
+    setAdditionalNotes((v) => normalizeClientText(v, "sentence"));
+  };
+
   const handleSubmitNewRequest = (e: FormEvent) => {
     e.preventDefault();
     setSubmitConfirmation(null);
 
+    // Normalize free text before validate + dispatch (blur may have been skipped)
+    const cleanArea = normalizeClientText(areaOrRoom, "phrase");
+    const cleanItem = normalizeClientText(item, "phrase");
+    const cleanProblem = normalizeClientText(problemDescription, "sentence");
+    const cleanNotes =
+      hasAdditionalNotes === "yes"
+        ? normalizeClientText(additionalNotes, "sentence")
+        : "";
+
+    setAreaOrRoom(cleanArea);
+    setItem(cleanItem);
+    setProblemDescription(cleanProblem);
+    if (hasAdditionalNotes === "yes") {
+      setAdditionalNotes(cleanNotes);
+    }
+
     const errors: string[] = [];
     if (!locationId) errors.push("Location is required.");
-    if (!item.trim()) errors.push("Item is required.");
+    if (!cleanItem.trim()) errors.push("Item is required.");
     if (!category) errors.push("Category is required.");
     if (!stillUsableSafely) {
       errors.push(
         "Please answer whether the area/item can still be used safely."
       );
     }
-    if (!problemDescription.trim()) {
+    if (!cleanProblem.trim()) {
       errors.push("Describe the problem is required.");
     }
 
@@ -183,14 +216,14 @@ export default function MaintenanceRequestsPage() {
     dispatch(
       submitMaintenanceRequest({
         locationId,
-        areaOrRoom: areaOrRoom.trim(),
-        item: item.trim(),
+        areaOrRoom: cleanArea,
+        item: cleanItem,
         category: category as MaintenanceCategory,
         stillUsableSafely: stillUsableSafely as SafetyUsableAnswer,
-        problemDescription: problemDescription.trim(),
+        problemDescription: cleanProblem,
         hasAdditionalNotes: hasAdditionalNotes === "yes",
         additionalNotes:
-          hasAdditionalNotes === "yes" ? additionalNotes.trim() : undefined,
+          hasAdditionalNotes === "yes" ? cleanNotes || undefined : undefined,
       })
     );
 
@@ -341,6 +374,7 @@ export default function MaintenanceRequestsPage() {
                 label="Specific Area / Room (optional)"
                 value={areaOrRoom}
                 onChange={(e) => setAreaOrRoom(e.target.value)}
+                onBlur={blurAreaOrRoom}
                 fullWidth
                 helperText="Add a room number or more specific area only if it helps locate the problem."
               />
@@ -351,6 +385,7 @@ export default function MaintenanceRequestsPage() {
                 label="Item"
                 value={item}
                 onChange={(e) => setItem(e.target.value)}
+                onBlur={blurItem}
                 fullWidth
               />
 
@@ -413,6 +448,7 @@ export default function MaintenanceRequestsPage() {
                 label="Describe the problem"
                 value={problemDescription}
                 onChange={(e) => setProblemDescription(e.target.value)}
+                onBlur={blurProblemDescription}
                 fullWidth
                 multiline
                 minRows={3}
@@ -445,6 +481,7 @@ export default function MaintenanceRequestsPage() {
                   label="Additional notes (optional detail)"
                   value={additionalNotes}
                   onChange={(e) => setAdditionalNotes(e.target.value)}
+                  onBlur={blurAdditionalNotes}
                   fullWidth
                   multiline
                   minRows={2}

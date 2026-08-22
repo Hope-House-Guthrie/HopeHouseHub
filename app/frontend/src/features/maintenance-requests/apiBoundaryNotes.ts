@@ -8,6 +8,7 @@
  *   locationId, areaOrRoom (optional string; empty OK), item, category,
  *   stillUsableSafely, problemDescription, hasAdditionalNotes, additionalNotes?
  * - areaOrRoom / Specific Area/Room: nullable/optional on backend; never required
+ * - FE may normalize free-text casing/spacing before POST (optional server mirror)
  * - Server should assign: id, requestNumber (MR-YYYY-####), submittedAt,
  *   submitter from auth, status=Submitted, empty photos[], timeline
  *   event kind=submitted
