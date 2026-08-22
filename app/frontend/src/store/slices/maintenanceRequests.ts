@@ -18,6 +18,7 @@ import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import {
   buildInitialLocationCatalog,
   DEV_MOCK_CLIENTS,
+  MAX_MOCK_CLIENTS,
 } from "@/features/maintenance-requests/config";
 import {
   clearDevMrPersisted,
@@ -156,7 +157,7 @@ export const maintenanceRequestsSlice = createSlice({
      */
     submitMaintenanceRequest: (
       state,
-      action: PayloadAction<SubmitMaintenanceRequestInput>
+      action: PayloadAction<SubmitMaintenanceRequestInput>,
     ) => {
       const input = action.payload;
       const location = state.locations.find((l) => l.id === input.locationId);
@@ -205,7 +206,7 @@ export const maintenanceRequestsSlice = createSlice({
         problemDescription: input.problemDescription.trim(),
         hasAdditionalNotes: Boolean(input.hasAdditionalNotes && notes),
         additionalNotes: notes,
-        photos: [],
+        photos: (input.photos ?? []).slice(0, MAX_MAINTENANCE_PHOTOS),
         timeline: [timelineEvent],
       };
 

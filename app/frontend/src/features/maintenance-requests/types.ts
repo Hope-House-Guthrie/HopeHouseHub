@@ -6,8 +6,6 @@
  * BACKEND TODO: server owns ids, MR numbers, auth identity, photos, status.
  */
 
-import type { BlockLike } from "typescript";
-
 /** Client-visible ticket status (staff/Mike drives transitions later). */
 export type MaintenanceRequestStatus =
   | "Submitted"
@@ -132,8 +130,9 @@ export interface DevMockClient {
 export type MaintenanceRequestsView = "new" | "mine";
 
 /**
- * Client form payload for create (Phase 2).
- * Slice fills id, requestNumber, status, submitter, submittedAt, photos, timeline.
+ * Client form payload for create (Phase 2–3).
+ * Slice fills id, requestNumber, status, submitter, submittedAt, timeline.
+ * photos optional on input; slice copies onto the ticket (max 3).
  */
 export interface SubmitMaintenanceRequestInput {
   locationId: string;
@@ -146,4 +145,9 @@ export interface SubmitMaintenanceRequestInput {
   hasAdditionalNotes: boolean;
   /** Required trim non-empty when hasAdditionalNotes is true */
   additionalNotes?: string;
+  /**
+   * Optional photos (max MAX_MAINTENANCE_PHOTOS). Mock data URLs until BE upload.
+   * Empty / omitted = no photos.
+   */
+  photos?: MaintenanceRequestPhoto[];
 }
