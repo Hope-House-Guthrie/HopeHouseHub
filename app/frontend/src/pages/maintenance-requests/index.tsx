@@ -1,90 +1,90 @@
 /**
- * ============================================================================
- * MAINTENANCE REQUESTS — living STATUS (authoritative for this feature)
- * Branch: feature/maintenance-requests (off develop)
- * Updated: 2026-08-22 — Phase 3 photos COMPLETE (await commit if not yet)
- * STOPPING POINT: Phase 3 UI + slice/types done. Manual test done or in progress.
- *   Commit Phase 3 when approved. Do not start Phase 4 (My list) until Ph3 approved.
- * ============================================================================
- * MODEL
- * - Client submits one item per request (MR-YYYY-#### mock FE; BE later).
- * - Client-visible statuses: Submitted → … → Completed / Cancellation
- *   Requested / Closed - No Work Needed.
- * - Original request immutable; Add Information / cancel = timeline later.
- * - Locations seeded; staff catalog admin later. Specific Area/Room optional
- *   free text (helps locate; blank OK). Item free text later suggestions.
- * - Dup/recurring advisory only (parked Phase 6). No Mike UI in client v1.
- * - Confirm copy: includes real MR# + in queue — never claim acknowledged.
- * - Photos: optional max 3; FE mock data URLs; BE blob storage later.
- *
- * DONE — Phase 1 (commit 08d1ff3)
- * - features/maintenance-requests: types, config, devFixtures, api notes
- * - Redux slice + store register; route/nav Handyman
- * - Page shell New|My; one-item notice; DEV as-client + reset
- *
- * DONE — Phase 2 COMPLETE (e30fb00 form · bf48e01 normalize · + confirm MR#)
- * - SubmitMaintenanceRequestInput + mrNumber helper (MR-YYYY-####, Chicago year)
- * - slice submitMaintenanceRequest + DEV persist; timeline “submitted” event
- * - New Request form fields 1–7
- * - Specific Area / Room optional (not required; blank valid)
- * - Validation; Safety=No warning; Anything else Yes → notes
- * - Success alert shows real MR# + queue wording (not acknowledged); form clear
- * - DEV panel keeps mock request count (not in client success copy)
- * - saveDevMrPersisted restored in devFixtures
- * - Free-text cleanup (normalizeClientText): area, item, problem, notes
- *   on blur + submit — trim, spaces, accidental ALL CAPS, light punctuation
- *
- * DONE — Phase 3 photos
- * - Optional photos max MAX_MAINTENANCE_PHOTOS (3); file picker + previews + remove
- * - SubmitMaintenanceRequestInput.photos; slice caps + stores on ticket
- * - Clear photos on Clear/success; 0 photos still valid
- * - Mock data URLs only — BACKEND: blob storage (see apiBoundaryNotes)
- *
- * NEXT — Phase 4 (not started)
- * - My Requests list + detail + timeline read (photo thumbs OK in detail)
- *
- * PARKED
- * - My list/detail/timeline UI (Ph4), Add info + cancel (Ph5)
- * - Dup/recurring (Ph6), full DEV seed + Mike status sim (Ph7)
- * - Staff-on-behalf; location admin UI; backend/API; Open/Closed filters
- *
- * DEV NOTES
- * - import.meta.env.DEV only for as-client UI + localStorage
- * - Key: hhg-dev-maintenance-requests-v1 (DEV_MR_STORAGE_KEY)
- * - devFixtures.ts load/save/clear; Reset → Alex + empty requests
- * - Large data-URL photos may bloat DEV localStorage — mock only
- * - Not security; removable for production
- *
- * PATHS
- * - pages/maintenance-requests/index.tsx     ← UI + this STATUS
- * - features/maintenance-requests/types.ts
- * - features/maintenance-requests/config.ts
- * - features/maintenance-requests/mrNumber.ts
- * - features/maintenance-requests/normalizeClientText.ts
- * - features/maintenance-requests/devFixtures.ts
- * - features/maintenance-requests/apiBoundaryNotes.ts
- * - store/slices/maintenanceRequests.ts
- * - routes.tsx → /maintenance-requests
- *
- * HARD LOCKS
- * - Client-side only; no Mike management UI this phase
- * - Single route /maintenance-requests
- * - America/Chicago for MR year + display when dates shown
- * - FE hide / DEV chips ≠ security
- * - Ignore removed old MaintenanceTicket model
- * - Confirmation must NOT say Maintenance acknowledged
- * - Max 3 optional photos; never required for submit
- *
- * ============================================================================
- * Backend Handoff / Notes for TJ
- * ============================================================================
- * See features/maintenance-requests/apiBoundaryNotes.ts
- * Current: in-memory + DEV localStorage mock; no API.
- * Submit payload shape: SubmitMaintenanceRequestInput (+ optional photos[]) +
- *   server fills id, requestNumber, submittedAt, submitter, status=Submitted,
- *   timeline; photos → blob storage (not long-term base64 in JSON).
- * ============================================================================
- */
+* ============================================================================
+* MAINTENANCE REQUESTS — living STATUS (authoritative for this feature)
+* Branch: feature/maintenance-requests (off develop)
+* Updated: 2026-08-22 — Phase 4 My list/detail/timeline COMPLETE (await commit)
+* STOPPING POINT: Phase 4 UI done. Manual test in progress or done.
+*   Commit Phase 4 when approved. Do not start Phase 5 (Add info / cancel)
+*   until Phase 4 approved.
+* ============================================================================
+* MODEL
+* - Client submits one item per request (MR-YYYY-#### mock FE; BE later).
+* - Client-visible statuses: Submitted → … → Completed / Cancellation
+*   Requested / Closed - No Work Needed.
+* - Original request immutable; Add Information / cancel = timeline later (Ph5).
+* - Locations seeded; staff catalog admin later. Specific Area/Room optional
+*   free text (helps locate; blank OK). Item free text later suggestions.
+* - Dup/recurring advisory only (parked Phase 6). No Mike UI in client v1.
+* - Confirm copy: includes real MR# + in queue — never claim acknowledged.
+* - Photos: optional max 3; FE mock data URLs; BE blob storage later.
+* - My Requests: filter by DEV client id now; auth user later.
+*
+* DONE — Phase 1 (commit 08d1ff3)
+* - features/maintenance-requests: types, config, devFixtures, api notes
+* - Redux slice + store register; route/nav Handyman
+* - Page shell New|My; one-item notice; DEV as-client + reset
+*
+* DONE — Phase 2 COMPLETE (e30fb00 form · bf48e01 normalize · + confirm MR#)
+* - Submit form fields 1–7; MR#; queue confirm; normalize free-text
+*
+* DONE — Phase 3 photos (e7a22bf)
+* - Optional photos max 3; picker + previews; mock data URLs
+*
+* DONE — Phase 4 My Requests (code on disk; commit when approved)
+* - Filter tickets to active DEV client (later auth)
+* - List: MR#, status Chip, Chicago submitted, location/area/item, photo count
+* - Click row → detail (original fields read-only) + photo thumbs
+* - Timeline read (oldest first); submitted event from create
+* - Empty state; Close detail / toggle select
+*
+* NEXT — Phase 5 (not started)
+* - Client Add Information + Request Cancellation (timeline events;
+*   cancel ≠ auto-close)
+*
+* PARKED
+* - Dup/recurring (Ph6), full DEV seed + Mike status sim (Ph7)
+* - Staff-on-behalf; location admin UI; backend/API; Open/Closed filters
+* - Explicit Take photo vs Upload buttons (picker only today)
+*
+* DEV NOTES
+* - import.meta.env.DEV only for as-client UI + localStorage
+* - Key: hhg-dev-maintenance-requests-v1 (DEV_MR_STORAGE_KEY)
+* - devFixtures.ts load/save/clear; Reset → Alex + empty requests
+* - Large data-URL photos may bloat DEV localStorage — mock only
+* - Not security; removable for production
+*
+* PATHS
+* - pages/maintenance-requests/index.tsx     ← UI + this STATUS
+* - features/maintenance-requests/types.ts
+* - features/maintenance-requests/config.ts
+* - features/maintenance-requests/mrNumber.ts
+* - features/maintenance-requests/normalizeClientText.ts
+* - features/maintenance-requests/devFixtures.ts
+* - features/maintenance-requests/apiBoundaryNotes.ts
+* - store/slices/maintenanceRequests.ts
+* - routes.tsx → /maintenance-requests
+*
+* HARD LOCKS
+* - Client-side only; no Mike management UI this phase
+* - Single route /maintenance-requests
+* - America/Chicago for MR year + display when dates shown
+* - FE hide / DEV chips ≠ security
+* - Ignore removed old MaintenanceTicket model
+* - Confirmation must NOT say Maintenance acknowledged
+* - Max 3 optional photos; never required for submit
+* - Original body immutable; Ph4 is read-only list/detail/timeline
+*
+* ============================================================================
+* Backend Handoff / Notes for TJ
+* ============================================================================
+* See features/maintenance-requests/apiBoundaryNotes.ts
+* Current: in-memory + DEV localStorage mock; no API.
+* Submit payload shape: SubmitMaintenanceRequestInput (+ optional photos[]) +
+*   server fills id, requestNumber, submittedAt, submitter, status=Submitted,
+*   timeline; photos → blob storage (not long-term base64 in JSON).
+* List/detail: GET own tickets only; timeline append-only events.
+* ============================================================================
+*/
 
 
 import { useMemo, useState, type FormEvent } from "react";
@@ -158,6 +158,29 @@ export default function MaintenanceRequestsPage() {
   const [submitConfirmation, setSubmitConfirmation] = useState<string | null>(
     null
   );
+
+  // --- Phase 4: MyRequests (list only this step) ---
+  /** Which ticket is open in detail - wired in Task 2; keep null for now. */
+  const [selectedRequestId, setSelectedRequestId] = useState<string | null>(
+    null,
+  );
+
+  /** Tickets for the active DEV client only (later: auth user id). */
+  const myRequests = useMemo(() => {
+    return requests
+      .filter((r) => r.submittedByClientId === activeDevClientId)
+      .slice()
+      .sort(
+        (a, b) =>
+          new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime(),
+      );
+  }, [requests, activeDevClientId]);
+
+  /** Open detail ticket (must be in myRequests - not other clients). */
+  const selectedRequest = useMemo(() => {
+    if (!selectedRequestId) return null;
+    return myRequests.find((r) => r.id === selectedRequestId) ?? null;
+  }, [myRequests, selectedRequestId]);
 
   const activeLocations = useMemo(
     () => locations.filter((l) => !l.archived),
@@ -651,19 +674,244 @@ export default function MaintenanceRequestsPage() {
       )}
 
       {view === "mine" && (
-        <Paper variant="outlined" sx={{ p: 2 }}>
-          <Typography variant="h6" gutterBottom>
-            My Requests
-          </Typography>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <Typography variant="h6">My Requests</Typography>
           <Typography variant="body2" color="text.secondary">
-            List, detail, status, and timeline come in a later phase. You will
-            only see your own requests
-            {isDev ? ` (DEV filter: ${activeDevClientName})` : ""}.
+            Only your own requests
+            {isDev
+              ? " (DEV filter: " + activeDevClientName + ")"
+              : ""}
+            . Closed stay in history. Click a row for detail and timeline.
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-            Mock tickets in store: {requests.length}
-          </Typography>
-        </Paper>
+
+          {myRequests.length === 0 ? (
+            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Typography variant="body2" color="text.secondary">
+                No maintenance requests yet. Submit one on the New Request tab.
+              </Typography>
+            </Paper>
+          ) : (
+            myRequests.map((req) => (
+              <Paper
+                key={req.id}
+                variant="outlined"
+                sx={{
+                  p: 2,
+                  cursor: "pointer",
+                  borderColor:
+                    selectedRequestId === req.id ? "primary.main" : undefined,
+                  borderWidth: selectedRequestId === req.id ? 2 : 1,
+                }}
+                onClick={() =>
+                  setSelectedRequestId((prev) =>
+                    prev === req.id ? null : req.id,
+                  )
+                }
+              >
+                <Box
+                  sx={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: 1,
+                    alignItems: "center",
+                    mb: 1,
+                  }}
+                >
+                  <Typography variant="subtitle1" component="span">
+                    {req.requestNumber}
+                  </Typography>
+                  <Chip size="small" label={req.status} />
+                </Box>
+                <Typography variant="body2">
+                  {req.locationName}
+                  {req.areaOrRoom.trim()
+                    ? " · " + req.areaOrRoom
+                    : ""}{" "}
+                  · {req.item}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {req.category} ·{" "}
+                  {new Date(req.submittedAt).toLocaleString("en-US", {
+                    timeZone: "America/Chicago",
+                  })}
+                </Typography>
+                {req.photos.length > 0 && (
+                  <Typography variant="caption" color="text.secondary">
+                    {req.photos.length} photo
+                    {req.photos.length === 1 ? "" : "s"}
+                  </Typography>
+                )}
+              </Paper>
+            ))
+          )}
+
+          {selectedRequest && (
+            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Box
+                sx={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 1,
+                  alignItems: "center",
+                  mb: 2,
+                }}
+              >
+                <Typography variant="h6" component="span">
+                  {selectedRequest.requestNumber}
+                </Typography>
+                <Chip size="small" label={selectedRequest.status} />
+                <Button
+                  type="button"
+                  size="small"
+                  variant="outlined"
+                  onClick={() => setSelectedRequestId(null)}
+                >
+                  Close detail
+                </Button>
+              </Box>
+
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                Submitted{" "}
+                {new Date(selectedRequest.submittedAt).toLocaleString("en-US", {
+                  timeZone: "America/Chicago",
+                })}{" "}
+                by {selectedRequest.submittedByDisplayName}
+              </Typography>
+
+              <Typography variant="body2" sx={{ mb: 0.5 }}>
+                <strong>Location:</strong> {selectedRequest.locationName}
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 0.5 }}>
+                <strong>Specific Area / Room:</strong>{" "}
+                {selectedRequest.areaOrRoom.trim()
+                  ? selectedRequest.areaOrRoom
+                  : "(not specified)"}
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 0.5 }}>
+                <strong>Item:</strong> {selectedRequest.item}
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 0.5 }}>
+                <strong>Category:</strong> {selectedRequest.category}
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 0.5 }}>
+                <strong>Still usable safely?:</strong>{" "}
+                {selectedRequest.stillUsableSafely}
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 0.5 }}>
+                <strong>Problem:</strong>
+              </Typography>
+              <Typography
+                variant="body2"
+                sx={{ mb: 1, whiteSpace: "pre-wrap" }}
+              >
+                {selectedRequest.problemDescription}
+              </Typography>
+
+              {selectedRequest.hasAdditionalNotes &&
+                selectedRequest.additionalNotes && (
+                  <>
+                    <Typography variant="body2" sx={{ mb: 0.5 }}>
+                      <strong>Anything else:</strong>
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      sx={{ mb: 1, whiteSpace: "pre-wrap" }}
+                    >
+                      {selectedRequest.additionalNotes}
+                    </Typography>
+                  </>
+                )}
+
+              {selectedRequest.photos.length > 0 && (
+                <Box sx={{ mb: 1 }}>
+                  <Typography variant="body2" sx={{ mb: 1 }}>
+                    <strong>Photos</strong> ({selectedRequest.photos.length})
+                  </Typography>
+                  <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+                    {selectedRequest.photos.map((p) => (
+                      <Box
+                        key={p.id}
+                        component="img"
+                        src={p.dataUrl}
+                        alt={p.fileName}
+                        sx={{
+                          width: 120,
+                          height: 120,
+                          objectFit: "cover",
+                          borderRadius: 1,
+                          border: "1px solid",
+                          borderColor: "divider",
+                        }}
+                      />
+                    ))}
+                  </Box>
+                </Box>
+              )}
+
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ display: "block", mb: 2 }}
+              >
+                Original request is read-only. Updates will show on the timeline
+                later (Add Information / status).
+              </Typography>
+
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                Timeline
+              </Typography>
+              {selectedRequest.timeline.length === 0 ? (
+                <Typography variant="body2" color="text.secondary">
+                  No timeline events yet.
+                </Typography>
+              ) : (
+                <Box
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 1.5,
+                    borderLeft: "2px solid",
+                    borderColor: "divider",
+                    pl: 2,
+                  }}
+                >
+                  {selectedRequest.timeline
+                    .slice()
+                    .sort(
+                      (a, b) =>
+                        new Date(a.at).getTime() - new Date(b.at).getTime(),
+                    )
+                    .map((ev) => (
+                      <Box key={ev.id}>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                          {ev.summary}
+                        </Typography>
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          sx={{ display: "block" }}
+                        >
+                          {new Date(ev.at).toLocaleString("en-US", {
+                            timeZone: "America/Chicago",
+                          })}
+                          {ev.actorLabel ? " · " + ev.actorLabel : ""}
+                          {ev.status ? " · " + ev.status : ""}
+                        </Typography>
+                        {ev.body ? (
+                          <Typography
+                            variant="body2"
+                            sx={{ mt: 0.5, whiteSpace: "pre-wrap" }}
+                          >
+                            {ev.body}
+                          </Typography>
+                        ) : null}
+                      </Box>
+                    ))}
+                </Box>
+              )}
+            </Paper>
+          )}
+        </Box>
       )}
     </Box>
   );
