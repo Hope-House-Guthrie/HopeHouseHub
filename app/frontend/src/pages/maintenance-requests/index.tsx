@@ -2,9 +2,9 @@
  * ============================================================================
  * MAINTENANCE REQUESTS — living STATUS (authoritative for this feature)
  * Branch: feature/maintenance-requests (off develop)
- * Updated: 2026-08-22 — Phase 2 COMPLETE (approved)
- * STOPPING POINT: Phase 2 done and committed. Do not start Phase 3 until
- *   user explicitly approves photos work.
+ * Updated: 2026-08-22 — Phase 3 photos COMPLETE (await commit if not yet)
+ * STOPPING POINT: Phase 3 UI + slice/types done. Manual test done or in progress.
+ *   Commit Phase 3 when approved. Do not start Phase 4 (My list) until Ph3 approved.
  * ============================================================================
  * MODEL
  * - Client submits one item per request (MR-YYYY-#### mock FE; BE later).
@@ -15,6 +15,7 @@
  *   free text (helps locate; blank OK). Item free text later suggestions.
  * - Dup/recurring advisory only (parked Phase 6). No Mike UI in client v1.
  * - Confirm copy: includes real MR# + in queue — never claim acknowledged.
+ * - Photos: optional max 3; FE mock data URLs; BE blob storage later.
  *
  * DONE — Phase 1 (commit 08d1ff3)
  * - features/maintenance-requests: types, config, devFixtures, api notes
@@ -24,7 +25,7 @@
  * DONE — Phase 2 COMPLETE (e30fb00 form · bf48e01 normalize · + confirm MR#)
  * - SubmitMaintenanceRequestInput + mrNumber helper (MR-YYYY-####, Chicago year)
  * - slice submitMaintenanceRequest + DEV persist; timeline “submitted” event
- * - New Request form fields 1–7 (no photos)
+ * - New Request form fields 1–7
  * - Specific Area / Room optional (not required; blank valid)
  * - Validation; Safety=No warning; Anything else Yes → notes
  * - Success alert shows real MR# + queue wording (not acknowledged); form clear
@@ -33,11 +34,17 @@
  * - Free-text cleanup (normalizeClientText): area, item, problem, notes
  *   on blur + submit — trim, spaces, accidental ALL CAPS, light punctuation
  *
- * NEXT — Phase 3 (not started)
- * - Up to 3 optional photos on submit (camera/file mock) — only when approved
+ * DONE — Phase 3 photos
+ * - Optional photos max MAX_MAINTENANCE_PHOTOS (3); file picker + previews + remove
+ * - SubmitMaintenanceRequestInput.photos; slice caps + stores on ticket
+ * - Clear photos on Clear/success; 0 photos still valid
+ * - Mock data URLs only — BACKEND: blob storage (see apiBoundaryNotes)
+ *
+ * NEXT — Phase 4 (not started)
+ * - My Requests list + detail + timeline read (photo thumbs OK in detail)
  *
  * PARKED
- * - Photos (Ph3), My list/detail/timeline UI (Ph4), Add info + cancel (Ph5)
+ * - My list/detail/timeline UI (Ph4), Add info + cancel (Ph5)
  * - Dup/recurring (Ph6), full DEV seed + Mike status sim (Ph7)
  * - Staff-on-behalf; location admin UI; backend/API; Open/Closed filters
  *
@@ -45,6 +52,7 @@
  * - import.meta.env.DEV only for as-client UI + localStorage
  * - Key: hhg-dev-maintenance-requests-v1 (DEV_MR_STORAGE_KEY)
  * - devFixtures.ts load/save/clear; Reset → Alex + empty requests
+ * - Large data-URL photos may bloat DEV localStorage — mock only
  * - Not security; removable for production
  *
  * PATHS
@@ -65,16 +73,19 @@
  * - FE hide / DEV chips ≠ security
  * - Ignore removed old MaintenanceTicket model
  * - Confirmation must NOT say Maintenance acknowledged
+ * - Max 3 optional photos; never required for submit
  *
  * ============================================================================
  * Backend Handoff / Notes for TJ
  * ============================================================================
  * See features/maintenance-requests/apiBoundaryNotes.ts
  * Current: in-memory + DEV localStorage mock; no API.
- * Submit payload shape: SubmitMaintenanceRequestInput + server fills
- *   id, requestNumber, submittedAt, submitter, status=Submitted, timeline.
+ * Submit payload shape: SubmitMaintenanceRequestInput (+ optional photos[]) +
+ *   server fills id, requestNumber, submittedAt, submitter, status=Submitted,
+ *   timeline; photos → blob storage (not long-term base64 in JSON).
  * ============================================================================
  */
+
 
 import { useMemo, useState, type FormEvent } from "react";
 import {
@@ -107,6 +118,7 @@ import {
   DEV_MR_STORAGE_KEY,
   ONE_ITEM_PER_REQUEST_NOTICE,
   MAINTENANCE_CATEGORIES,
+  MAX_MAINTENANCE_PHOTOS,
   INITIAL_MAINTENANCE_LOCATIONS,
   MAINTENANCE_REQUEST_STATUSES,
   SAFETY_UNSAFE_CLIENT_WARNING,
@@ -114,6 +126,7 @@ import {
 import type {
   MaintenanceCategory,
   MaintenanceRequestsView,
+  MaintenanceRequestPhoto,
   SafetyUsableAnswer,
 } from "@/features/maintenance-requests/types";
 import { normalizeClientText } from "@/features/maintenance-requests/normalizeClientText";
@@ -125,7 +138,7 @@ export default function MaintenanceRequestsPage() {
 
   const [view, setView] = useState<MaintenanceRequestsView>("new");
 
-  // --- New Request form (Phase 2; no photos yet) ---
+  // --- Phase 2 - 3 ---
   const [locationId, setLocationId] = useState("");
   const [areaOrRoom, setAreaOrRoom] = useState("");
   const [item, setItem] = useState("");
@@ -138,6 +151,8 @@ export default function MaintenanceRequestsPage() {
     "no"
   );
   const [additionalNotes, setAdditionalNotes] = useState("");
+  /** Optional photos for this submit (max MAX_MAINTENANCE_PHOTOS). */
+  const [photos, setPhotos] = useState<MaintenanceRequestPhoto[]>([]);
   const [formErrors, setFormErrors] = useState<string[]>([]);
   /** Set after successful submit — queue message only (not acknowledged). */
   const [submitConfirmation, setSubmitConfirmation] = useState<string | null>(
@@ -158,6 +173,7 @@ export default function MaintenanceRequestsPage() {
     setProblemDescription("");
     setHasAdditionalNotes("no");
     setAdditionalNotes("");
+    setPhotos([]);
     setFormErrors([]);
   };
 
@@ -173,6 +189,50 @@ export default function MaintenanceRequestsPage() {
   };
   const blurAdditionalNotes = () => {
     setAdditionalNotes((v) => normalizeClientText(v, "sentence"));
+  };
+
+  /**
+   * Phase 3: pick image files → mock MaintenanceRequestPhoto (data URL).
+   * Caps at MAX_MAINTENANCE_PHOTOS. Non-images ignored.
+   * BACKEND later: real upload, not base64 in Redux/localStorage.
+   */
+  const handlePhotoFilesSelected = (fileList: FileList | null) => {
+    if (!fileList || fileList.length === 0) return;
+
+    const room = MAX_MAINTENANCE_PHOTOS - photos.length;
+    if (room <= 0) return;
+
+    const picked = Array.from(fileList)
+      .filter((f) => f.type.startsWith("image/"))
+      .slice(0, room);
+
+    if (picked.length === 0) return;
+
+    picked.forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = typeof reader.result === "string" ? reader.result : "";
+        if (!dataUrl) return;
+        const photo: MaintenanceRequestPhoto = {
+          id:
+            typeof crypto !== "undefined" && crypto.randomUUID
+              ? crypto.randomUUID()
+              : `photo-${Date.now()}-${file.name}`,
+          dataUrl,
+          fileName: file.name || "photo",
+          addedAt: new Date().toISOString(),
+        };
+        setPhotos((prev) => {
+          if (prev.length >= MAX_MAINTENANCE_PHOTOS) return prev;
+          return [...prev, photo].slice(0, MAX_MAINTENANCE_PHOTOS);
+        });
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removePhotoAt = (id: string) => {
+    setPhotos((prev) => prev.filter((p) => p.id !== id));
   };
 
   const handleSubmitNewRequest = (e: FormEvent) => {
@@ -226,6 +286,7 @@ export default function MaintenanceRequestsPage() {
         hasAdditionalNotes: hasAdditionalNotes === "yes",
         additionalNotes:
           hasAdditionalNotes === "yes" ? cleanNotes || undefined : undefined,
+        photos,
       })
     );
 
@@ -493,9 +554,81 @@ export default function MaintenanceRequestsPage() {
                 />
               )}
 
-              <FormHelperText>
-                Photos come in a later phase. One item per request.
-              </FormHelperText>
+              {/* 8. Optional photos (max 3) */}
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                <FormLabel>
+                  Photos (optional) — {photos.length} of {MAX_MAINTENANCE_PHOTOS}
+                </FormLabel>
+                <Typography variant="body2" color="text.secondary">
+                  Up to {MAX_MAINTENANCE_PHOTOS} pictures of the problem. Not
+                  required.
+                </Typography>
+                <Button
+                  variant="outlined"
+                  component="label"
+                  disabled={photos.length >= MAX_MAINTENANCE_PHOTOS}
+                >
+                  {photos.length >= MAX_MAINTENANCE_PHOTOS
+                    ? "Photo limit reached"
+                    : "Add photo"}
+                  <input
+                    hidden
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={(e) => {
+                      handlePhotoFilesSelected(e.target.files);
+                      e.target.value = "";
+                    }}
+                  />
+                </Button>
+                {photos.length > 0 && (
+                  <Box
+                    sx={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: 1,
+                    }}
+                  >
+                    {photos.map((p) => (
+                      <Box
+                        key={p.id}
+                        sx={{
+                          width: 96,
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 0.5,
+                        }}
+                      >
+                        <Box
+                          component="img"
+                          src={p.dataUrl}
+                          alt={p.fileName}
+                          sx={{
+                            width: 96,
+                            height: 96,
+                            objectFit: "cover",
+                            borderRadius: 1,
+                            border: "1px solid",
+                            borderColor: "divider",
+                          }}
+                        />
+                        <Button
+                          type="button"
+                          size="small"
+                          onClick={() => removePhotoAt(p.id)}
+                        >
+                          Remove
+                        </Button>
+                      </Box>
+                    ))}
+                  </Box>
+                )}
+                <FormHelperText>
+                  One item per request. Photos stay on this device mock until
+                  backend upload exists.
+                </FormHelperText>
+              </Box>
 
               <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
                 <Button type="submit" variant="contained">

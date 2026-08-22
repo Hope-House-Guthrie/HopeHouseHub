@@ -18,7 +18,7 @@ import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import {
   buildInitialLocationCatalog,
   DEV_MOCK_CLIENTS,
-  MAX_MOCK_CLIENTS,
+  MAX_MAINTENANCE_PHOTOS,
 } from "@/features/maintenance-requests/config";
 import {
   clearDevMrPersisted,
