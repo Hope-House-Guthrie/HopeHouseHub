@@ -20,7 +20,7 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const { isAuthenticated, user, loading, error } = useSelector(
+  const { isAuthenticated, user, loading, error, isExpired } = useSelector(
     (state: RootState) => state.auth
   );
 
@@ -70,6 +70,12 @@ export default function LoginPage() {
           <Typography variant="body2" color="text.secondary" align="center" sx={{ mb: 3 }}>
             Sign in to access your account
           </Typography>
+
+          {isExpired && (
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              Your session has expired. Please sign in again.
+            </Alert>
+          )}
 
           {error && (
             <Alert severity="error" sx={{ mb: 2 }}>

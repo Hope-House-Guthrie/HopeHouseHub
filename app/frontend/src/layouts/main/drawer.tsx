@@ -1,9 +1,21 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Link, useLocation } from "react-router";
-import { Box, Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText, useTheme } from "@mui/material";
+import { useSelector } from "react-redux";
+import {
+    Box,
+    Drawer,
+    List,
+    ListItem,
+    ListItemButton,
+    ListItemIcon,
+    ListItemText,
+    ListSubheader,
+    useTheme,
+} from "@mui/material";
 
 import Logo from "@assets/hhg-logo.svg";
-import { routesConfig, type AppRouteObject } from "@/routes";
+import { routesConfig, getGroupedNavigationItems } from "@/routes";
+import type { RootState } from "@/store";
 
 export interface MainDrawerProps {
     drawerWidth: number;
@@ -14,12 +26,12 @@ export interface MainDrawerProps {
 export const MainDrawer: React.FC<MainDrawerProps> = (props) => {
     const theme = useTheme();
     const location = useLocation();
+    const { user } = useSelector((state: RootState) => state.auth);
 
-    // Dynamically retrieve navigation routes from the routesConfig structure
-    const mainLayoutRoute = routesConfig.find((r) => r.path === "/");
-    const navigationItems: AppRouteObject[] = mainLayoutRoute?.children 
-        ? mainLayoutRoute.children.filter((child) => child.handle?.showInNavigation)
-        : [];
+    const navGroups = useMemo(
+        () => getGroupedNavigationItems(routesConfig, user?.roles ?? []),
+        [user?.roles]
+    );
 
     const isSelected = (path: string) => {
         if (path === "/") {
@@ -42,47 +54,67 @@ export const MainDrawer: React.FC<MainDrawerProps> = (props) => {
                     objectFit: "contain",
                 }}
             />
-        
-            <List>
-                {navigationItems.map((item) => {
-                    // Reconstruct path relative to the root layout
-                    const absolutePath = item.index ? "/" : `/${item.path}`;
-                    const active = isSelected(absolutePath);
 
-                    return (
-                        <ListItem key={absolutePath} disablePadding>
-                            <ListItemButton 
-                                component={Link}
-                                to={absolutePath}
-                                selected={active}
-                                onClick={() => props.setDrawerOpen(false)}
+            <List disablePadding>
+                {navGroups.map((group, groupIdx) => (
+                    <Box key={group.groupName || `ungrouped-${groupIdx}`}>
+                        {group.groupName && (
+                            <ListSubheader
+                                component="div"
                                 sx={{
-                                    "&.Mui-selected": {
-                                        borderRight: `4px solid ${theme.palette.primary.main}`,
-                                        backgroundColor: theme.palette.action.selected,
-                                    },
+                                    lineHeight: "32px",
+                                    fontWeight: 700,
+                                    fontSize: "0.75rem",
+                                    textTransform: "uppercase",
+                                    letterSpacing: "0.05em",
+                                    backgroundColor: "transparent",
+                                    color: "text.secondary",
+                                    pt: 1.5,
+                                    pb: 0.5,
                                 }}
                             >
-                                {item.handle?.icon && (
-                                    <ListItemIcon sx={{ color: active ? "primary.main" : "inherit" }}>
-                                        {item.handle.icon}
-                                    </ListItemIcon>
-                                )}
-                                <ListItemText 
-                                    primary={item.handle?.title} 
-                                    slotProps={{
-                                        primary: {
-                                            variant: "body2",
-                                            sx: {
-                                                fontWeight: active ? 600 : 400,
+                                {group.groupName}
+                            </ListSubheader>
+                        )}
+                        {group.items.map((item) => {
+                            const active = isSelected(item.path);
+
+                            return (
+                                <ListItem key={item.path} disablePadding>
+                                    <ListItemButton
+                                        component={Link}
+                                        to={item.path}
+                                        selected={active}
+                                        onClick={() => props.setDrawerOpen(false)}
+                                        sx={{
+                                            "&.Mui-selected": {
+                                                borderRight: `4px solid ${theme.palette.primary.main}`,
+                                                backgroundColor: theme.palette.action.selected,
                                             },
-                                        },
-                                    }}
-                                />
-                            </ListItemButton>
-                        </ListItem>
-                    );
-                })}
+                                        }}
+                                    >
+                                        {item.icon && (
+                                            <ListItemIcon sx={{ color: active ? "primary.main" : "inherit" }}>
+                                                {item.icon}
+                                            </ListItemIcon>
+                                        )}
+                                        <ListItemText
+                                            primary={item.title}
+                                            slotProps={{
+                                                primary: {
+                                                    variant: "body2",
+                                                    sx: {
+                                                        fontWeight: active ? 600 : 400,
+                                                    },
+                                                },
+                                            }}
+                                        />
+                                    </ListItemButton>
+                                </ListItem>
+                            );
+                        })}
+                    </Box>
+                ))}
             </List>
         </Box>
     );
@@ -101,13 +133,13 @@ export const MainDrawer: React.FC<MainDrawerProps> = (props) => {
             >
                 {drawerContent}
             </Drawer>
-            
+
             <Drawer
                 variant="permanent"
                 sx={{
                     display: { xs: "none", md: "block" },
-                    "& .MuiDrawer-paper": { 
-                        boxSizing: "border-box", 
+                    "& .MuiDrawer-paper": {
+                        boxSizing: "border-box",
                         width: props.drawerWidth,
                         borderRight: `1px solid ${theme.palette.divider}`,
                     },

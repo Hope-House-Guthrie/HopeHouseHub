@@ -8,28 +8,47 @@ import {
   type AuthTokenResource,
   type AuthTokenCreateResource,
 } from "@/lib/api";
+import { isTokenExpired } from "@/lib/jwt";
 
 export interface AuthState {
   user: AuthTokenResource | null;
   isAuthenticated: boolean;
+  isExpired: boolean;
   loading: boolean;
   error: string | null;
 }
 
-const initialUser = (() => {
-  if (typeof window === "undefined") return null;
+const getStoredUser = (): {
+  user: AuthTokenResource | null;
+  isExpired: boolean;
+} => {
+  if (typeof window === "undefined") {
+    return { user: null, isExpired: false };
+  }
 
   try {
     const item = localStorage.getItem("user");
-    return item ? JSON.parse(item) : null;
+    if (!item) return { user: null, isExpired: false };
+
+    const parsedUser: AuthTokenResource = JSON.parse(item);
+    const token = (parsedUser as any).token || (parsedUser as any).access_token;
+
+    if (token && isTokenExpired(token)) {
+      return { user: null, isExpired: true };
+    }
+
+    return { user: parsedUser, isExpired: false };
   } catch {
-    return null;
+    return { user: null, isExpired: false };
   }
-})();
+};
+
+const initialAuth = getStoredUser();
 
 const initialState: AuthState = {
-  user: initialUser,
-  isAuthenticated: Boolean(initialUser),
+  user: initialAuth.user,
+  isAuthenticated: Boolean(initialAuth.user),
+  isExpired: initialAuth.isExpired,
   loading: false,
   error: null,
 };
@@ -58,6 +77,7 @@ export const authSlice = createSlice({
     logout: (state) => {
       state.user = null;
       state.isAuthenticated = false;
+      state.isExpired = false;
       state.error = null;
       if (typeof window !== "undefined") {
         localStorage.removeItem("user");
@@ -80,6 +100,7 @@ export const authSlice = createSlice({
       .addCase(login.pending, (state) => {
         state.loading = true;
         state.error = null;
+        state.isExpired = false;
       })
       .addCase(
         login.fulfilled,
@@ -87,6 +108,7 @@ export const authSlice = createSlice({
           state.loading = false;
           state.user = action.payload;
           state.isAuthenticated = true;
+          state.isExpired = false;
 
           if (typeof window !== "undefined") {
             localStorage.setItem("user", JSON.stringify(action.payload));
