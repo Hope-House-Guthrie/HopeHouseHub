@@ -13,6 +13,11 @@ import {
     History as HistoryIcon,
     PendingActions as PendingActionsIcon,
     Science as UaManagementIcon,
+    RestaurantMenu as MealsIcon,
+    Fastfood as MenuItemsIcon,
+    FormatQuote as KennyismsIcon,
+    RestaurantMenu as KitchenMenusIcon,
+    MenuBook as KitchenResourcesIcon,
 } from "@mui/icons-material";
 
 import type { NavigationNode } from "./navigation";
@@ -28,6 +33,9 @@ import KitchenResourcesPage from "@/pages/prototype/kitchen/kitchen-resources";
 import PassRequestsPage from "@/pages/prototype/pass-request";
 import UAFormPage from "@/pages/prototype/ua-form";
 import IncidentReportsPage from "@/pages/prototype/incident-reports";
+import KitchenMealsPage from "@/pages/kitchen/meals";
+import KitchenMenuItemsPage from "@/pages/kitchen/menu-items";
+import KitchenKennyismsPage from "@/pages/kitchen/kennyisms";
 import LoginPage from "@/pages/login";
 import LogoutPage from "@/pages/logout";
 import PasswordPage from "@/pages/password";
@@ -86,6 +94,39 @@ export const routesConfig: NavigationNode[] = [
                         },
                     },
                     {
+                        path: "kitchen/meals",
+                        element: <KitchenMealsPage />,
+                        config: {
+                            title: "Meals",
+                            icon: <MealsIcon />,
+                            showInNavigation: true,
+                            group: "Kitchen Preview",
+                            roles: ["PREVIEW"],
+                        },
+                    },
+                    {
+                        path: "kitchen/menu-items",
+                        element: <KitchenMenuItemsPage />,
+                        config: {
+                            title: "Menu Items",
+                            icon: <MenuItemsIcon />,
+                            showInNavigation: true,
+                            group: "Kitchen Preview",
+                            roles: ["PREVIEW"],
+                        },
+                    },
+                    {
+                        path: "kitchen/kennyisms",
+                        element: <KitchenKennyismsPage />,
+                        config: {
+                            title: "Kennyisms",
+                            icon: <KennyismsIcon />,
+                            showInNavigation: true,
+                            group: "Kitchen Preview",
+                            roles: ["PREVIEW"],
+                        },
+                    },
+                    {
                         path: "prototype/kitchen",
                         element: <KitchenDisplayPage />,
                         config: {
@@ -101,10 +142,10 @@ export const routesConfig: NavigationNode[] = [
                         element: <KitchenMenusPage />,
                         config: {
                             title: "Kitchen Menus",
-                            icon: <RestaurantMenuIcon />,
+                            icon: <KitchenMenusIcon />,
                             showInNavigation: true,
-                            group: "Prototype",
-                            roles: ["PROTOTYPE"],
+                            group: "Kitchen Prototype",
+                            roles: ["ADMIN", "KITCHEN"],
                         },
                     },
                     {
@@ -112,7 +153,7 @@ export const routesConfig: NavigationNode[] = [
                         element: <KitchenResourcesPage />,
                         config: {
                             title: "Kitchen Resources",
-                            icon: <RestaurantMenuIcon />,
+                            icon: <KitchenResourcesIcon />,
                             showInNavigation: true,
                             group: "Prototype",
                             roles: ["PROTOTYPE"],

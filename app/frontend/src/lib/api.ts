@@ -44,3 +44,20 @@ export type UserPasswordResource =
   components["schemas"]["UserPasswordResource"];
 
 export type RoleResource = components["schemas"]["RoleResource"];
+
+export type KennyismResource = components["schemas"]["KennyismResource"];
+
+export type KennyismCreateResource =
+  components["schemas"]["KennyismCreateResource"];
+
+export type MenuItemResource = components["schemas"]["MenuItemResource"];
+
+export type MenuItemCreateResource =
+  components["schemas"]["MenuItemCreateResource"];
+
+export type MenuItemUpdateResource =
+  components["schemas"]["MenuItemUpdateResource"];
+
+export type MealResource = components["schemas"]["MealResource"];
+
+export type MealUpdateResource = components["schemas"]["MealUpdateResource"];

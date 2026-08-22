@@ -8,8 +8,11 @@ namespace H3.Data;
 public class HubDbContext(DbContextOptions<HubDbContext> options)
     : IdentityDbContext<User, Role, int, UserClaim, UserRole, UserLogin, RoleClaim, UserToken>(options)
 {
-    protected override void OnModelCreating(
-        ModelBuilder modelBuilder)
+    public DbSet<Kennyism> Kennyisms => Set<Kennyism>();
+    public DbSet<MenuItem> MenuItems => Set<MenuItem>();
+    public DbSet<Meal> Meals => Set<Meal>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
@@ -20,5 +23,9 @@ public class HubDbContext(DbContextOptions<HubDbContext> options)
         modelBuilder.ApplyConfiguration(new UserLoginConfiguration());
         modelBuilder.ApplyConfiguration(new UserRoleConfiguration());
         modelBuilder.ApplyConfiguration(new UserTokenConfiguration());
+
+        modelBuilder.ApplyConfiguration(new KennyismConfiguration());
+        modelBuilder.ApplyConfiguration(new MenuItemConfiguration());
+        modelBuilder.ApplyConfiguration(new MealConfiguration());
     }
 }
