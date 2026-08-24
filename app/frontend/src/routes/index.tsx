@@ -18,6 +18,7 @@ import {
     FormatQuote as KennyismsIcon,
     RestaurantMenu as KitchenMenusIcon,
     MenuBook as KitchenResourcesIcon,
+    Tv as HouseDisplayIcon,
 } from "@mui/icons-material";
 
 import type { NavigationNode } from "./navigation";
@@ -54,6 +55,8 @@ import FriendlyRemindersPage from "@/pages/prototype/friendly-reminders";
 import IncidentReportsPendingPage from "@/pages/prototype/incident-reports/pending";
 import IncidentReportsHistoryPage from "@/pages/prototype/incident-reports/history";
 import UaManagementPage from "@/pages/prototype/ua-management";
+import HouseDisplayPage from "@/pages/prototype/house-display";
+import HouseDisplayManagePage from "@/pages/prototype/house-display/manage";
 
 
 export const routesConfig: NavigationNode[] = [
@@ -70,6 +73,15 @@ export const routesConfig: NavigationNode[] = [
     {
         element: <ProtectedRoute />,
         children: [
+            {
+                path: "/house-display",
+                element: <HouseDisplayPage />,
+                handle: {
+                    title: "House Display",
+                    showInNavigation: false,
+                    roles: ["PROTOTYPE"],
+                },
+            },
             {
                 path: "/",
                 element: <MainLayout />,
@@ -334,6 +346,27 @@ export const routesConfig: NavigationNode[] = [
                         handle: {
                             title: "UA Management",
                             icon: <UaManagementIcon />,
+                            showInNavigation: true,
+                            group: "Prototype",
+                            roles: ["PROTOTYPE"],
+                        },
+                    },
+                    {
+                        // Management (Hub chrome). TV kiosk stays at /house-display outside MainLayout.
+                        path: "prototype/house-display",
+                        element: <HouseDisplayManagePage />,
+                        // handle → ProtectedRoute roles + header title
+                        handle: {
+                            title: "House Display",
+                            icon: <HouseDisplayIcon />,
+                            showInNavigation: true,
+                            group: "Prototype",
+                            roles: ["PROTOTYPE"],
+                        },
+                        // config → drawer nav (getGroupedNavigationItems reads config only)
+                        config: {
+                            title: "House Display",
+                            icon: <HouseDisplayIcon />,
                             showInNavigation: true,
                             group: "Prototype",
                             roles: ["PROTOTYPE"],
