@@ -1,7 +1,7 @@
 /**
  * House Display timeline math (pure, no React).
  * Proportional day-planner: event top/height as % of visible window.
- * Live NOW indicator is a later chunk — not here.
+ * NOW line geometry: nowLineLayout (hide outside window; no clamp lie).
  */
 
 import type {
@@ -26,11 +26,11 @@ export function clamp(n: number, lo: number, hi: number): number {
  * canceled always wins — never "happening" while canceled.
  * Time rules use [startMin, endMin): at exact end → past.
  *
- * nowMin = minutes from midnight (live clock later; mockNowMin for FE/DEV).
+ * nowMin = minutes from Chicago midnight (from useHopeHouseNow / getHopeHouseNow).
  */
 export function resolveEventVisualState(
   item: Pick<HouseDisplayAgendaItem, "startMin" | "endMin" | "canceled">,
-  nowMin: number
+  nowMin: number,
 ): HouseDisplayEventVisualState {
   if (item.canceled) return "canceled";
   if (nowMin < item.startMin) return "upcoming";
@@ -69,6 +69,24 @@ export function minToPercent(
   const span = timelineSpanMin(window);
   const raw = ((minFromMidnight - window.windowStartMin) / span) * 100;
   return clamp(raw, 0, 100);
+}
+
+/**
+ * Proportional NOW marker on the day track.
+ * Returns null when now is outside the visible window — do NOT clamp
+ * to 0%/100% (that would fake 7:00 AM or 9:00 PM).
+ * Inclusive start, exclusive end: [windowStartMin, windowEndMin).
+ */
+export function nowLineLayout(
+  nowMin: number,
+  window: HouseDisplayTimelineWindow,
+): { topPct: number } | null {
+  if (nowMin < window.windowStartMin || nowMin >= window.windowEndMin) {
+    return null;
+  }
+  const span = timelineSpanMin(window);
+  const topPct = ((nowMin - window.windowStartMin) / span) * 100;
+  return { topPct };
 }
 
 export interface TimelineBlockLayout {

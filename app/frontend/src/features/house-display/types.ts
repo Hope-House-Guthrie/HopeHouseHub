@@ -134,12 +134,6 @@ export interface HouseDisplayContent {
   header: HouseDisplayHeader;
   /** Day window for proportional agenda layout. */
   timeline: HouseDisplayTimelineWindow;
-  /**
-   * FE/DEV only: "current" minutes - from- midnight for the Past / Happening / Upcoming.
-   * Temporary stand-in until live clock; keep aligned with header.clockText in seed.
-   * Not a backend field long-term.
-   */
-  mockNowMin: number;
   agendaItems: HouseDisplayAgendaItem[];
   /** Right ~40% House Spotlight slides (one shown at a time on TV). */
   spotlightItems: HouseDisplaySpotlightItem[];

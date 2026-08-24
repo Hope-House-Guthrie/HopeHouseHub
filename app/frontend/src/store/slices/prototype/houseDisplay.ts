@@ -6,7 +6,8 @@
  *   - index.tsx   → TV /house-display (select only)
  *
  * No API/thunks. Refresh resets to seed — fine for prototype.
- * Agenda uses startMin/endMin for proportional timeline (no live NOW yet).
+ * Agenda uses startMin/endMin for proportional timeline.
+ * TV clock / nowMin come from useHopeHouseNow (not Redux).
  */
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import type {
@@ -25,8 +26,6 @@ const initialState: HouseDisplayState = {
     },
     // Visible planner: 7:00 AM – 9:00 PM
     timeline: { ...DEFAULT_TIMELINE_WINDOW },
-    // FE/DV only - matches header.clockText "3:45 PM" until live clock
-    mockNowMin: 15 * 60 + 45,
     agendaItems: [
       // 8:00–8:30 AM (30 min)
       {

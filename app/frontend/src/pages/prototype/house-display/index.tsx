@@ -1,23 +1,24 @@
 /**
- * STATUS — House Display TV (layout + event visual states + House Spotlight)
- * Branch: feature/house-display
- *
- * DONE:
- * - Full viewport, no Hub chrome (/house-display)
- * - Region shell: header, agenda, upcoming, lower band
- * - Proportional day-planner timeline (startMin/endMin → top/height %)
- * - Title-only blocks; hour ticks; static seed
- * - Event visual states from mockNowMin + canceled (FE/DEV clock stand-in)
- * - House Spotlight right ~40%: one item (card | flyer); pin priority; contain flyer
- *
- * NOT YET:
- * - Live clock / weather API (replaces mockNowMin)
- * - Horizontal NOW indicator line
- * - Spotlight auto-rotation / timers / animations
- * - Spotlight manage forms / upload / backend
- * - Fallback right-rail when Spotlight empty
- * - Overlap columns / themes
- */
+* STATUS — House Display TV (live time + NOW + Spotlight)
+* Branch: feature/house-display
+*
+* DONE:
+* - Full viewport, no Hub chrome (/house-display)
+* - Region shell: header, agenda, upcoming, lower band
+* - Proportional day-planner timeline (startMin/endMin → top/height %)
+* - Title-only blocks; hour ticks; canceled + live event states
+* - House Spotlight right ~40%: card | flyer; pin priority; contain flyer
+* - Live America/Chicago clock/date via useHopeHouseNow (minute + visibility)
+* - NOW line on schedule (hidden outside 7am–9pm); label in time gutter
+*
+* NOT YET:
+* - Weather API (header still uses seed weatherText)
+* - Spotlight auto-rotation / timers
+* - Spotlight manage forms / upload / backend
+* - Fallback right-rail when Spotlight empty
+* - Half-hour ticks / overlap columns / themes
+* - Schedule day rollover from backend
+*/
 import { useMemo } from "react";
 import { useSelector } from "react-redux";
 import { Box, Typography } from "@mui/material";
@@ -26,17 +27,18 @@ import type { HouseDisplayEventVisualState } from "@/features/house-display/type
 import {
   hourMarks,
   layoutAgendaItems,
+  nowLineLayout,
   resolveEventVisualState,
 } from "@/features/house-display/timeline";
 // Relative path: new helper file (HMR sometimes fails @/ resolve until full restart)
 import { selectSpotlightItem } from "../../../features/house-display/spotlight";
+import { useHopeHouseNow } from "../../../features/house-display/useHopeHouseNow";
 
 export default function HouseDisplayPage() {
   const content = useSelector((state: RootState) => state.houseDisplay.content);
   const {
     header,
     timeline,
-    mockNowMin,
     agendaItems,
     spotlightItems,
     upcomingItems,
@@ -44,6 +46,9 @@ export default function HouseDisplayPage() {
     announcements,
     birthday,
   } = content;
+
+  /** One snapshot -> header clock/date, event states, NOW line. */
+  const hopeNow = useHopeHouseNow();
 
   const blocks = useMemo(
     () => layoutAgendaItems(agendaItems, timeline),
@@ -67,6 +72,11 @@ export default function HouseDisplayPage() {
   const spotlightItem = useMemo(
     () => selectSpotlightItem(spotlightItems, 0),
     [spotlightItems]
+  );
+
+  const nowMarker = useMemo(
+    () => nowLineLayout(hopeNow.nowMin, timeline),
+    [hopeNow.nowMin, timeline]
   );
 
   /**
@@ -151,12 +161,12 @@ export default function HouseDisplayPage() {
               fontSize: "clamp(1.25rem, 2.5vw, 2.25rem)",
             }}
           >
-            {header.clockText}
+            {hopeNow.clockText}
           </Typography>
           <Typography
             sx={{ opacity: 0.8, fontSize: "clamp(0.85rem, 1.4vw, 1.25rem)" }}
           >
-            {header.dateText} · {header.weatherText}
+            {hopeNow.dateText} · {header.weatherText}
           </Typography>
         </Box>
       </Box>
@@ -231,6 +241,26 @@ export default function HouseDisplayPage() {
                   {m.label}
                 </Typography>
               ))}
+              {nowMarker != null ? (
+                <Typography
+                  sx={{
+                    position: "absolute",
+                    top: `${nowMarker.topPct}%`,
+                    right: 0,
+                    transform: "translateY(-50%)",
+                    fontSize: "clamp(0.6rem, 1vw, 0.85rem)",
+                    fontWeight: 800,
+                    letterSpacing: 0.8,
+                    lineHeight: 1,
+                    color: "#fbbf24",
+                    textTransform: "uppercase",
+                    whiteSpace: "nowrap",
+                    zIndex: 3,
+                  }}
+                >
+                  NOW
+                </Typography>
+              ) : null}
             </Box>
 
             {/* Event track */}
@@ -256,6 +286,22 @@ export default function HouseDisplayPage() {
                 />
               ))}
 
+              {nowMarker != null ? (
+                <Box
+                  aria-hidden
+                  sx={{
+                    position: "absolute",
+                    left: 0,
+                    right: 0,
+                    top: `${nowMarker.topPct}%`,
+                    borderTop: "3px solid #fbbf24",
+                    boxShadow: "0 0 0 1px rgba(0,0,0,0.35)",
+                    zIndex: 3,
+                    pointerEvents: "none",
+                  }}
+                />
+              ) : null}
+
               {/* Event blocks — height ∝ duration; title only; visual states */}
               {blocks.map((b) => {
                 const canceled = canceledById.get(b.id) ?? false;
@@ -265,7 +311,7 @@ export default function HouseDisplayPage() {
                     endMin: b.endMin,
                     canceled,
                   },
-                  mockNowMin
+                  hopeNow.nowMin
                 );
 
                 const stateSx = blockSxForState(visualState);
