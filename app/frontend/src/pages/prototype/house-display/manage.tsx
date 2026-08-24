@@ -5,10 +5,10 @@
  * DONE:
  * - Management shell under MainLayout at /prototype/house-display
  * - View Full Display opens /house-display in a new tab (TV preview)
- * - Read-only "On TV now" from houseDisplay Redux slice
+ * - Read-only "On TV now" summary from houseDisplay layout seed
  *
  * NOT IN THIS CHUNK:
- * - Clock, weather, agenda, widgets on the TV route
+ * - Live clock / weather API / animations on the TV route
  * - Add/edit/remove/schedule content controls
  * - Backend
  *
@@ -30,10 +30,10 @@ function openFullDisplayPreview() {
 }
 
 export default function HouseDisplayManagePage() {
-  const { headline, subtext } = useSelector(
+  const content = useSelector(
     (state: RootState) => state.houseDisplay.content
   );
-
+  const { header, agendaItems, affirmationText, birthday } = content;
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
       <Typography variant="h4" component="h1">
@@ -64,16 +64,25 @@ export default function HouseDisplayManagePage() {
           </Button>
         </CardContent>
       </Card>
+
       <Card sx={{ maxWidth: 560 }}>
         <CardContent sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
           <Typography variant="h6">On TV now (read-only)</Typography>
           <Typography variant="body2" color="text.secondary">
             Same Redux seed the TV page reads. Edit UI is a later phase.
           </Typography>
-          <Typography variant="subtitle1" sx={{ fontWeight: 600, mt: 1 }}>
-            {headline}
+          <Typography variant="body2" sx={{ mt: 1 }}>
+            <strong>Identity:</strong> {header.identityLabel}
           </Typography>
-          <Typography variant="body2">{subtext}</Typography>
+          <Typography variant="body2">
+            <strong>Agenda items:</strong> {agendaItems.length}
+          </Typography>
+          <Typography variant="body2">
+            <strong>Affirmation:</strong> {affirmationText}
+          </Typography>
+          <Typography variant="body2">
+            <strong>Birthday:</strong> {birthday.name} ({birthday.dateLabel})
+          </Typography>
         </CardContent>
       </Card>
 
