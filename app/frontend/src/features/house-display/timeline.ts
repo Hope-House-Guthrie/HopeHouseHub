@@ -6,6 +6,7 @@
 
 import type {
   HouseDisplayAgendaItem,
+  HouseDisplayEventVisualState,
   HouseDisplayTimelineWindow,
 } from "./types";
 
@@ -21,11 +22,29 @@ export function clamp(n: number, lo: number, hi: number): number {
 }
 
 /**
+ * Derive TV visual state for one resolved occurrence.
+ * canceled always wins — never "happening" while canceled.
+ * Time rules use [startMin, endMin): at exact end → past.
+ *
+ * nowMin = minutes from midnight (live clock later; mockNowMin for FE/DEV).
+ */
+export function resolveEventVisualState(
+  item: Pick<HouseDisplayAgendaItem, "startMin" | "endMin" | "canceled">,
+  nowMin: number
+): HouseDisplayEventVisualState {
+  if (item.canceled) return "canceled";
+  if (nowMin < item.startMin) return "upcoming";
+  if (nowMin < item.endMin) return "happening";
+  return "past";
+}
+
+/**
  * Format minutes-from-midnight as a short 12h label (e.g. 780 → "1:00 PM").
  * Display only — storage stays numeric.
  */
 export function formatTimeLabel(minFromMidnight: number): string {
-  const normalized = ((Math.round(minFromMidnight) % (24 * 60)) + 24 * 60) % (24 * 60);
+  const normalized =
+    ((Math.round(minFromMidnight) % (24 * 60)) + 24 * 60) % (24 * 60);
   let hour24 = Math.floor(normalized / 60);
   const minute = normalized % 60;
   const ampm = hour24 >= 12 ? "PM" : "AM";
@@ -45,7 +64,7 @@ export function timelineSpanMin(window: HouseDisplayTimelineWindow): number {
  */
 export function minToPercent(
   minFromMidnight: number,
-  window: HouseDisplayTimelineWindow
+  window: HouseDisplayTimelineWindow,
 ): number {
   const span = timelineSpanMin(window);
   const raw = ((minFromMidnight - window.windowStartMin) / span) * 100;
@@ -72,9 +91,13 @@ export interface TimelineBlockLayout {
  */
 export function layoutAgendaItem(
   item: HouseDisplayAgendaItem,
-  window: HouseDisplayTimelineWindow
+  window: HouseDisplayTimelineWindow,
 ): TimelineBlockLayout | null {
-  const start = clamp(item.startMin, window.windowStartMin, window.windowEndMin);
+  const start = clamp(
+    item.startMin,
+    window.windowStartMin,
+    window.windowEndMin,
+  );
   const end = clamp(item.endMin, window.windowStartMin, window.windowEndMin);
   if (end <= start) return null;
 
@@ -98,7 +121,7 @@ export function layoutAgendaItem(
 
 export function layoutAgendaItems(
   items: HouseDisplayAgendaItem[],
-  window: HouseDisplayTimelineWindow
+  window: HouseDisplayTimelineWindow,
 ): TimelineBlockLayout[] {
   return items
     .map((item) => layoutAgendaItem(item, window))
@@ -113,7 +136,9 @@ export interface TimelineHourMark {
   topPct: number;
 }
 
-export function hourMarks(window: HouseDisplayTimelineWindow): TimelineHourMark[] {
+export function hourMarks(
+  window: HouseDisplayTimelineWindow,
+): TimelineHourMark[] {
   const marks: TimelineHourMark[] = [];
   // First whole hour at or after window start
   let t = Math.ceil(window.windowStartMin / 60) * 60;

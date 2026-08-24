@@ -32,16 +32,35 @@ export interface HouseDisplayTimelineWindow {
 }
 
 /**
- * One agenda block on the proportional timeline.
+ * Visual state for one timeline block (derived at render time - not stored).
+ * canceled always wins over time-based states
+ */
+export type HouseDisplayEventVisualState =
+  | "upcoming"
+  | "happening"
+  | "past"
+  | "canceled";
+
+/**
+ * One agenda block on today's proportional timeline.
+ * This is a resolved occurrence for the board (not a recurring rule definition).
  * Duration = endMin - startMin (must be > 0).
+ *
+ * Cancel = keep on board with canceled: true (not the same as remove/delete).
+ * Remove = omit from agendaItems entirely.
  */
 export interface HouseDisplayAgendaItem {
   id: string;
   title: string;
-  /** Minutes from midnight, e.g. 1:00 PM → 780 */
+  /** Minutes from midnight, e.g. 1:00 PM -> 780 */
   startMin: number;
-  /** Minutes from midnight, e.g. 2:00 PM → 840 */
+  /** Minutes from midnight, e.g. 2:00 PM -> 840 */
   endMin: number;
+  /**
+   * Required. true = show in place as CANCELED; never "happening".
+   * Normal occurrences use false.
+   */
+  canceled: boolean;
 }
 
 /** Thin "up next" strip item (static mock until derived from agenda + now). */
@@ -72,6 +91,12 @@ export interface HouseDisplayContent {
   header: HouseDisplayHeader;
   /** Day window for proportional agenda layout. */
   timeline: HouseDisplayTimelineWindow;
+  /**
+   * FE/DEV only: "current" minutes - from- midnight for the Past / Happening / Upcoming.
+   * Temporary stand-in until live clock; keep aligned with header.clockText in seed.
+   * Not a backend field long-term.
+   */
+  mockNowMin: number;
   agendaItems: HouseDisplayAgendaItem[];
   upcomingItems: HouseDisplayUpcomingItem[];
   affirmationText: string;

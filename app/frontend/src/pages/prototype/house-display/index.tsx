@@ -1,26 +1,29 @@
 /**
- * STATUS — House Display TV (layout + proportional day agenda)
+ * STATUS — House Display TV (layout + event visual states)
  * Branch: feature/house-display
  *
  * DONE:
  * - Full viewport, no Hub chrome (/house-display)
  * - Region shell: header, agenda, upcoming, lower band
  * - Proportional day-planner timeline (startMin/endMin → top/height %)
- * - Hour ticks; static seed only
+ * - Title-only blocks; hour ticks; static seed
+ * - Event visual states from mockNowMin + canceled (FE/DEV clock stand-in)
  *
  * NOT YET:
- * - Live clock / weather API
- * - Horizontal NOW indicator
- * - Overlap columns / past-event styling
- * - Animations, themes, backend
+ * - Live clock / weather API (replaces mockNowMin)
+ * - Horizontal NOW indicator line
+ * - Overlap columns / animations / themes / backend
+ * - Manage edit forms; recurrence admin
  */
 import { useMemo } from "react";
 import { useSelector } from "react-redux";
 import { Box, Typography } from "@mui/material";
 import type { RootState } from "@/store";
+import type { HouseDisplayEventVisualState } from "@/features/house-display/types";
 import {
   hourMarks,
   layoutAgendaItems,
+  resolveEventVisualState,
 } from "@/features/house-display/timeline";
 
 export default function HouseDisplayPage() {
@@ -28,6 +31,7 @@ export default function HouseDisplayPage() {
   const {
     header,
     timeline,
+    mockNowMin,
     agendaItems,
     upcomingItems,
     affirmationText,
@@ -40,6 +44,55 @@ export default function HouseDisplayPage() {
     [agendaItems, timeline]
   );
   const marks = useMemo(() => hourMarks(timeline), [timeline]);
+
+  /** id → canceled flag from seed (layout blocks do not carry canceled yet). */
+  const canceledById = useMemo(() => {
+    const map = new Map<string, boolean>();
+    for (const item of agendaItems) {
+      map.set(item.id, item.canceled);
+    }
+    return map;
+  }, [agendaItems]);
+
+  /**
+   * Styles per visual state.
+   * canceled: title left + CANCELED right on one line (not color-only).
+   * happening: stronger border + left accent (not color alone).
+   */
+  function blockSxForState(state: HouseDisplayEventVisualState) {
+    switch (state) {
+      case "happening":
+        return {
+          bgcolor: "rgba(94, 234, 212, 0.18)",
+          border: "2px solid rgba(94, 234, 212, 0.85)",
+          borderLeft: "6px solid #5eead4",
+          opacity: 1,
+          zIndex: 2,
+        };
+      case "past":
+        return {
+          bgcolor: "rgba(224,225,221,0.08)",
+          border: "1px solid rgba(224,225,221,0.2)",
+          opacity: 0.45,
+          zIndex: 1,
+        };
+      case "canceled":
+        return {
+          bgcolor: "rgba(248, 113, 113, 0.12)",
+          border: "2px dashed rgba(248, 113, 113, 0.9)",
+          opacity: 0.95,
+          zIndex: 1,
+        };
+      case "upcoming":
+      default:
+        return {
+          bgcolor: "rgba(224,225,221,0.16)",
+          border: "1px solid rgba(224,225,221,0.35)",
+          opacity: 1,
+          zIndex: 1,
+        };
+    }
+  }
 
   return (
     <Box
@@ -188,51 +241,101 @@ export default function HouseDisplayPage() {
                 />
               ))}
 
-              {/* Event blocks — height ∝ duration; title only (time = rail position) */}
-              {blocks.map((b) => (
-                <Box
-                  key={b.id}
-                  sx={{
-                    position: "absolute",
-                    left: 8,
-                    right: 8,
-                    top: `${b.topPct}%`,
-                    height: `${b.heightPct}%`,
-                    // One title line must fit even on 30-min slots (track ~ half viewport)
-                    minHeight: 36,
-                    boxSizing: "border-box",
-                    px: 1,
-                    pt: 0.5,
-                    pb: 0.25,
-                    borderRadius: 1,
-                    bgcolor: "rgba(224,225,221,0.16)",
-                    border: "1px solid rgba(224,225,221,0.35)",
-                    color: "#e0e1dd",
-                    display: "flex",
-                    flexDirection: "column",
-                    justifyContent: "flex-start",
-                    alignItems: "flex-start",
-                    overflow: "hidden",
-                    zIndex: 1,
-                  }}
-                >
-                  <Typography
-                    component="div"
+              {/* Event blocks — height ∝ duration; title only; visual states */}
+              {blocks.map((b) => {
+                const canceled = canceledById.get(b.id) ?? false;
+                const visualState = resolveEventVisualState(
+                  {
+                    startMin: b.startMin,
+                    endMin: b.endMin,
+                    canceled,
+                  },
+                  mockNowMin
+                );
+                const stateSx = blockSxForState(visualState);
+
+                return (
+                  <Box
+                    key={b.id}
                     sx={{
-                      fontWeight: 700,
-                      fontSize: "clamp(0.8rem, 1.35vw, 1.25rem)",
-                      lineHeight: 1.15,
-                      m: 0,
-                      maxWidth: "100%",
-                      whiteSpace: "nowrap",
+                      position: "absolute",
+                      left: 8,
+                      right: 8,
+                      top: `${b.topPct}%`,
+                      height: `${b.heightPct}%`,
+                      // One title line must fit even on 30-min slots (track ~ half viewport)
+                      minHeight: 36,
+                      boxSizing: "border-box",
+                      px: 1,
+                      pt: 0.5,
+                      pb: 0.25,
+                      borderRadius: 1,
+                      color: "#e0e1dd",
+                      // Content stays top-anchored (tall blocks); one row: title left, CANCELED right
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "flex-start",
+                      alignItems: "stretch",
                       overflow: "hidden",
-                      textOverflow: "ellipsis",
+                      ...stateSx,
                     }}
                   >
-                    {b.title}
-                  </Typography>
-                </Box>
-              ))}
+                    <Box
+                      sx={{
+                        display: "flex",
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "flex-start",
+                        gap: 1,
+                        width: "100%",
+                        minWidth: 0,
+                        // Single line — do not grow block height
+                        flex: "0 0 auto",
+                      }}
+                    >
+                      <Typography
+                        component="div"
+                        sx={{
+                          fontWeight: visualState === "happening" ? 800 : 700,
+                          fontSize: "clamp(0.8rem, 1.35vw, 1.25rem)",
+                          lineHeight: 1.15,
+                          m: 0,
+                          // Shrink/ellipsis before the CANCELED badge when tight
+                          flex: "1 1 auto",
+                          minWidth: 0,
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          textAlign: "left",
+                          textDecoration:
+                            visualState === "canceled" ? "line-through" : "none",
+                          opacity: visualState === "canceled" ? 0.85 : 1,
+                        }}
+                      >
+                        {b.title}
+                      </Typography>
+                      {visualState === "canceled" && (
+                        <Typography
+                          component="div"
+                          sx={{
+                            flex: "0 0 auto",
+                            fontWeight: 800,
+                            letterSpacing: 1.2,
+                            textTransform: "uppercase",
+                            fontSize: "clamp(0.7rem, 1.15vw, 1rem)",
+                            lineHeight: 1.1,
+                            m: 0,
+                            color: "#fca5a5",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          CANCELED
+                        </Typography>
+                      )}
+                    </Box>
+                  </Box>
+                );
+              })}
             </Box>
           </Box>
         </Box>

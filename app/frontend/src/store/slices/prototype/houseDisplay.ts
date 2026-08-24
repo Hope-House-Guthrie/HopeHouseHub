@@ -25,17 +25,49 @@ const initialState: HouseDisplayState = {
     },
     // Visible planner: 7:00 AM – 9:00 PM
     timeline: { ...DEFAULT_TIMELINE_WINDOW },
+    // FE/DV only - matches header.clockText "3:45 PM" until live clock
+    mockNowMin: 15 * 60 + 45,
     agendaItems: [
       // 8:00–8:30 AM (30 min)
-      { id: "a1", title: "Morning Roll Call", startMin: 8 * 60, endMin: 8 * 60 + 30 },
+      {
+        id: "a1",
+        title: "Morning Roll Call",
+        startMin: 8 * 60,
+        endMin: 8 * 60 + 30,
+        canceled: false,
+      },
       // 10:00–11:00 AM (60 min)
-      { id: "a2", title: "I Matter", startMin: 10 * 60, endMin: 11 * 60 },
+      {
+        id: "a2",
+        title: "I Matter",
+        startMin: 10 * 60,
+        endMin: 11 * 60,
+        canceled: false,
+      },
       // 1:00–2:00 PM (60 min) — twice the vertical of a 30-min block
-      { id: "a3", title: "Tech Quest", startMin: 13 * 60, endMin: 14 * 60 },
+      {
+        id: "a3",
+        title: "Tech Quest",
+        startMin: 13 * 60,
+        endMin: 14 * 60,
+        canceled: true,
+      },
       // 3:30–4:00 PM (30 min)
-      { id: "a4", title: "House Meeting", startMin: 15 * 60 + 30, endMin: 16 * 60 },
+      {
+        id: "a4",
+        title: "House Meeting",
+        startMin: 15 * 60 + 30,
+        endMin: 16 * 60,
+        canceled: false,
+      },
       // 6:00–7:30 PM (90 min)
-      { id: "a5", title: "Main NA", startMin: 18 * 60, endMin: 19 * 60 + 30 },
+      {
+        id: "a5",
+        title: "Main NA",
+        startMin: 18 * 60,
+        endMin: 19 * 60 + 30,
+        canceled: false,
+      },
     ],
     upcomingItems: [
       { id: "u1", timeLabel: "3:30 PM", title: "House Meeting" },
