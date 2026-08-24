@@ -6,13 +6,14 @@
  *   - index.tsx   → TV /house-display (select only)
  *
  * No API/thunks. Refresh resets to seed — fine for prototype.
- * Layout data only this chunk — no live clock/weather logic.
+ * Agenda uses startMin/endMin for proportional timeline (no live NOW yet).
  */
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import type {
   HouseDisplayContent,
   HouseDisplayState,
 } from "@/features/house-display/types";
+import { DEFAULT_TIMELINE_WINDOW } from "@/features/house-display/timeline";
 
 const initialState: HouseDisplayState = {
   content: {
@@ -22,12 +23,19 @@ const initialState: HouseDisplayState = {
       dateText: "Sun, Aug 23",
       weatherText: "82° Clear",
     },
+    // Visible planner: 7:00 AM – 9:00 PM
+    timeline: { ...DEFAULT_TIMELINE_WINDOW },
     agendaItems: [
-      { id: "a1", timeLabel: "8:00 AM", title: "Morning Roll Call" },
-      { id: "a2", timeLabel: "10:00 AM", title: "I Matter" },
-      { id: "a3", timeLabel: "1:00 PM", title: "Tech Quest" },
-      { id: "a4", timeLabel: "3:30 PM", title: "House Meeting" },
-      { id: "a5", timeLabel: "6:00 PM", title: "Main NA" },
+      // 8:00–8:30 AM (30 min)
+      { id: "a1", title: "Morning Roll Call", startMin: 8 * 60, endMin: 8 * 60 + 30 },
+      // 10:00–11:00 AM (60 min)
+      { id: "a2", title: "I Matter", startMin: 10 * 60, endMin: 11 * 60 },
+      // 1:00–2:00 PM (60 min) — twice the vertical of a 30-min block
+      { id: "a3", title: "Tech Quest", startMin: 13 * 60, endMin: 14 * 60 },
+      // 3:30–4:00 PM (30 min)
+      { id: "a4", title: "House Meeting", startMin: 15 * 60 + 30, endMin: 16 * 60 },
+      // 6:00–7:30 PM (90 min)
+      { id: "a5", title: "Main NA", startMin: 18 * 60, endMin: 19 * 60 + 30 },
     ],
     upcomingItems: [
       { id: "u1", timeLabel: "3:30 PM", title: "House Meeting" },

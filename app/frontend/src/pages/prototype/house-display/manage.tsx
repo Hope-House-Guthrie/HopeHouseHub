@@ -78,6 +78,9 @@ export default function HouseDisplayManagePage() {
             <strong>Agenda items:</strong> {agendaItems.length}
           </Typography>
           <Typography variant="body2">
+            <strong>Timeline window:</strong> 7:00 AM – 9:00 PM (proportional)
+          </Typography>
+          <Typography variant="body2">
             <strong>Affirmation:</strong> {affirmationText}
           </Typography>
           <Typography variant="body2">

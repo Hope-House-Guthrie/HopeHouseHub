@@ -3,8 +3,8 @@
  * Used by: store slice, TV page, manage page.
  * No React here.
  *
- * TV layout regions (later):
- * header → agenda → upcoming → lower band
+ * TV layout regions:
+ * header → agenda timeline → upcoming → lower band
  * (affirmation | announcements + birthday)
  */
 
@@ -20,15 +20,31 @@ export interface HouseDisplayHeader {
   weatherText: string;
 }
 
-/** One agenda row (mock; now/past logic yet). */
-export interface HouseDisplayAgendaItem {
-  id: string;
-  /** Display time only, e.g. "8:00 AM" */
-  timeLabel: string;
-  title: string;
+/**
+ * Visible day-planner window on the TV (minutes from local midnight).
+ * Event blocks are positioned as % of this span.
+ */
+export interface HouseDisplayTimelineWindow {
+  /** Inclusive start, e.g. 7:00 AM → 420 */
+  windowStartMin: number;
+  /** Exclusive-ish end bound for layout, e.g. 9:00 PM → 1260 */
+  windowEndMin: number;
 }
 
-/** Thin "up next" strip item (static mock). */
+/**
+ * One agenda block on the proportional timeline.
+ * Duration = endMin - startMin (must be > 0).
+ */
+export interface HouseDisplayAgendaItem {
+  id: string;
+  title: string;
+  /** Minutes from midnight, e.g. 1:00 PM → 780 */
+  startMin: number;
+  /** Minutes from midnight, e.g. 2:00 PM → 840 */
+  endMin: number;
+}
+
+/** Thin "up next" strip item (static mock until derived from agenda + now). */
 export interface HouseDisplayUpcomingItem {
   id: string;
   timeLabel: string;
@@ -41,7 +57,7 @@ export interface HouseDisplayAnnouncement {
   text: string;
 }
 
-/** Birthday corner (calculations/effect later). */
+/** Birthday corner (calculations/effects later). */
 export interface HouseDisplayBirthday {
   name: string;
   /** Human date label, e.g. "Thu, Aug 27". */
@@ -54,6 +70,8 @@ export interface HouseDisplayBirthday {
  */
 export interface HouseDisplayContent {
   header: HouseDisplayHeader;
+  /** Day window for proportional agenda layout. */
+  timeline: HouseDisplayTimelineWindow;
   agendaItems: HouseDisplayAgendaItem[];
   upcomingItems: HouseDisplayUpcomingItem[];
   affirmationText: string;
