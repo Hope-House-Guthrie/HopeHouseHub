@@ -83,6 +83,49 @@ export interface HouseDisplayBirthday {
   dateLabel: string;
 }
 
+/** Spotlight slide kind for the right ~40% House Spotlight region. */
+export type HouseDisplaySpotlightKind = "card" | "flyer";
+
+/**
+ * Pin policy for one Spotlight item.
+ * "none" = not pinned (normal rotation pool later).
+ * Non-"none" = owns the region (Priority 1). Real day-rollover / unpin later.
+ * pinMode is the only pin flag - do not add a separate pinned boolean.
+ */
+export type HouseDisplaySpotlightPinMode =
+  | "none"
+  | "end_of_today"
+  | "until_unpinned";
+
+/**
+ * One House Spotlight item (TV shows at most one at a time).
+ * card = Hub text layout; flyer = full-image with object-fit contain.
+ * Empty strings are fine for fields the kind does not use.
+ */
+export interface HouseDisplaySpotlightItem {
+  id: string;
+  kind: HouseDisplaySpotlightKind;
+  /** Lower sorts first in normal order / pin tie-break. */
+  sortOrder: number;
+  /** false = stored but not in the display pool. */
+  active: boolean;
+  /**
+   * Pin ownership + future expiration flavor.
+   * pinned ⇔ pinMode !== "none"
+   */
+  pinMode: HouseDisplaySpotlightPinMode;
+  /** Card title; flyer may reuse as label/alt fallback. */
+  title: string;
+  /** Card subtitle/date line; "" when unused. */
+  subtitle: string;
+  /** Card body message; "" when unused. */
+  message: string;
+  /** Flyer public path or URL; "" for cards. */
+  imageUrl: string;
+  /** Flyer alt text; "" ok - UI may fall back to title. */
+  imageAlt: string;
+}
+
 /**
  * Full client-only TV content tree.
  * Backend will populate this later.
@@ -98,6 +141,8 @@ export interface HouseDisplayContent {
    */
   mockNowMin: number;
   agendaItems: HouseDisplayAgendaItem[];
+  /** Right ~40% House Spotlight slides (one shown at a time on TV). */
+  spotlightItems: HouseDisplaySpotlightItem[];
   upcomingItems: HouseDisplayUpcomingItem[];
   affirmationText: string;
   announcements: HouseDisplayAnnouncement[];

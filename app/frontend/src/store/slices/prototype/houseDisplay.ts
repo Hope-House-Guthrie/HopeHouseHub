@@ -69,6 +69,40 @@ const initialState: HouseDisplayState = {
         canceled: false,
       },
     ],
+    /**
+     * House Spotlight (right ~40%).
+     * Default: flyer is pinned so TV Priority 1 is testable without a timer.
+     * To see Super Saturday card instead: set s2 pinMode to "none", hard refresh
+     * (selectSpotlightItem uses rotateIndex 0 → first active by sortOrder = s1 card).
+     * To empty region: set both active: false.
+     */
+    spotlightItems: [
+      {
+        id: "s1",
+        kind: "card",
+        sortOrder: 0,
+        active: true,
+        pinMode: "none",
+        title: "SUPER SATURDAY",
+        subtitle: "Saturday, August 29",
+        message: "Be ready by 9:00 AM.",
+        imageUrl: "",
+        imageAlt: "",
+      },
+      {
+        id: "s2",
+        kind: "flyer",
+        sortOrder: 1,
+        active: true,
+        // Pin demo: owns region over s1 until you set "none"
+        pinMode: "until_unpinned",
+        title: "Welcome",
+        subtitle: "",
+        message: "",
+        imageUrl: "/house-display/mock-flyer-welcome.svg",
+        imageAlt: "Welcome to Hope House Guthrie",
+      },
+    ],
     upcomingItems: [
       { id: "u1", timeLabel: "3:30 PM", title: "House Meeting" },
       { id: "u2", timeLabel: "6:00 PM", title: "Main NA" },

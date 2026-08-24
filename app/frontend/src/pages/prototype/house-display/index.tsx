@@ -1,5 +1,5 @@
 /**
- * STATUS — House Display TV (layout + event visual states)
+ * STATUS — House Display TV (layout + event visual states + House Spotlight)
  * Branch: feature/house-display
  *
  * DONE:
@@ -8,12 +8,15 @@
  * - Proportional day-planner timeline (startMin/endMin → top/height %)
  * - Title-only blocks; hour ticks; static seed
  * - Event visual states from mockNowMin + canceled (FE/DEV clock stand-in)
+ * - House Spotlight right ~40%: one item (card | flyer); pin priority; contain flyer
  *
  * NOT YET:
  * - Live clock / weather API (replaces mockNowMin)
  * - Horizontal NOW indicator line
- * - Overlap columns / animations / themes / backend
- * - Manage edit forms; recurrence admin
+ * - Spotlight auto-rotation / timers / animations
+ * - Spotlight manage forms / upload / backend
+ * - Fallback right-rail when Spotlight empty
+ * - Overlap columns / themes
  */
 import { useMemo } from "react";
 import { useSelector } from "react-redux";
@@ -25,6 +28,8 @@ import {
   layoutAgendaItems,
   resolveEventVisualState,
 } from "@/features/house-display/timeline";
+// Relative path: new helper file (HMR sometimes fails @/ resolve until full restart)
+import { selectSpotlightItem } from "../../../features/house-display/spotlight";
 
 export default function HouseDisplayPage() {
   const content = useSelector((state: RootState) => state.houseDisplay.content);
@@ -33,6 +38,7 @@ export default function HouseDisplayPage() {
     timeline,
     mockNowMin,
     agendaItems,
+    spotlightItems,
     upcomingItems,
     affirmationText,
     announcements,
@@ -53,6 +59,15 @@ export default function HouseDisplayPage() {
     }
     return map;
   }, [agendaItems]);
+
+  /**
+   * One Spotlight at a time. rotateIndex stays 0 until we add a timer.
+   * Seed: s2 flyer pinMode until_unpinned → pin wins over Super Saturday card.
+   */
+  const spotlightItem = useMemo(
+    () => selectSpotlightItem(spotlightItems, 0),
+    [spotlightItems]
+  );
 
   /**
    * Styles per visual state.
@@ -252,6 +267,7 @@ export default function HouseDisplayPage() {
                   },
                   mockNowMin
                 );
+
                 const stateSx = blockSxForState(visualState);
 
                 return (
@@ -340,15 +356,100 @@ export default function HouseDisplayPage() {
           </Box>
         </Box>
 
-        {/* Reserved ~40% — empty future region (no content yet) */}
+        {/* House Spotlight ~40% — one card or flyer; empty if none active */}
         <Box
           sx={{
             flex: "0 0 40%",
             maxWidth: "40%",
             minWidth: 0,
             minHeight: 0,
+            display: "flex",
+            flexDirection: "column",
+            pl: { xs: 1, md: 2 },
           }}
-        />
+        >
+          {spotlightItem == null ? null : (
+            <Box
+              sx={{
+                flex: 1,
+                minHeight: 0,
+                display: "flex",
+                flexDirection: "column",
+                borderRadius: 2,
+                border: "1px solid rgba(224,225,221,0.25)",
+                overflow: "hidden",
+                bgcolor: "rgba(0,0,0,0.25)",
+              }}
+            >
+              {spotlightItem.kind === "flyer" ? (
+                <Box
+                  component="img"
+                  src={spotlightItem.imageUrl}
+                  alt={spotlightItem.imageAlt || spotlightItem.title}
+                  sx={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "contain",
+                    objectPosition: "center",
+                    display: "block",
+                  }}
+                />
+              ) : (
+                <Box
+                  sx={{
+                    flex: 1,
+                    minHeight: 0,
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "center",
+                    px: { xs: 2, md: 3 },
+                    py: { xs: 2, md: 3 },
+                    gap: 1.5,
+                  }}
+                >
+                  <Typography
+                    sx={{
+                      fontWeight: 800,
+                      letterSpacing: 1.5,
+                      textTransform: "uppercase",
+                      fontSize: "clamp(1.4rem, 2.8vw, 2.75rem)",
+                      lineHeight: 1.1,
+                      m: 0,
+                    }}
+                  >
+                    {spotlightItem.title}
+                  </Typography>
+                  {spotlightItem.subtitle ? (
+                    <Typography
+                      sx={{
+                        fontWeight: 600,
+                        opacity: 0.85,
+                        fontSize: "clamp(1rem, 1.8vw, 1.6rem)",
+                        m: 0,
+                      }}
+                    >
+                      {spotlightItem.subtitle}
+                    </Typography>
+                  ) : null}
+                  {spotlightItem.message ? (
+                    <Typography
+                      sx={{
+                        fontWeight: 500,
+                        opacity: 0.9,
+                        fontSize: "clamp(1.05rem, 1.9vw, 1.75rem)",
+                        lineHeight: 1.35,
+                        m: 0,
+                        mt: 1,
+                      }}
+                    >
+                      {spotlightItem.message}
+                    </Typography>
+                  ) : null}
+                </Box>
+              )}
+            </Box>
+          )}
+        </Box>
       </Box>
 
       {/* ---- 3. Upcoming highlights ~8–10% ---- */}
