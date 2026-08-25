@@ -16,8 +16,14 @@
  * - Display-only sort (startMin, title); no Redux reorder
  * - scheduleFormat weekday + time-range labels
  *
- * NOT YET (S2.2+):
- * - Add / Edit / End Class, one-time event forms
+ * DONE (S2.2 Add Class):
+ * - Dialog fields: Class Name, Start/End time, Repeats On (Sun–Sat multi)
+ * - Validate name/times/end>start/≥1 weekday; overlaps allowed
+ * - UI id newRecurringClassId(); dispatch addRecurringClass + Chicago dateYmd
+ * - Close/reset on success; DEV schedule persist via existing slice path
+ *
+ * NOT YET (S2.3+):
+ * - Edit / End Class, one-time event forms
  * - Edit this occurrence (override exceptions)
  * - Spotlight management / flyer upload
  * - UP NEXT derived from agenda (TV known cleanup)
@@ -35,13 +41,17 @@ import {
   Button,
   Card,
   CardContent,
+  Checkbox,
   Chip,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
   Divider,
+  FormControlLabel,
+  FormGroup,
   Stack,
+  TextField,
   Typography,
 } from "@mui/material";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
@@ -51,9 +61,18 @@ import {
   formatRecurringDaysLabel,
   formatScheduleTimeRange,
 } from "../../../features/house-display/scheduleFormat";
+import {
+  newRecurringClassId,
+  parseTimeInputToMin,
+} from "../../../features/house-display/scheduleForm";
+import type {
+  HouseDisplayRecurringEvent,
+  HouseDisplayWeekday,
+} from "../../../features/house-display/scheduleTypes";
 import { formatTimeLabel } from "../../../features/house-display/timeline";
 import { getHopeHouseNow } from "../../../features/house-display/time";
 import {
+  addRecurringClass,
   cancelOccurrence,
   restoreOccurrence,
 } from "../../../store/slices/prototype/houseDisplay";
@@ -65,6 +84,20 @@ import {
 function openFullDisplayPreview() {
   window.open("/house-display", "_blank", "noopener,noreferrer");
 }
+
+/** Labels for Add Class "Repeats On" - values match HouseDisplayWeekday. */
+const ADD_CLASS_WEEKDAY_OPTIONS: {
+  value: HouseDisplayWeekday;
+  label: string;
+}[] = [
+  { value: 0, label: "Sun" },
+  { value: 1, label: "Mon" },
+  { value: 2, label: "Tue" },
+  { value: 3, label: "Wed" },
+  { value: 4, label: "Thu" },
+  { value: 5, label: "Fri" },
+  { value: 6, label: "Sat" },
+];
 
 export default function HouseDisplayManagePage() {
   const dispatch = useDispatch();
@@ -90,12 +123,12 @@ export default function HouseDisplayManagePage() {
   const hopeNow = getHopeHouseNow();
   const dateYmd = hopeNow.dateKey;
 
-  // --- Add Class dialog (shell Step 3; fields/dispatch Step 4) ---
+  // --- Add Class dialog ---
   const [addClassOpen, setAddClassOpen] = useState(false);
   const [addTitle, setAddTitle] = useState("");
-  const [addStartTime, setAddStartTime] = useState(""); // "HH:mm" later
+  const [addStartTime, setAddStartTime] = useState(""); // "HH:mm"
   const [addEndTime, setAddEndTime] = useState("");
-  /** Weekday numbers 0=Sun … 6=Sat (empty until Step 4 toggles) */
+  /** Weekday numbers 0=Sun … 6=Sat (empty ≠ every day) */
   const [addDays, setAddDays] = useState<number[]>([]);
   const [addError, setAddError] = useState("");
 
@@ -112,15 +145,71 @@ export default function HouseDisplayManagePage() {
     setAddClassOpen(true);
   };
 
+  /** Toggle one weekday in addDays; keep sorted 0-6 for stable UI/save. */
+  const toggleAddDay = (day: HouseDisplayWeekday) => {
+    setAddDays((prev) => {
+      if (prev.includes(day)) {
+        return prev.filter((d) => d !== day);
+      }
+      return [...prev, day].sort((a, b) => a - b);
+    });
+  };
+
   const handleCloseAddClass = () => {
     setAddClassOpen(false);
     resetAddClassForm();
   };
 
-  /** Step 3: Enter / Add must not dispatch. Step 4 fills validation + dispatch. */
+  /** Validate + create recurring class (UI id; Redux stays deterministic). */
   const handleAddClassSubmit = (e: FormEvent) => {
     e.preventDefault();
-    // no-op until Step 4
+    setAddError("");
+
+    const title = addTitle.trim();
+    if (!title) {
+      setAddError("Class name is required.");
+      return;
+    }
+
+    const startMin = parseTimeInputToMin(addStartTime);
+    if (startMin == null) {
+      setAddError("Start time is required.")
+      return;
+    }
+
+    const endMin = parseTimeInputToMin(addEndTime);
+    if (endMin == null) {
+      setAddError("End time is required.");
+      return;
+    }
+
+    if (endMin <= startMin) {
+      setAddError("End time must be later than start time.")
+      return;
+    }
+
+    if (addDays.length === 0) {
+      setAddError("Select at least one day. Empty is not every day.");
+      return;
+    }
+
+    const event: HouseDisplayRecurringEvent = {
+      id: newRecurringClassId(),
+      title,
+      startMin,
+      endMin,
+      daysOfWeek: addDays as HouseDisplayWeekday[],
+      active: true,
+    };
+
+    dispatch(
+      addRecurringClass({
+        event,
+        dateYmd: hopeNow.dateKey,
+      }),
+    );
+
+    handleCloseAddClass();
   };
 
   return (
@@ -371,18 +460,89 @@ export default function HouseDisplayManagePage() {
         <Box component="form" onSubmit={handleAddClassSubmit}>
           <DialogTitle>Add Class</DialogTitle>
           <DialogContent>
-            {/* Step 4: Class Name, Start/End time, Repeats On */}
-            {addError ? (
-              <Typography variant="body2" color="error" sx={{ mt: 1 }}>
-                {addError}
+            <Stack spacing={2} sx={{ mt: 1 }}>
+              <TextField
+                label="Class Name"
+                value={addTitle}
+                onChange={(e) => setAddTitle(e.target.value)}
+                required
+                fullWidth
+                autoFocus
+                autoComplete="off"
+              />
+
+              <TextField
+                label="Start Time"
+                type="time"
+                value={addStartTime}
+                onChange={(e) => setAddStartTime(e.target.value)}
+                required
+                fullWidth
+                slotProps={{
+                  inputLabel: { shrink: true },
+                  htmlInput: { step: 60 },
+                }}
+              />
+
+              <TextField
+                label="End Time"
+                type="time"
+                value={addEndTime}
+                onChange={(e) => setAddEndTime(e.target.value)}
+                required
+                fullWidth
+                slotProps={{
+                  inputLabel: { shrink: true },
+                  htmlInput: { step: 60 },
+                }}
+              />
+
+              <Box>
+                <Typography
+                variant="subtitle2"
+                component="div"
+                sx={{ mb: 0.5, fontWeight: 600 }}
+              >
+                Repeats On
               </Typography>
-            ) : (
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                Class details go here next.
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ display: "block", mb: 1 }}
+              >
+                Select at least one day. Empty is not every day.
               </Typography>
-            )}
+              <FormGroup row sx={{ gap: 0.5 }}>
+                {ADD_CLASS_WEEKDAY_OPTIONS.map(({ value, label }) => (
+                  <FormControlLabel
+                    key={value}
+                    control={
+                      <Checkbox
+                        checked={addDays.includes(value)}
+                        onChange={() => toggleAddDay(value)}
+                        size="small"
+                        slotProps={{
+                          input: {
+                            "aria-label": `Repeats on ${label}`,
+                          }
+                        }}
+                      />
+                    }
+                    label={label}
+                  />
+                ))}
+              </FormGroup>
+              </Box>
+
+              {addError ? (
+                <Typography variant="body2" color="error">
+                  {addError}
+                </Typography>
+              ) : null}
+            </Stack>
           </DialogContent>
-          <DialogActions>
+        <DialogActions>
+
             <Button type="button" onClick={handleCloseAddClass}>
               Cancel
             </Button>
