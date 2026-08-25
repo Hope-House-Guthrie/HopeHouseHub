@@ -4,6 +4,7 @@
  *
  * UI/form only: HTML time ↔ minutes-from-midnight, staff series ids.
  * Call newRecurringClassId in the page BEFORE dispatch — never inside reducers.
+ * validateRecurringClassForm shared by Add/Edit UI (S2.3).
  * Not Daily Duties helpers. Does not touch resolve/seed.
  */
 
@@ -11,6 +12,8 @@
  * Parse HTML / MUI TextField type="time" value → minutes from midnight.
  * Accepts "HH:mm" or "HH:mm:ss". Empty or out-of-range → null (invalid).
  */
+import type { HouseDisplayWeekday } from "./scheduleTypes";
+
 export function parseTimeInputToMin(value: string): number | null {
   const trimmed = value.trim();
   if (!trimmed) return null;
@@ -46,4 +49,69 @@ export function formatMinToTimeInput(minFromMidnight: number): string {
  */
 export function newRecurringClassId(): string {
   return `class-${crypto.randomUUID()}`;
+}
+
+/** Raw fields from Add/Edit Class dialog (HTML time strings + weekday ints). */
+export type ValidateRecurringClassFormInput = {
+  title: string;
+  startTime: string;
+  endTime: string;
+  days: readonly number[];
+};
+
+export type ValidateRecurringClassFormResult =
+  | { ok: false; error: string }
+  | {
+      ok: true;
+      title: string;
+      startMin: number;
+      endMin: number;
+      daysOfWeek: HouseDisplayWeekday[];
+    };
+
+/**
+ * Shared Add/Edit Class validation - pure; no React/Redux.
+ * Messages and check order match S2.2 manage handleAddClassSubmit.
+ * Empty days ≠ every day (HD rule). Does not set id or active.
+ */
+export function validateRecurringClassForm(
+  input: ValidateRecurringClassFormInput,
+): ValidateRecurringClassFormResult {
+  const title = input.title.trim();
+  if (!title) {
+    return { ok: false, error: "Class name is required." };
+  }
+
+  const startMin = parseTimeInputToMin(input.startTime);
+  if (startMin == null) {
+    return { ok: false, error: "Start time is required." };
+  }
+
+  const endMin = parseTimeInputToMin(input.endTime);
+  if (endMin == null) {
+    return { ok: false, error: "End time is required." };
+  }
+
+  if (endMin <= startMin) {
+    return { ok: false, error: "End time must be later than start time." };
+  }
+
+  // Unique sorted 0-6 only (same idea as slice normalize; empty stay invalid)
+  const daysOfWeek = [
+    ...new Set(
+      input.days.filter(
+        (d): d is HouseDisplayWeekday =>
+          Number.isInteger(d) && d >= 0 && d <= 6,
+      ),
+    ),
+  ].sort((a, b) => a - b);
+
+  if (daysOfWeek.length === 0) {
+    return {
+      ok: false,
+      error: "Select at least one day. Empty is not every day.",
+    };
+  }
+
+  return { ok: true, title, startMin, endMin, daysOfWeek };
 }

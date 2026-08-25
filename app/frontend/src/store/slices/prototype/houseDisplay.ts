@@ -10,14 +10,20 @@
  * - Persist sources only after mutators (not agendaItems)
  * - TV + manage read content; TV never reads schedule
  *
+ * DONE (S2.2–S2.3 partial):
+ * - addRecurringClass (UI id; force active true)
+ * - editRecurringClass (keep id + active; no exception changes)
+ * - Edit UI / shared dialog still on manage (next)
+ *
  * NOT YET:
- * - Add/Edit/End Class reducers, one-time CRUD
+ * - manage Edit dialog wiring
+ * - End Class reducer, one-time CRUD
  * - override exception UI, delete definition
  * - Backend API / thunks
  * - Midnight re-resolve without refresh
  *
  * Who uses this:
- *   - manage.tsx  → Today cancel/restore; more admin later
+ *   - manage.tsx  → Today cancel/restore; Add Class; Edit next
  *   - index.tsx   → TV selects content only
  */
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
@@ -53,6 +59,21 @@ export type HouseDisplayOccurrenceActionPayload = {
 /** Add series - full event (id set in UI); dateYmd for agenda re-resolve only. */
 export type AddRecurringClassPayload = {
   event: HouseDisplayRecurringEvent;
+  /** America/Chicago calendar day YYYY-MM-DD */
+  dateYmd: string;
+};
+
+/**
+ * Edit series fields only.
+ * id identifies the row; active is NOT in the payload (reducer keeps existing active).
+ * dateYmd = Chicago day for agenda re-resolve only.
+ */
+export type EditRecurringClassPayload = {
+  id: string;
+  title: string;
+  startMin: number;
+  endMin: number;
+  daysOfWeek: HouseDisplayWeekday[];
   /** America/Chicago calendar day YYYY-MM-DD */
   dateYmd: string;
 };
@@ -352,6 +373,48 @@ export const houseDisplaySlice = createSlice({
       syncAgendaFromSchedule(state, dateYmd);
       persistScheduleSources(state);
     },
+    /**
+     * Edit one existing recurring series (definition, not one occurrence).
+     * Keeps id + active. Does not touch exceptions. Overlaps allowed.
+     * No clock/random/id generation.
+     */
+    editRecurringClass: (
+      state,
+      action: PayloadAction<EditRecurringClassPayload>,
+    ) => {
+      const { id: rawId, title: rawTitle, startMin, endMin, daysOfWeek, dateYmd } =
+        action.payload;
+      if (!dateYmd) return;
+
+      const id = typeof rawId === "string" ? rawId.trim() : "";
+      if (!id) return;
+
+      const index = state.schedule.recurring.findIndex((r) => r.id === id);
+      if (index < 0) return;
+
+      const title = typeof rawTitle === "string" ? rawTitle.trim() : "";
+      if (!title) return;
+
+      const normalizedDays = normalizeRecurringWeekdays(daysOfWeek ?? []);
+      if (normalizedDays.length === 0) return;
+
+      if (!Number.isInteger(startMin) || !Number.isInteger(endMin)) return;
+      if (endMin <= startMin) return;
+
+      const existing = state.schedule.recurring[index];
+      if (!existing) return;
+      state.schedule.recurring[index] = {
+        id: existing.id,
+        active: existing.active,
+        title,
+        startMin,
+        endMin,
+        daysOfWeek: normalizedDays,
+      };
+
+      syncAgendaFromSchedule(state, dateYmd);
+      persistScheduleSources(state);
+    },
   },
 });
 
@@ -360,5 +423,6 @@ export const {
   cancelOccurrence,
   restoreOccurrence,
   addRecurringClass,
+  editRecurringClass,
 } = houseDisplaySlice.actions;
 export default houseDisplaySlice.reducer;
