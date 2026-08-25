@@ -30,7 +30,11 @@ import { getHopeHouseNow } from "../../../features/house-display/time";
 // Relative paths: Bun hot sometimes fails @/ resolve on newly added feature files
 import { resolveAgendaForDate } from "../../../features/house-display/resolveAgenda";
 import { INITIAL_SCHEDULE_SOURCES } from "../../../features/house-display/scheduleSeed";
-import type { HouseDisplayScheduleSources } from "../../../features/house-display/scheduleTypes";
+import type {
+  HouseDisplayRecurringEvent,
+  HouseDisplayScheduleSources,
+  HouseDisplayWeekday,
+} from "../../../features/house-display/scheduleTypes";
 import {
   loadScheduleSources,
   saveScheduleSources,
@@ -42,6 +46,13 @@ import hopeChangesEverythingUrl from "@assets/house-display/hope-changes-everyth
 /** Occurrence payload from manage — dateYmd must be explicit (no clock in reducer). */
 export type HouseDisplayOccurrenceActionPayload = {
   occurrenceId: string;
+  /** America/Chicago calendar day YYYY-MM-DD */
+  dateYmd: string;
+};
+
+/** Add series - full event (id set in UI); dateYmd for agenda re-resolve only. */
+export type AddRecurringClassPayload = {
+  event: HouseDisplayRecurringEvent;
   /** America/Chicago calendar day YYYY-MM-DD */
   dateYmd: string;
 };
@@ -106,6 +117,20 @@ function persistScheduleSources(state: HouseDisplayState): void {
     oneTime: state.schedule.oneTime,
     exceptions: state.schedule.exceptions,
   });
+}
+
+/** Unique 0-6 weekdays, sorted. Empty -> []. No Daily Duties empty=every-day rule. */
+function normalizeRecurringWeekdays(
+  days: readonly number[],
+): HouseDisplayWeekday[] {
+  return [
+    ...new Set(
+      days.filter(
+        (d): d is HouseDisplayWeekday =>
+          Number.isInteger(d) && d >= 0 && d <= 6,
+      ),
+    ),
+  ].sort((a, b) => a - b);
 }
 
 /**
@@ -286,9 +311,54 @@ export const houseDisplaySlice = createSlice({
       syncAgendaFromSchedule(state, dateYmd);
       persistScheduleSources(state);
     },
+    /**
+     * Add one recurring series definition.
+     * UI supplies full event (including id) + explicit dateYmd.
+     * No clock/random/id generation here. Overlaps allowed.
+     */
+    addRecurringClass: (
+      state,
+      action: PayloadAction<AddRecurringClassPayload>,
+    ) => {
+      const { event, dateYmd } = action.payload;
+      if (!event || !dateYmd) return;
+
+      const id = typeof event.id === "string" ? event.id.trim() : "";
+      if (!id) return;
+
+      const title = typeof event.title === "string" ? event.title.trim() : "";
+      if (!title) return;
+
+      const daysOfWeek = normalizeRecurringWeekdays(event.daysOfWeek ?? []);
+      if (daysOfWeek.length === 0) return;
+
+      const startMin = event.startMin;
+      const endMin = event.endMin;
+      if (!Number.isInteger(startMin) || !Number.isInteger(endMin)) return;
+      if (endMin <= startMin) return;
+
+      // Duplicate id — no-op (do not replace existing series)
+      if (state.schedule.recurring.some((r) => r.id === id)) return;
+
+      state.schedule.recurring.push({
+        id,
+        title,
+        startMin,
+        endMin,
+        daysOfWeek,
+        active: true,
+      });
+
+      syncAgendaFromSchedule(state, dateYmd);
+      persistScheduleSources(state);
+    },
   },
 });
 
-export const { setContent, cancelOccurrence, restoreOccurrence } =
-  houseDisplaySlice.actions;
+export const {
+  setContent,
+  cancelOccurrence,
+  restoreOccurrence,
+  addRecurringClass,
+} = houseDisplaySlice.actions;
 export default houseDisplaySlice.reducer;

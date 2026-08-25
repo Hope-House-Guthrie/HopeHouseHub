@@ -28,7 +28,7 @@
  * - TV: pages/prototype/house-display/index.tsx → /house-display
  * - Manage (this file): → /prototype/house-display
  */
-import { useMemo } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   Box,
@@ -36,6 +36,10 @@ import {
   Card,
   CardContent,
   Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Divider,
   Stack,
   Typography,
@@ -85,6 +89,39 @@ export default function HouseDisplayManagePage() {
   // Hope House calendar day for labels + Cancel/Restore payloads (not browser TZ alone)
   const hopeNow = getHopeHouseNow();
   const dateYmd = hopeNow.dateKey;
+
+  // --- Add Class dialog (shell Step 3; fields/dispatch Step 4) ---
+  const [addClassOpen, setAddClassOpen] = useState(false);
+  const [addTitle, setAddTitle] = useState("");
+  const [addStartTime, setAddStartTime] = useState(""); // "HH:mm" later
+  const [addEndTime, setAddEndTime] = useState("");
+  /** Weekday numbers 0=Sun … 6=Sat (empty until Step 4 toggles) */
+  const [addDays, setAddDays] = useState<number[]>([]);
+  const [addError, setAddError] = useState("");
+
+  const resetAddClassForm = () => {
+    setAddTitle("");
+    setAddStartTime("");
+    setAddEndTime("");
+    setAddDays([]);
+    setAddError("");
+  };
+
+  const handleOpenAddClass = () => {
+    resetAddClassForm();
+    setAddClassOpen(true);
+  };
+
+  const handleCloseAddClass = () => {
+    setAddClassOpen(false);
+    resetAddClassForm();
+  };
+
+  /** Step 3: Enter / Add must not dispatch. Step 4 fills validation + dispatch. */
+  const handleAddClassSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    // no-op until Step 4
+  };
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
@@ -264,9 +301,19 @@ export default function HouseDisplayManagePage() {
               series definition — not today&apos;s cancel/restore list.
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-              Add, Edit, and End Class come next. Ending a class stops future
-              days without deleting its record.
+              Add a class here when the weekly schedule changes. Edit and End
+              Class come later. Ending stops future days without deleting the
+              record.
             </Typography>
+            <Box sx={{ mt: 1.5 }}>
+              <Button
+                type="button"
+                variant="contained"
+                onClick={handleOpenAddClass}
+              >
+                Add Class
+              </Button>
+            </Box>
           </Box>
 
           <Divider />
@@ -313,6 +360,38 @@ export default function HouseDisplayManagePage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Add Class dialog — shell only (fields + dispatch in Step 4) */}
+      <Dialog
+        open={addClassOpen}
+        onClose={handleCloseAddClass}
+        maxWidth="sm"
+        fullWidth
+      >
+        <Box component="form" onSubmit={handleAddClassSubmit}>
+          <DialogTitle>Add Class</DialogTitle>
+          <DialogContent>
+            {/* Step 4: Class Name, Start/End time, Repeats On */}
+            {addError ? (
+              <Typography variant="body2" color="error" sx={{ mt: 1 }}>
+                {addError}
+              </Typography>
+            ) : (
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                Class details go here next.
+              </Typography>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button type="button" onClick={handleCloseAddClass}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="contained">
+              Add Class
+            </Button>
+          </DialogActions>
+        </Box>
+      </Dialog>
     </Box>
   );
 }
