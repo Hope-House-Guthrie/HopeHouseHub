@@ -15,6 +15,9 @@ import type {
   HouseDisplayState,
 } from "@/features/house-display/types";
 import { DEFAULT_TIMELINE_WINDOW } from "@/features/house-display/timeline";
+// Bundled flyer URLs (Bun @assets). public/house-display/* is NOT served by dev-server.
+import kiddosDonationUrl from "@assets/house-display/kiddos-donation.png";
+import hopeChangesEverythingUrl from "@assets/house-display/hope-changes-everything.png";
 
 const initialState: HouseDisplayState = {
   content: {
@@ -70,10 +73,12 @@ const initialState: HouseDisplayState = {
     ],
     /**
      * House Spotlight (right ~40%).
-     * Default: flyer is pinned so TV Priority 1 is testable without a timer.
-     * To see Super Saturday card instead: set s2 pinMode to "none", hard refresh
-     * (selectSpotlightItem uses rotateIndex 0 → first active by sortOrder = s1 card).
-     * To empty region: set both active: false.
+     * Rotation test seed: 3 active, all pinMode "none", sortOrder 0..2.
+     * Flyer imageUrl = Bun-bundled @assets module URLs (not /public paths).
+     * TV still uses rotateIndex 0 until timer chunk → Super Saturday first.
+     * KIDDOS preview: set s1 active false, hard refresh. Hope: s1+s2 false.
+     * Pin test later: set one item pinMode to "until_unpinned", hard refresh.
+     * Empty region: set all active: false.
      */
     spotlightItems: [
       {
@@ -93,15 +98,27 @@ const initialState: HouseDisplayState = {
         kind: "flyer",
         sortOrder: 1,
         active: true,
-        // Pin demo: owns region over s1 until you set "none"
-        pinMode: "until_unpinned",
-        title: "Welcome",
+        pinMode: "none",
+        title: "KIDDOS",
         subtitle: "",
         message: "",
-        imageUrl: "/house-display/mock-flyer-welcome.svg",
-        imageAlt: "Welcome to Hope House Guthrie",
+        imageUrl: kiddosDonationUrl,
+        imageAlt: "KIDDOS donation flyer",
+      },
+      {
+        id: "s3",
+        kind: "flyer",
+        sortOrder: 2,
+        active: true,
+        pinMode: "none",
+        title: "Hope Changes Everything",
+        subtitle: "",
+        message: "",
+        imageUrl: hopeChangesEverythingUrl,
+        imageAlt: "Hope Changes Everything / Family Reunification flyer",
       },
     ],
+
     upcomingItems: [
       { id: "u1", timeLabel: "3:30 PM", title: "House Meeting" },
       { id: "u2", timeLabel: "6:00 PM", title: "Main NA" },

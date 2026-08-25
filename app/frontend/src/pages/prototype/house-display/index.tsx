@@ -10,20 +10,23 @@
 * - House Spotlight right ~40%: card | flyer; pin priority; contain flyer
 * - Live America/Chicago clock/date via useHopeHouseNow (minute + visibility)
 * - NOW line on schedule (hidden outside 7am–9pm); label in time gutter
+* - Spotlight auto-rotation every 15s (local index; pin pauses)
+* - Spotlight soft slide + crossfade ~750ms (dual local layers; ±30px; TV only)
 *
 * NOT YET:
 * - Weather API (header still uses seed weatherText)
-* - Spotlight auto-rotation / timers
 * - Spotlight manage forms / upload / backend
 * - Fallback right-rail when Spotlight empty
 * - Half-hour ticks / overlap columns / themes
 * - Schedule day rollover from backend
 */
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import { Box, Typography } from "@mui/material";
 import type { RootState } from "@/store";
 import type { HouseDisplayEventVisualState } from "@/features/house-display/types";
+import type { HouseDisplaySpotlightItem } from "../../../features/house-display/types";
+
 import {
   hourMarks,
   layoutAgendaItems,
@@ -31,7 +34,13 @@ import {
   resolveEventVisualState,
 } from "@/features/house-display/timeline";
 // Relative path: new helper file (HMR sometimes fails @/ resolve until full restart)
-import { selectSpotlightItem } from "../../../features/house-display/spotlight";
+import {
+  clampSpotlightRotateIndex,
+  getActiveSpotlightItems,
+  selectSpotlightItem,
+  shouldRunSpotlightRotation,
+  SPOTLIGHT_ROTATE_MS,
+} from "../../../features/house-display/spotlight";
 import { useHopeHouseNow } from "../../../features/house-display/useHopeHouseNow";
 
 export default function HouseDisplayPage() {
@@ -66,18 +75,198 @@ export default function HouseDisplayPage() {
   }, [agendaItems]);
 
   /**
-   * One Spotlight at a time. rotateIndex stays 0 until we add a timer.
-   * Seed: s2 flyer pinMode until_unpinned → pin wins over Super Saturday card.
+   * Spotlight rotation = TV presentation only (not Redux).
+   * - pin owns region via selectSpotlightItem; timer off while pinned
+   * - no timer for 0 or 1 active item
+   * - clamp index when the active list changes
+   * - clearInterval on cleanup so index does not advance while pinned
+   * - fade is separate dual-layer state below
    */
+  const [rotateIndex, setRotateIndex] = useState(0);
+
+  const activeSpotlight = useMemo(
+    () => getActiveSpotlightItems(spotlightItems),
+    [spotlightItems],
+  );
+
+  const activeSpotlightKey = activeSpotlight.map((x) => x.id).join("|");
+  const runRotation = shouldRunSpotlightRotation(spotlightItems);
+
+  // Keep index valid when items activate/deactivate/reorder
+  useEffect(() => {
+    setRotateIndex((i) =>
+      clampSpotlightRotateIndex(i, activeSpotlight.length),
+    );
+  }, [activeSpotlight.length, activeSpotlightKey]);
+
+  // 15s advance only when unpinned and 2+ active
+  useEffect(() => {
+    if (!runRotation) {
+      return;
+    }
+    const id = window.setInterval(() => {
+      setRotateIndex((i) => {
+        const n = getActiveSpotlightItems(spotlightItems).length;
+        if (n <= 1) return 0;
+        return clampSpotlightRotateIndex(i + 1, n);
+      });
+    }, SPOTLIGHT_ROTATE_MS);
+    return () => window.clearInterval(id);
+  }, [spotlightItems, runRotation]);
+
   const spotlightItem = useMemo(
-    () => selectSpotlightItem(spotlightItems, 0),
-    [spotlightItems]
+    () => selectSpotlightItem(spotlightItems, rotateIndex),
+    [spotlightItems, rotateIndex],
   );
 
   const nowMarker = useMemo(
     () => nowLineLayout(hopeNow.nowMin, timeline),
     [hopeNow.nowMin, timeline]
   );
+
+  /** Soft horizontal slide + crossfade — TV presentation only; not Redux. */
+  const SPOTLIGHT_FADE_MS = 750;
+  /** Outgoing drifts left; incoming starts slightly right (not full off-screen). */
+  const SPOTLIGHT_SLIDE_PX = 30;
+
+  const [layerA, setLayerA] = useState<HouseDisplaySpotlightItem | null>(null);
+  const [layerB, setLayerB] = useState<HouseDisplaySpotlightItem | null>(null);
+  const [frontIsA, setFrontIsA] = useState(true);
+
+  // Refs so the id-change effect always sees latest front without stale closures
+  const frontIsARef = useRef(true);
+  const layerARef = useRef<HouseDisplaySpotlightItem | null>(null);
+  const layerBRef = useRef<HouseDisplaySpotlightItem | null>(null);
+
+  useEffect(() => {
+    frontIsARef.current = frontIsA;
+  }, [frontIsA]);
+  useEffect(() => {
+    layerARef.current = layerA;
+  }, [layerA]);
+  useEffect(() => {
+    layerBRef.current = layerB;
+  }, [layerB]);
+
+  /**
+   * When selectSpotlightItem target changes:
+   * - first paint / empty: snap (no fade-from-nothing)
+   * - same id: refresh that layer's content
+   * - new id: put next on the BACK layer, then flip which layer is opacity 1
+   */
+  useEffect(() => {
+    const next = spotlightItem;
+    const isA = frontIsARef.current;
+    const front = isA ? layerARef.current : layerBRef.current;
+
+    if (next == null) {
+      setLayerA(null);
+      setLayerB(null);
+      setFrontIsA(true);
+      return;
+    }
+
+    if (front == null) {
+      setLayerA(next);
+      setLayerB(null);
+      setFrontIsA(true);
+      return;
+    }
+
+    if (front.id === next.id) {
+      if (isA) setLayerA(next);
+      else setLayerB(next);
+      return;
+    }
+
+    if (isA) setLayerB(next);
+    else setLayerA(next);
+
+    let raf2 = 0;
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
+        setFrontIsA((v) => !v);
+      });
+    });
+    return () => {
+      cancelAnimationFrame(raf1);
+      if (raf2) cancelAnimationFrame(raf2);
+    };
+  }, [spotlightItem]);
+
+  /** One card or flyer slide (shared by both fade layers). */
+  function renderSpotlightSlide(item: HouseDisplaySpotlightItem) {
+    if (item.kind === "flyer") {
+      return (
+        <Box
+          component="img"
+          src={item.imageUrl}
+          alt={item.imageAlt || item.title}
+          sx={{
+            width: "100%",
+            height: "100%",
+            objectFit: "contain",
+            objectPosition: "center",
+            display: "block",
+          }}
+        />
+      );
+    }
+    return (
+      <Box
+        sx={{
+          flex: 1,
+          minHeight: 0,
+          height: "100%",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          px: { xs: 2, md: 3 },
+          py: { xs: 2, md: 3 },
+          gap: 1.5,
+        }}
+      >
+        <Typography
+          sx={{
+            fontWeight: 800,
+            letterSpacing: 1.5,
+            textTransform: "uppercase",
+            fontSize: "clamp(1.4rem, 2.8vw, 2.75rem)",
+            lineHeight: 1.1,
+            m: 0,
+          }}
+        >
+          {item.title}
+        </Typography>
+        {item.subtitle ? (
+          <Typography
+            sx={{
+              fontWeight: 600,
+              opacity: 0.85,
+              fontSize: "clamp(1rem, 1.8vw, 1.6rem)",
+              m: 0,
+            }}
+          >
+            {item.subtitle}
+          </Typography>
+        ) : null}
+        {item.message ? (
+          <Typography
+            sx={{
+              fontWeight: 500,
+              opacity: 0.9,
+              fontSize: "clamp(1.05rem, 1.9vw, 1.75rem)",
+              lineHeight: 1.35,
+              m: 0,
+              mt: 1,
+            }}
+          >
+            {item.message}
+          </Typography>
+        ) : null}
+      </Box>
+    );
+  }
 
   /**
    * Styles per visual state.
@@ -414,7 +603,7 @@ export default function HouseDisplayPage() {
             pl: { xs: 1, md: 2 },
           }}
         >
-          {spotlightItem == null ? null : (
+          {layerA == null && layerB == null ? null : (
             <Box
               sx={{
                 flex: 1,
@@ -427,72 +616,56 @@ export default function HouseDisplayPage() {
                 bgcolor: "rgba(0,0,0,0.25)",
               }}
             >
-              {spotlightItem.kind === "flyer" ? (
-                <Box
-                  component="img"
-                  src={spotlightItem.imageUrl}
-                  alt={spotlightItem.imageAlt || spotlightItem.title}
-                  sx={{
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "contain",
-                    objectPosition: "center",
-                    display: "block",
-                  }}
-                />
-              ) : (
-                <Box
-                  sx={{
-                    flex: 1,
-                    minHeight: 0,
-                    display: "flex",
-                    flexDirection: "column",
-                    justifyContent: "center",
-                    px: { xs: 2, md: 3 },
-                    py: { xs: 2, md: 3 },
-                    gap: 1.5,
-                  }}
-                >
-                  <Typography
+              {/* Stacked slides; outer chrome stays put. One-way soft slide: out left / in from right. */}
+              <Box
+                sx={{
+                  position: "relative",
+                  flex: 1,
+                  minHeight: 0,
+                  overflow: "hidden",
+                }}
+              >
+                {layerA ? (
+                  <Box
                     sx={{
-                      fontWeight: 800,
-                      letterSpacing: 1.5,
-                      textTransform: "uppercase",
-                      fontSize: "clamp(1.4rem, 2.8vw, 2.75rem)",
-                      lineHeight: 1.1,
-                      m: 0,
+                      position: "absolute",
+                      inset: 0,
+                      display: "flex",
+                      flexDirection: "column",
+                      opacity: frontIsA ? 1 : 0,
+                      transform: frontIsA
+                        ? "translateX(0)"
+                        : `translateX(-${SPOTLIGHT_SLIDE_PX}px)`,
+                      transition: `opacity ${SPOTLIGHT_FADE_MS}ms ease-in-out, transform ${SPOTLIGHT_FADE_MS}ms ease-in-out`,
+                      willChange: "opacity, transform",
+                      zIndex: frontIsA ? 2 : 1,
+                      pointerEvents: frontIsA ? "auto" : "none",
                     }}
                   >
-                    {spotlightItem.title}
-                  </Typography>
-                  {spotlightItem.subtitle ? (
-                    <Typography
-                      sx={{
-                        fontWeight: 600,
-                        opacity: 0.85,
-                        fontSize: "clamp(1rem, 1.8vw, 1.6rem)",
-                        m: 0,
-                      }}
-                    >
-                      {spotlightItem.subtitle}
-                    </Typography>
-                  ) : null}
-                  {spotlightItem.message ? (
-                    <Typography
-                      sx={{
-                        fontWeight: 500,
-                        opacity: 0.9,
-                        fontSize: "clamp(1.05rem, 1.9vw, 1.75rem)",
-                        lineHeight: 1.35,
-                        m: 0,
-                        mt: 1,
-                      }}
-                    >
-                      {spotlightItem.message}
-                    </Typography>
-                  ) : null}
-                </Box>
-              )}
+                    {renderSpotlightSlide(layerA)}
+                  </Box>
+                ) : null}
+                {layerB ? (
+                  <Box
+                    sx={{
+                      position: "absolute",
+                      inset: 0,
+                      display: "flex",
+                      flexDirection: "column",
+                      opacity: frontIsA ? 0 : 1,
+                      transform: frontIsA
+                        ? `translateX(${SPOTLIGHT_SLIDE_PX}px)`
+                        : "translateX(0)",
+                      transition: `opacity ${SPOTLIGHT_FADE_MS}ms ease-in-out, transform ${SPOTLIGHT_FADE_MS}ms ease-in-out`,
+                      willChange: "opacity, transform",
+                      zIndex: frontIsA ? 1 : 2,
+                      pointerEvents: frontIsA ? "none" : "auto",
+                    }}
+                  >
+                    {renderSpotlightSlide(layerB)}
+                  </Box>
+                ) : null}
+              </Box>
             </Box>
           )}
         </Box>
