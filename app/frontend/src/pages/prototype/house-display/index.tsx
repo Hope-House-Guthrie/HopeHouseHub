@@ -1,5 +1,5 @@
 /**
-* STATUS — House Display TV (live time + NOW + Spotlight)
+* STATUS — House Display TV (live time + NOW + Spotlight + resolved agenda)
 * Branch: feature/house-display
 *
 * DONE:
@@ -7,6 +7,7 @@
 * - Region shell: header, agenda, upcoming, lower band
 * - Proportional day-planner timeline (startMin/endMin → top/height %)
 * - Title-only blocks; hour ticks; canceled + live event states
+* - Agenda items = resolved TODAY from schedule sources (not hand-seeded a1–a5)
 * - House Spotlight right ~40%: card | flyer; pin priority; contain flyer
 * - Live America/Chicago clock/date via useHopeHouseNow (minute + visibility)
 * - NOW line on schedule (hidden outside 7am–9pm); label in time gutter
@@ -15,9 +16,11 @@
 *
 * NOT YET:
 * - Weather API (header still uses seed weatherText)
+* - UP NEXT strip still static mock (does not follow resolved agenda) — cleanup
+* - Overlap columns (Men's + Women's NA same slot both valid; layout later)
 * - Spotlight manage forms / upload / backend
 * - Fallback right-rail when Spotlight empty
-* - Half-hour ticks / overlap columns / themes
+* - Half-hour ticks / themes
 * - Schedule day rollover from backend
 */
 import { useEffect, useMemo, useRef, useState } from "react";

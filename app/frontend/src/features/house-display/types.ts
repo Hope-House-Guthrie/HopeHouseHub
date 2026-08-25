@@ -6,7 +6,13 @@
  * TV layout regions:
  * header → agenda timeline → upcoming → lower band
  * (affirmation | announcements + birthday)
+ *
+ * Schedule SOURCES live on HouseDisplayState.schedule (see scheduleTypes).
+ * TV only paints content.agendaItems (resolved occurrences for the day).
+ * S1: cancel one day via exceptions; S2: Add/Edit/End Class on sources.
  */
+
+import type { HouseDisplayScheduleSources } from "./scheduleTypes";
 
 /** Static header placeholders until live clock/weather. */
 export interface HouseDisplayHeader {
@@ -144,5 +150,10 @@ export interface HouseDisplayContent {
 }
 
 export interface HouseDisplayState {
+  /**
+   * Schedule SOURCE of truth (admin / resolve input).
+   * TV must not read this — only content.agendaItems.
+   */
+  schedule: HouseDisplayScheduleSources;
   content: HouseDisplayContent;
 }

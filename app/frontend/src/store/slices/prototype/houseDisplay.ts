@@ -1,85 +1,132 @@
 /**
- * House Display Redux slice — client-only FE mock.
+ * STATUS — House Display Redux slice (client-only FE mock)
+ * Branch: feature/house-display
+ *
+ * DONE (S1):
+ * - state.schedule = recurring + oneTime + exceptions (source of truth)
+ * - content.agendaItems = resolveAgendaForDate(Chicago day, schedule)
+ * - Hydrate schedule from DEV localStorage (fail-safe → INITIAL_SCHEDULE_SOURCES)
+ * - cancelOccurrence / restoreOccurrence (explicit dateYmd; deterministic cancel ids)
+ * - Persist sources only after mutators (not agendaItems)
+ * - TV + manage read content; TV never reads schedule
+ *
+ * NOT YET:
+ * - Add/Edit/End Class reducers, one-time CRUD
+ * - override exception UI, delete definition
+ * - Backend API / thunks
+ * - Midnight re-resolve without refresh
  *
  * Who uses this:
- *   - manage.tsx  → staff Hub (read summary; edit forms later)
- *   - index.tsx   → TV /house-display (select only)
- *
- * No API/thunks. Refresh resets to seed — fine for prototype.
- * Agenda uses startMin/endMin for proportional timeline.
- * TV clock / nowMin come from useHopeHouseNow (not Redux).
+ *   - manage.tsx  → Today cancel/restore; more admin later
+ *   - index.tsx   → TV selects content only
  */
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import type {
   HouseDisplayContent,
   HouseDisplayState,
-} from "@/features/house-display/types";
-import { DEFAULT_TIMELINE_WINDOW } from "@/features/house-display/timeline";
+} from "../../../features/house-display/types";
+import { DEFAULT_TIMELINE_WINDOW } from "../../../features/house-display/timeline";
+import { getHopeHouseNow } from "../../../features/house-display/time";
+// Relative paths: Bun hot sometimes fails @/ resolve on newly added feature files
+import { resolveAgendaForDate } from "../../../features/house-display/resolveAgenda";
+import { INITIAL_SCHEDULE_SOURCES } from "../../../features/house-display/scheduleSeed";
+import type { HouseDisplayScheduleSources } from "../../../features/house-display/scheduleTypes";
+import {
+  loadScheduleSources,
+  saveScheduleSources,
+} from "../../../features/house-display/schedulePersistence";
 // Bundled flyer URLs (Bun @assets). public/house-display/* is NOT served by dev-server.
 import kiddosDonationUrl from "@assets/house-display/kiddos-donation.png";
 import hopeChangesEverythingUrl from "@assets/house-display/hope-changes-everything.png";
 
-const initialState: HouseDisplayState = {
-  content: {
+/** Occurrence payload from manage — dateYmd must be explicit (no clock in reducer). */
+export type HouseDisplayOccurrenceActionPayload = {
+  occurrenceId: string;
+  /** America/Chicago calendar day YYYY-MM-DD */
+  dateYmd: string;
+};
+
+/** Deep-ish copy so seed arrays are not shared/mutated by accident. */
+function cloneScheduleSources(
+  sources: HouseDisplayScheduleSources,
+): HouseDisplayScheduleSources {
+  return {
+    recurring: sources.recurring.map((r) => ({
+      ...r,
+      daysOfWeek: [...r.daysOfWeek],
+    })),
+    oneTime: sources.oneTime.map((o) => ({ ...o })),
+    exceptions: sources.exceptions.map((e) => ({ ...e })),
+  };
+}
+
+/** Deterministic cancel exception id. */
+function cancelExceptionId(seriesId: string, dateYmd: string): string {
+  return `cancel:${seriesId}:${dateYmd}`;
+}
+
+/**
+ * Recurring TV ids are "seriesId:YYYY-MM-DD".
+ * One-time ids have no colon (seed ids are kebab-case only).
+ */
+function parseRecurringOccurrenceId(
+  occurrenceId: string,
+): { seriesId: string; dateYmd: string } | null {
+  const idx = occurrenceId.lastIndexOf(":");
+  if (idx <= 0) return null;
+  const seriesId = occurrenceId.slice(0, idx);
+  const dateYmd = occurrenceId.slice(idx + 1);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateYmd)) return null;
+  if (!seriesId) return null;
+  return { seriesId, dateYmd };
+}
+
+/** Re-resolve TV agenda only — never rebuild spotlight from scratch here. */
+function syncAgendaFromSchedule(
+  state: HouseDisplayState,
+  dateYmd: string,
+): void {
+  state.content.agendaItems = resolveAgendaForDate({
+    dateYmd,
+    sources: {
+      recurring: state.schedule.recurring,
+      oneTime: state.schedule.oneTime,
+      exceptions: state.schedule.exceptions,
+    },
+  });
+}
+
+/**
+ * DEV/prototype: persist sources only after schedule mutators.
+ * Backend will replace this later — not a general app persistence layer.
+ */
+function persistScheduleSources(state: HouseDisplayState): void {
+  saveScheduleSources({
+    recurring: state.schedule.recurring,
+    oneTime: state.schedule.oneTime,
+    exceptions: state.schedule.exceptions,
+  });
+}
+
+/**
+ * Build TV content tree. agendaItems = resolve(Chicago dateKey, sources).
+ * Spotlight / lower band still static seed for now.
+ * getHopeHouseNow OK here for first paint only — not inside Cancel/Restore.
+ */
+function buildContent(
+  schedule: HouseDisplayScheduleSources,
+  dateYmd?: string,
+): HouseDisplayContent {
+  const ymd = dateYmd ?? getHopeHouseNow().dateKey;
+  return {
     header: {
       identityLabel: "Hope House Guthrie",
       clockText: "3:45 PM",
       dateText: "Sun, Aug 23",
       weatherText: "82° Clear",
     },
-    // Visible planner: 7:00 AM – 9:00 PM
     timeline: { ...DEFAULT_TIMELINE_WINDOW },
-    agendaItems: [
-      // 8:00–8:30 AM (30 min)
-      {
-        id: "a1",
-        title: "Morning Roll Call",
-        startMin: 8 * 60,
-        endMin: 8 * 60 + 30,
-        canceled: false,
-      },
-      // 10:00–11:00 AM (60 min)
-      {
-        id: "a2",
-        title: "I Matter",
-        startMin: 10 * 60,
-        endMin: 11 * 60,
-        canceled: false,
-      },
-      // 1:00–2:00 PM (60 min) — twice the vertical of a 30-min block
-      {
-        id: "a3",
-        title: "Tech Quest",
-        startMin: 13 * 60,
-        endMin: 14 * 60,
-        canceled: true,
-      },
-      // 3:30–4:00 PM (30 min)
-      {
-        id: "a4",
-        title: "House Meeting",
-        startMin: 15 * 60 + 30,
-        endMin: 16 * 60,
-        canceled: false,
-      },
-      // 6:00–7:30 PM (90 min)
-      {
-        id: "a5",
-        title: "Main NA",
-        startMin: 18 * 60,
-        endMin: 19 * 60 + 30,
-        canceled: false,
-      },
-    ],
-    /**
-     * House Spotlight (right ~40%).
-     * Rotation test seed: 3 active, all pinMode "none", sortOrder 0..2.
-     * Flyer imageUrl = Bun-bundled @assets module URLs (not /public paths).
-     * TV still uses rotateIndex 0 until timer chunk → Super Saturday first.
-     * KIDDOS preview: set s1 active false, hard refresh. Hope: s1+s2 false.
-     * Pin test later: set one item pinMode to "until_unpinned", hard refresh.
-     * Empty region: set all active: false.
-     */
+    agendaItems: resolveAgendaForDate({ dateYmd: ymd, sources: schedule }),
     spotlightItems: [
       {
         id: "s1",
@@ -118,7 +165,7 @@ const initialState: HouseDisplayState = {
         imageAlt: "Hope Changes Everything / Family Reunification flyer",
       },
     ],
-
+    // Still mock strip — not derived from agenda yet (known cleanup)
     upcomingItems: [
       { id: "u1", timeLabel: "3:30 PM", title: "House Meeting" },
       { id: "u2", timeLabel: "6:00 PM", title: "Main NA" },
@@ -140,19 +187,108 @@ const initialState: HouseDisplayState = {
       name: "Alex M.",
       dateLabel: "Thu, Aug 27",
     },
-  },
+  };
+}
+
+// Hydrate schedule SOURCES only. Invalid/missing localStorage → seed.
+// agendaItems always come from resolve (never read from storage).
+const persistedSchedule = loadScheduleSources();
+const initialSchedule = cloneScheduleSources(
+  persistedSchedule ?? INITIAL_SCHEDULE_SOURCES,
+);
+
+const initialState: HouseDisplayState = {
+  schedule: initialSchedule,
+  content: buildContent(initialSchedule),
 };
 
 export const houseDisplaySlice = createSlice({
   name: "houseDisplay",
   initialState,
   reducers: {
-    /** Replace full TV content tree (UI should validate/trim before dispatch). */
+    /** Replace full TV content tree (rare). Prefer schedule mutators. */
     setContent: (state, action: PayloadAction<HouseDisplayContent>) => {
       state.content = action.payload;
+    },
+
+    /**
+     * Cancel one occurrence for an explicit Chicago dateYmd.
+     * Recurring → exception kind cancel (series unchanged).
+     * One-time → row.canceled = true.
+     * Idempotent. No clock/random in this reducer.
+     */
+    cancelOccurrence: (
+      state,
+      action: PayloadAction<HouseDisplayOccurrenceActionPayload>,
+    ) => {
+      const { occurrenceId, dateYmd } = action.payload;
+      if (!occurrenceId || !dateYmd) return;
+
+      const recurringRef = parseRecurringOccurrenceId(occurrenceId);
+      if (recurringRef) {
+        const seriesId = recurringRef.seriesId;
+        const exId = cancelExceptionId(seriesId, dateYmd);
+        const already = state.schedule.exceptions.some(
+          (e) =>
+            e.id === exId ||
+            (e.kind === "cancel" &&
+              e.seriesId === seriesId &&
+              e.dateYmd === dateYmd),
+        );
+        if (!already) {
+          state.schedule.exceptions.push({
+            id: exId,
+            seriesId,
+            dateYmd,
+            kind: "cancel",
+          });
+        }
+      } else {
+        const one = state.schedule.oneTime.find((o) => o.id === occurrenceId);
+        if (one) {
+          one.canceled = true;
+        }
+      }
+
+      syncAgendaFromSchedule(state, dateYmd);
+      persistScheduleSources(state);
+    },
+
+    /**
+     * Restore one occurrence for an explicit Chicago dateYmd.
+     * Recurring → remove that day's cancel exception only.
+     * One-time → canceled = false.
+     * No clock/random in this reducer.
+     */
+    restoreOccurrence: (
+      state,
+      action: PayloadAction<HouseDisplayOccurrenceActionPayload>,
+    ) => {
+      const { occurrenceId, dateYmd } = action.payload;
+      if (!occurrenceId || !dateYmd) return;
+
+      const recurringRef = parseRecurringOccurrenceId(occurrenceId);
+      if (recurringRef) {
+        const seriesId = recurringRef.seriesId;
+        state.schedule.exceptions = state.schedule.exceptions.filter((e) => {
+          if (e.kind !== "cancel") return true;
+          if (e.seriesId !== seriesId) return true;
+          if (e.dateYmd !== dateYmd) return true;
+          return false;
+        });
+      } else {
+        const one = state.schedule.oneTime.find((o) => o.id === occurrenceId);
+        if (one) {
+          one.canceled = false;
+        }
+      }
+
+      syncAgendaFromSchedule(state, dateYmd);
+      persistScheduleSources(state);
     },
   },
 });
 
-export const { setContent } = houseDisplaySlice.actions;
+export const { setContent, cancelOccurrence, restoreOccurrence } =
+  houseDisplaySlice.actions;
 export default houseDisplaySlice.reducer;

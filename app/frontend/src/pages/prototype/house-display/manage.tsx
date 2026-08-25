@@ -1,25 +1,48 @@
 /**
  * STATUS — House Display management (Hub chrome)
  * Branch: feature/house-display
+ * Route: /prototype/house-display
  *
- * DONE:
- * - Management shell under MainLayout at /prototype/house-display
- * - View Full Display opens /house-display in a new tab (TV preview)
- * - Read-only "On TV now" summary from houseDisplay layout seed
+ * DONE (S1 schedule):
+ * - Management shell under MainLayout (staff control surface, not debug dump)
+ * - View Full Display → /house-display (new tab)
+ * - Today's Schedule from resolved content.agendaItems
+ * - Cancel / Restore one occurrence (explicit Chicago dateYmd)
+ * - Schedule sources in Redux + DEV localStorage hydrate (hhg-dev-house-display-schedule-v1)
+ * - Pure resolveAgendaForDate; confirmed recurring seed; TV contract unchanged
  *
- * NOT IN THIS CHUNK:
- * - Live clock / weather API / animations on the TV route
- * - Add/edit/remove/schedule content controls
- * - Backend
+ * NOT YET (S2+):
+ * - Add / Edit / End Class, one-time event forms
+ * - Edit this occurrence (override exceptions)
+ * - Spotlight management / flyer upload
+ * - UP NEXT derived from agenda (TV known cleanup)
+ * - Backend persistence (replaces localStorage)
+ * - Live cross-tab sync (refresh Full Display after cancel is OK for S1)
  *
  * PAIR:
- * - TV (no chrome): pages/prototype/house-display/index.tsx → /house-display
+ * - TV: pages/prototype/house-display/index.tsx → /house-display
  * - Manage (this file): → /prototype/house-display
  */
-import { useSelector } from "react-redux";
-import { Box, Button, Card, CardContent, Typography } from "@mui/material";
+import { useDispatch, useSelector } from "react-redux";
+import {
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Chip,
+  Divider,
+  Stack,
+  Typography,
+} from "@mui/material";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import type { RootState } from "@/store";
+// Relative: matches slice / Bun-safe house-display feature imports
+import { formatTimeLabel } from "../../../features/house-display/timeline";
+import { getHopeHouseNow } from "../../../features/house-display/time";
+import {
+  cancelOccurrence,
+  restoreOccurrence,
+} from "../../../store/slices/prototype/houseDisplay";
 
 /**
  * Open the presentation-only TV route in a new tab so Hub stays open.
@@ -30,28 +53,36 @@ function openFullDisplayPreview() {
 }
 
 export default function HouseDisplayManagePage() {
-  const content = useSelector(
-    (state: RootState) => state.houseDisplay.content
+  const dispatch = useDispatch();
+  const agendaItems = useSelector(
+    (state: RootState) => state.houseDisplay.content.agendaItems,
   );
-  const { header, agendaItems, affirmationText, birthday } = content;
+
+  // Hope House calendar day for labels + Cancel/Restore payloads (not browser TZ alone)
+  const hopeNow = getHopeHouseNow();
+  const dateYmd = hopeNow.dateKey;
+
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-      <Typography variant="h4" component="h1">
-        House Display
-      </Typography>
-      <Typography variant="body1" color="text.secondary">
-        Staff management for the house TV display. Content controls come in
-        later phases. Use View Full Display to preview exactly what the
-        full-screen TV route shows (no Hub header or drawer).
-      </Typography>
+      <Box>
+        <Typography variant="h4" component="h1">
+          House Display
+        </Typography>
+        <Typography variant="body1" color="text.secondary" sx={{ mt: 0.5 }}>
+          Manage what the house TV shows. Start with today&apos;s class
+          schedule — cancel or restore a single day without changing the
+          weekly class list.
+        </Typography>
+      </Box>
 
-      <Card sx={{ maxWidth: 560 }}>
+      {/* TV preview */}
+      <Card sx={{ maxWidth: 720 }}>
         <CardContent
           sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}
         >
-          <Typography variant="h6">TV preview</Typography>
+          <Typography variant="h6">Full Display</Typography>
           <Typography variant="body2" color="text.secondary">
-            Opens /house-display in a new tab — presentation only.
+            Opens the TV screen in a new tab (no Hub header or drawer).
           </Typography>
           <Button
             type="button"
@@ -62,41 +93,153 @@ export default function HouseDisplayManagePage() {
           >
             View Full Display
           </Button>
-        </CardContent>
-      </Card>
-
-      <Card sx={{ maxWidth: 560 }}>
-        <CardContent sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-          <Typography variant="h6">On TV now (read-only)</Typography>
-          <Typography variant="body2" color="text.secondary">
-            Same Redux seed the TV page reads. Edit UI is a later phase.
-          </Typography>
-          <Typography variant="body2" sx={{ mt: 1 }}>
-            <strong>Identity:</strong> {header.identityLabel}
-          </Typography>
-          <Typography variant="body2">
-            <strong>Agenda items:</strong> {agendaItems.length}
-          </Typography>
-          <Typography variant="body2">
-            <strong>Timeline window:</strong> 7:00 AM – 9:00 PM (proportional)
-          </Typography>
-          <Typography variant="body2">
-            <strong>Affirmation:</strong> {affirmationText}
-          </Typography>
-          <Typography variant="body2">
-            <strong>Birthday:</strong> {birthday.name} ({birthday.dateLabel})
+          <Typography variant="caption" color="text.secondary">
+            Prototype note: after Cancel or Restore, refresh the Full Display
+            tab to see the update. Schedule changes are saved in this browser
+            for the mock; a future backend will replace that.
           </Typography>
         </CardContent>
       </Card>
 
-      <Card sx={{ maxWidth: 560 }}>
+      {/* Today's Schedule — primary ops control */}
+      <Card sx={{ maxWidth: 720 }}>
+        <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <Box>
+            <Typography variant="h6">Today&apos;s Schedule</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              {hopeNow.dateText}
+              <Box
+                component="span"
+                sx={{ mx: 1, opacity: 0.5 }}
+                aria-hidden
+              >
+                ·
+              </Box>
+              Hope House day {dateYmd}
+            </Typography>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ mt: 1 }}
+            >
+              Cancel applies to this day only. The weekly class definition stays
+              active for future days. Restore removes today&apos;s cancellation.
+            </Typography>
+          </Box>
+
+          <Divider />
+
+          {agendaItems.length === 0 ? (
+            <Typography variant="body2" color="text.secondary">
+              No classes scheduled for today.
+            </Typography>
+          ) : (
+            <Stack divider={<Divider flexItem />} spacing={0}>
+              {agendaItems.map((item) => {
+                const timeRange = `${formatTimeLabel(item.startMin)} – ${formatTimeLabel(item.endMin)}`;
+                return (
+                  <Box
+                    key={item.id}
+                    sx={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 1.5,
+                      py: 1.5,
+                    }}
+                  >
+                    <Box sx={{ minWidth: 0, flex: "1 1 220px" }}>
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ fontWeight: 600 }}
+                      >
+                        {timeRange}
+                      </Typography>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          flexWrap: "wrap",
+                          alignItems: "center",
+                          gap: 1,
+                          mt: 0.25,
+                        }}
+                      >
+                        <Typography
+                          variant="body1"
+                          sx={{
+                            fontWeight: 600,
+                            textDecoration: item.canceled
+                              ? "line-through"
+                              : "none",
+                            opacity: item.canceled ? 0.85 : 1,
+                          }}
+                        >
+                          {item.title}
+                        </Typography>
+                        {item.canceled ? (
+                          <Chip
+                            size="small"
+                            label="CANCELED"
+                            color="error"
+                            variant="outlined"
+                          />
+                        ) : null}
+                      </Box>
+                    </Box>
+
+                    {item.canceled ? (
+                      <Button
+                        type="button"
+                        variant="outlined"
+                        color="primary"
+                        onClick={() =>
+                          dispatch(
+                            restoreOccurrence({
+                              occurrenceId: item.id,
+                              dateYmd,
+                            }),
+                          )
+                        }
+                      >
+                        Restore
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="outlined"
+                        color="warning"
+                        onClick={() =>
+                          dispatch(
+                            cancelOccurrence({
+                              occurrenceId: item.id,
+                              dateYmd,
+                            }),
+                          )
+                        }
+                      >
+                        Cancel
+                      </Button>
+                    )}
+                  </Box>
+                );
+              })}
+            </Stack>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Parked sections — no fake debug dump */}
+      <Card sx={{ maxWidth: 720 }}>
         <CardContent>
           <Typography variant="h6" sx={{ mb: 1 }}>
-            Content controls
+            Coming next
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Placeholder — add, edit, remove, schedule, and control display
-            content in a later phase. Nothing to configure yet.
+            Add Class, Edit Class, End Class, and one-time events will live
+            here so staff can change the weekly schedule without a code
+            change. Spotlight and flyer tools stay separate later.
           </Typography>
         </CardContent>
       </Card>
