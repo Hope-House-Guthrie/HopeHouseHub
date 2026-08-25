@@ -11,7 +11,12 @@
  * - Schedule sources in Redux + DEV localStorage hydrate (hhg-dev-house-display-schedule-v1)
  * - Pure resolveAgendaForDate; confirmed recurring seed; TV contract unchanged
  *
- * NOT YET (S2+):
+ * DONE (S2.1):
+ * - Recurring Classes list (active series only) from schedule.recurring
+ * - Display-only sort (startMin, title); no Redux reorder
+ * - scheduleFormat weekday + time-range labels
+ *
+ * NOT YET (S2.2+):
  * - Add / Edit / End Class, one-time event forms
  * - Edit this occurrence (override exceptions)
  * - Spotlight management / flyer upload
@@ -23,6 +28,7 @@
  * - TV: pages/prototype/house-display/index.tsx → /house-display
  * - Manage (this file): → /prototype/house-display
  */
+import { useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   Box,
@@ -37,6 +43,10 @@ import {
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import type { RootState } from "@/store";
 // Relative: matches slice / Bun-safe house-display feature imports
+import {
+  formatRecurringDaysLabel,
+  formatScheduleTimeRange,
+} from "../../../features/house-display/scheduleFormat";
 import { formatTimeLabel } from "../../../features/house-display/timeline";
 import { getHopeHouseNow } from "../../../features/house-display/time";
 import {
@@ -57,6 +67,20 @@ export default function HouseDisplayManagePage() {
   const agendaItems = useSelector(
     (state: RootState) => state.houseDisplay.content.agendaItems,
   );
+  const recurring = useSelector(
+    (state: RootState) => state.houseDisplay.schedule.recurring,
+  );
+
+  // Display-only: active series, sorted for staff scan — never mutate Redux arrays
+  const activeRecurringClasses = useMemo(() => {
+    return recurring
+      .filter((series) => series.active)
+      .slice()
+      .sort((a, b) => {
+        if (a.startMin !== b.startMin) return a.startMin - b.startMin;
+        return a.title.localeCompare(b.title);
+      });
+  }, [recurring]);
 
   // Hope House calendar day for labels + Cancel/Restore payloads (not browser TZ alone)
   const hopeNow = getHopeHouseNow();
@@ -230,17 +254,63 @@ export default function HouseDisplayManagePage() {
         </CardContent>
       </Card>
 
-      {/* Parked sections — no fake debug dump */}
+      {/* Recurring Classes — series definitions (not today's occurrences) */}
       <Card sx={{ maxWidth: 720 }}>
-        <CardContent>
-          <Typography variant="h6" sx={{ mb: 1 }}>
-            Coming next
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Add Class, Edit Class, End Class, and one-time events will live
-            here so staff can change the weekly schedule without a code
-            change. Spotlight and flyer tools stay separate later.
-          </Typography>
+        <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <Box>
+            <Typography variant="h6">Recurring Classes</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              Weekly class list the house runs on matching days. This is the
+              series definition — not today&apos;s cancel/restore list.
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              Add, Edit, and End Class come next. Ending a class stops future
+              days without deleting its record.
+            </Typography>
+          </Box>
+
+          <Divider />
+
+          {activeRecurringClasses.length === 0 ? (
+            <Typography variant="body2" color="text.secondary">
+              No active recurring classes.
+            </Typography>
+          ) : (
+            <Stack divider={<Divider flexItem />} spacing={0}>
+              {activeRecurringClasses.map((series) => {
+                const daysLabel = formatRecurringDaysLabel(series.daysOfWeek);
+                const timeRange = formatScheduleTimeRange(
+                  series.startMin,
+                  series.endMin,
+                );
+                return (
+                  <Box
+                    key={series.id}
+                    sx={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 0.25,
+                      py: 1.5,
+                    }}
+                  >
+                    <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                      {series.title}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {daysLabel}
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ fontWeight: 600 }}
+                    >
+                      {timeRange}
+                    </Typography>
+                  </Box>
+                );
+              })}
+            </Stack>
+          )}
         </CardContent>
       </Card>
     </Box>
