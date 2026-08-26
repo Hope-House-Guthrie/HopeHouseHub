@@ -69,6 +69,8 @@ export interface HouseDisplayAgendaItem {
   sourceType: HouseDisplayAgendaSourceType;
   /** Optional location where the event takes place */
   location?: string;
+  /** Optional facilitator name for this event */
+  facilitator?: string;
 }
 
 /** Thin "up next" strip item (static mock until derived from agenda + now). */

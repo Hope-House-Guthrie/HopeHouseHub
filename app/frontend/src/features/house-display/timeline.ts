@@ -101,6 +101,10 @@ export interface TimelineBlockLayout {
   startLabel: string;
   endLabel: string;
   durationMin: number;
+  /** Optional location metadata for display */
+  location?: string;
+  /** Optional facilitator metadata for display */
+  facilitator?: string;
 }
 
 /**
@@ -134,6 +138,8 @@ export function layoutAgendaItem(
     startLabel: formatTimeLabel(item.startMin),
     endLabel: formatTimeLabel(item.endMin),
     durationMin: item.endMin - item.startMin,
+    location: item.location,
+    facilitator: item.facilitator,
   };
 }
 

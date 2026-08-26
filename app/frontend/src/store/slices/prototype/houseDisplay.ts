@@ -88,6 +88,8 @@ export type EditRecurringClassPayload = {
   dateYmd: string;
   /** Optional location (Living Room, Back House, etc.) */
   location?: string;
+  /** Optional facilitator name (clear by passing empty string) */
+  facilitator?: string;
 };
 
 /**
@@ -124,6 +126,8 @@ export type EditOneTimeEventPayload = {
   resolveDateYmd: string;
   /** Optional location — edit keeps existing location if not provided */
   location?: string;
+  /** Optional facilitator name (clear by passing empty string) */
+  facilitator?: string;
 };
 
 /** Deep-ish copy so seed arrays are not shared/mutated by accident. */
@@ -463,6 +467,7 @@ export const houseDisplaySlice = createSlice({
         daysOfWeek,
         active: true,
         location: event.location,
+        facilitator: event.facilitator,
       });
 
       syncAgendaFromSchedule(state, dateYmd);
@@ -485,6 +490,7 @@ export const houseDisplaySlice = createSlice({
         daysOfWeek,
         dateYmd,
         location,
+        facilitator,
       } = action.payload;
       if (!dateYmd) return;
 
@@ -505,6 +511,8 @@ export const houseDisplaySlice = createSlice({
 
       const existing = state.schedule.recurring[index];
       if (!existing) return;
+      // For facilitator: undefined means keep existing, "" means clear
+      const newFacilitator = typeof facilitator === "string" ? facilitator : existing.facilitator;
       state.schedule.recurring[index] = {
         id: existing.id,
         active: existing.active,
@@ -512,7 +520,8 @@ export const houseDisplaySlice = createSlice({
         startMin,
         endMin,
         daysOfWeek: normalizedDays,
-        location: location,
+        location: location ?? existing.location,
+        facilitator: newFacilitator,
       };
 
       syncAgendaFromSchedule(state, dateYmd);
@@ -582,6 +591,7 @@ export const houseDisplaySlice = createSlice({
         active: true,
         canceled: false,
         location: event.location,
+        facilitator: event.facilitator,
       });
 
       syncAgendaFromSchedule(state, resolveDateYmd);
@@ -605,6 +615,7 @@ export const houseDisplaySlice = createSlice({
         endMin,
         resolveDateYmd,
         location,
+        facilitator,
       } = action.payload;
       if (!resolveDateYmd || !isRealDateYmd(resolveDateYmd)) return;
 
@@ -627,6 +638,8 @@ export const houseDisplaySlice = createSlice({
       const existing = state.schedule.oneTime[index];
       if (!existing) return;
 
+      // For facilitator: undefined means keep existing, "" means clear
+      const newFacilitator = typeof facilitator === "string" ? facilitator : existing.facilitator;
       state.schedule.oneTime[index] = {
         id: existing.id,
         active: existing.active,
@@ -636,6 +649,7 @@ export const houseDisplaySlice = createSlice({
         startMin,
         endMin,
         location: location ?? existing.location,
+        facilitator: newFacilitator,
       };
 
       syncAgendaFromSchedule(state, resolveDateYmd);

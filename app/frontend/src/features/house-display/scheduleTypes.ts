@@ -33,6 +33,8 @@ export interface HouseDisplayRecurringEvent {
   active: boolean;
   /** Optional location where the event takes place (Living Room, Back House, etc.) */
   location?: string;
+  /** Optional facilitator name for this event */
+  facilitator?: string;
 }
 
 /**
@@ -52,6 +54,8 @@ export interface HouseDisplayOneTimeEvent {
   canceled: boolean;
   /** Optional location where the event takes place */
   location?: string;
+  /** Optional facilitator name for this event */
+  facilitator?: string;
 }
 
 /**

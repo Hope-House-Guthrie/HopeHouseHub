@@ -52,7 +52,7 @@
  * - TV: pages/prototype/house-display/index.tsx → /house-display
  * - Manage (this file): → /prototype/house-display
  */
-import { useMemo, useState, type FormEvent } from "react";
+import { useMemo, useRef, useState, type FormEvent } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   Box,
@@ -103,6 +103,7 @@ import {
   addOneTimeEvent,
   addRecurringClass,
   cancelOccurrence,
+  editOneTimeEvent,
   editRecurringClass,
   endRecurringClass,
   restoreOccurrence,
@@ -190,14 +191,22 @@ export default function HouseDisplayManagePage() {
   const [addDays, setAddDays] = useState<number[]>([]);
   const [addError, setAddError] = useState("");
   const [addLocation, setAddLocation] = useState<string>("Living Room");
+  const [addFacilitator, setAddFacilitator] = useState<string>("");
+
+  // Track if end time was manually set (to avoid overwriting on start change)
+  const addClassEndTimeManuallySet = useRef(false);
+  const addOneTimeEndTimeManuallySet = useRef(false);
 
   // --- One-Time Event dialog state ---
+  const [oneTimeFormMode, setOneTimeFormMode] = useState<"add" | "edit">("add");
+  const [editingOneTimeId, setEditingOneTimeId] = useState<string | null>(null);
   const [addOneTimeOpen, setAddOneTimeOpen] = useState(false);
   const [addOneTimeTitle, setAddOneTimeTitle] = useState("");
   const [addOneTimeDate, setAddOneTimeDate] = useState<string>(""); // YYYY-MM-DD
   const [addOneTimeStartTime, setAddOneTimeStartTime] = useState("");
   const [addOneTimeEndTime, setAddOneTimeEndTime] = useState("");
   const [addOneTimeLocation, setAddOneTimeLocation] = useState<string>("Living Room");
+  const [addOneTimeFacilitator, setAddOneTimeFacilitator] = useState<string>("");
   const [addOneTimeError, setAddOneTimeError] = useState("");
 
   // --- Conflict Dialog state ---
@@ -219,6 +228,9 @@ export default function HouseDisplayManagePage() {
     setAddEndTime("");
     setAddDays([]);
     setAddError("");
+    setAddLocation("Living Room");
+    setAddFacilitator("");
+    addClassEndTimeManuallySet.current = false;
   };
 
   const handleOpenAddClass = () => {
@@ -242,18 +254,72 @@ export default function HouseDisplayManagePage() {
   };
 
   // --- One-Time Event handlers ---
-  const handleOpenAddOneTimeEvent = () => {
+  const resetAddOneTimeForm = () => {
+    setOneTimeFormMode("add");
+    setEditingOneTimeId(null);
     setAddOneTimeTitle("");
-    setAddOneTimeDate(hopeNow.dateKey); // default to today
+    setAddOneTimeDate(hopeNow.dateKey);
     setAddOneTimeStartTime("");
     setAddOneTimeEndTime("");
     setAddOneTimeLocation("Living Room");
+    setAddOneTimeFacilitator("");
     setAddOneTimeError("");
+    addOneTimeEndTimeManuallySet.current = false;
+  };
+
+  const handleOpenAddOneTimeEvent = () => {
+    resetAddOneTimeForm();
     setAddOneTimeOpen(true);
+  };
+
+  const handleOpenEditOneTimeEvent = (event: HouseDisplayOneTimeEvent) => {
+    setOneTimeFormMode("edit");
+    setEditingOneTimeId(event.id);
+    setAddOneTimeTitle(event.title);
+    setAddOneTimeDate(event.dateYmd);
+    setAddOneTimeStartTime(formatMinToTimeInput(event.startMin));
+    setAddOneTimeEndTime(formatMinToTimeInput(event.endMin));
+    setAddOneTimeLocation(event.location ?? "Living Room");
+    setAddOneTimeFacilitator(event.facilitator ?? "");
+    setAddOneTimeError("");
+    // Mark end time as manually set for edit mode
+    addOneTimeEndTimeManuallySet.current = true;
+    setAddOneTimeOpen(true);
+  };
+
+  // Helper: add 1 hour to time string (24-hour rollover)
+  const addOneHourToTime = (time: string): string => {
+    if (!time) return time;
+    const [hoursStr, minutesStr] = time.split(":");
+    if (!hoursStr || !minutesStr) return time;
+    const hours = parseInt(hoursStr, 10);
+    const minutes = parseInt(minutesStr, 10);
+    if (isNaN(hours) || isNaN(minutes)) return time;
+    // Allow rollover past midnight (e.g., 23:30 -> 00:30)
+    const newHours = hours >= 24 ? hours - 24 : hours + 1;
+    return `${newHours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
+  };
+
+  // Capitalize title: title case, preserving acronyms (SCSU, NA, etc.) and proper names (McGalliard)
+  const capitalizeTitle = (text: string): string => {
+    if (!text) return text;
+    // Split on spaces, capitalize first letter of each word, lowercase rest
+    return text
+      .split(/(\s+)/)
+      .map((part) => {
+        if (part.trim().length === 0) return part;
+        const firstChar = part.charAt(0);
+        const capitalizedFirst = /[a-zA-Z]/.test(firstChar)
+          ? firstChar.toUpperCase()
+          : firstChar;
+        return capitalizedFirst + part.slice(1);
+      })
+      .join("");
   };
 
   const handleCloseAddOneTimeEvent = () => {
     setAddOneTimeOpen(false);
+    resetAddOneTimeForm();
   };
 
   const handleAddOneTimeEventSubmit = (e: FormEvent) => {
@@ -274,21 +340,39 @@ export default function HouseDisplayManagePage() {
 
     const { title, dateYmd, startMin, endMin } = validated;
 
-    dispatch(
-      addOneTimeEvent({
-        event: {
-          id: newOneTimeEventId(),
-          title,
-          dateYmd,
+    if (oneTimeFormMode === "edit" && editingOneTimeId) {
+      // EDIT MODE: update existing event
+      dispatch(
+        editOneTimeEvent({
+          id: editingOneTimeId,
+          title: capitalizeTitle(title),
+          eventDateYmd: dateYmd,
           startMin,
           endMin,
-          location: addOneTimeLocation,
-          active: true,
-          canceled: false,
-        },
-        dateYmd: hopeNow.dateKey,
-      }),
-    );
+          resolveDateYmd: hopeNow.dateKey,
+          location: addOneTimeLocation || undefined,
+          facilitator: addOneTimeFacilitator ? capitalizeTitle(addOneTimeFacilitator) : "",
+        }),
+      );
+    } else {
+      // ADD MODE: create new event
+      dispatch(
+        addOneTimeEvent({
+          event: {
+            id: newOneTimeEventId(),
+            title: capitalizeTitle(title),
+            dateYmd,
+            startMin,
+            endMin,
+            location: addOneTimeLocation || undefined,
+            facilitator: addOneTimeFacilitator ? capitalizeTitle(addOneTimeFacilitator) : undefined,
+            active: true,
+            canceled: false,
+          },
+          dateYmd: hopeNow.dateKey,
+        }),
+      );
+    }
 
     handleCloseAddOneTimeEvent();
   };
@@ -329,6 +413,7 @@ export default function HouseDisplayManagePage() {
     setAddEndTime(formatMinToTimeInput(series.endMin));
     setAddDays([...series.daysOfWeek].sort((a, b) => a - b));
     setAddLocation(series.location ?? "Living Room");
+    setAddFacilitator(series.facilitator ?? "");
     setAddError("");
     setAddClassOpen(true);
   };
@@ -428,12 +513,13 @@ export default function HouseDisplayManagePage() {
     const isEdit = editingClassId !== null;
     const event: HouseDisplayRecurringEvent = {
       id: isEdit ? editingClassId! : newRecurringClassId(),
-      title,
+      title: capitalizeTitle(title),
       startMin,
       endMin,
       daysOfWeek,
       active: true,
       location: addLocation,
+      facilitator: capitalizeTitle(addFacilitator),
     };
 
     // Build candidate for conflict detection
@@ -468,6 +554,8 @@ export default function HouseDisplayManagePage() {
             endMin: event.endMin,
             daysOfWeek: event.daysOfWeek,
             dateYmd: submitDateYmd,
+            location: addLocation,
+            facilitator: addFacilitator ? capitalizeTitle(addFacilitator) : "",
           }),
         );
       } else {
@@ -670,6 +758,13 @@ export default function HouseDisplayManagePage() {
                             color="info"
                           />
                         ) : null}
+                        {series.facilitator ? (
+                          <Chip
+                            size="small"
+                            label={`Facilitator: ${series.facilitator}`}
+                            variant="outlined"
+                          />
+                        ) : null}
                         <Button
                           type="button"
                           size="small"
@@ -780,6 +875,21 @@ export default function HouseDisplayManagePage() {
                             color="info"
                           />
                         ) : null}
+                        {event.facilitator ? (
+                          <Chip
+                            size="small"
+                            label={`Facilitator: ${event.facilitator}`}
+                            variant="outlined"
+                          />
+                        ) : null}
+                        <Button
+                          type="button"
+                          size="small"
+                          variant="text"
+                          onClick={() => handleOpenEditOneTimeEvent(event)}
+                        >
+                          Edit
+                        </Button>
                       </Box>
                     </Box>
                   </Box>
@@ -810,7 +920,14 @@ export default function HouseDisplayManagePage() {
                 label="Start Time"
                 type="time"
                 value={addStartTime}
-                onChange={(e) => setAddStartTime(e.target.value)}
+                onChange={(e) => {
+                  const newStart = e.target.value;
+                  setAddStartTime(newStart);
+                  // Auto-default End Time to 1 hour after Start, if not manually set
+                  if (!addClassEndTimeManuallySet.current && newStart) {
+                    setAddEndTime(addOneHourToTime(newStart));
+                  }
+                }}
                 required
                 fullWidth
                 slotProps={{
@@ -822,7 +939,10 @@ export default function HouseDisplayManagePage() {
                 label="End Time"
                 type="time"
                 value={addEndTime}
-                onChange={(e) => setAddEndTime(e.target.value)}
+                onChange={(e) => {
+                  setAddEndTime(e.target.value ?? "");
+                  addClassEndTimeManuallySet.current = true;
+                }}
                 required
                 fullWidth
                 slotProps={{
@@ -855,6 +975,7 @@ export default function HouseDisplayManagePage() {
                   label="Location"
                   onChange={(e) => setAddLocation(e.target.value as string)}
                 >
+                  <MenuItem value="">No specific location</MenuItem>
                   <MenuItem value="Living Room">Living Room</MenuItem>
                   <MenuItem value="Large Dining Room">Large Dining Room</MenuItem>
                   <MenuItem value="Small Dining Room">Small Dining Room</MenuItem>
@@ -863,6 +984,13 @@ export default function HouseDisplayManagePage() {
                   <MenuItem value="Kitchen">Kitchen</MenuItem>
                 </Select>
               </FormControl>
+              <TextField
+                label="Facilitator"
+                value={addFacilitator}
+                onChange={(e) => setAddFacilitator(e.target.value)}
+                fullWidth
+                slotProps={{ input: { "aria-label": "Facilitator name" } }}
+              />
               {addError ? (
                 <Typography variant="body2" color="error">
                   {addError}
@@ -884,7 +1012,9 @@ export default function HouseDisplayManagePage() {
       {/* Add One-Time Event dialog */}
       <Dialog open={addOneTimeOpen} onClose={handleCloseAddOneTimeEvent}>
         <Box component="form" onSubmit={handleAddOneTimeEventSubmit}>
-          <DialogTitle>Add One-Time Event</DialogTitle>
+          <DialogTitle>
+            {oneTimeFormMode === "edit" ? "Edit One-Time Event" : "Add One-Time Event"}
+          </DialogTitle>
           <DialogContent>
             <Stack spacing={2} sx={{ mt: 1 }}>
               <TextField
@@ -908,7 +1038,14 @@ export default function HouseDisplayManagePage() {
                 label="Start Time"
                 type="time"
                 value={addOneTimeStartTime}
-                onChange={(e) => setAddOneTimeStartTime(e.target.value)}
+                onChange={(e) => {
+                  const newStart = e.target.value;
+                  setAddOneTimeStartTime(newStart);
+                  // Auto-default End Time to 1 hour after Start, if not manually set
+                  if (!addOneTimeEndTimeManuallySet.current && newStart) {
+                    setAddOneTimeEndTime(addOneHourToTime(newStart));
+                  }
+                }}
                 required
                 fullWidth
                 slotProps={{
@@ -920,7 +1057,10 @@ export default function HouseDisplayManagePage() {
                 label="End Time"
                 type="time"
                 value={addOneTimeEndTime}
-                onChange={(e) => setAddOneTimeEndTime(e.target.value)}
+                onChange={(e) => {
+                  setAddOneTimeEndTime(e.target.value ?? "");
+                  addOneTimeEndTimeManuallySet.current = true;
+                }}
                 required
                 fullWidth
                 slotProps={{
@@ -935,6 +1075,7 @@ export default function HouseDisplayManagePage() {
                   label="Location"
                   onChange={(e) => setAddOneTimeLocation(e.target.value as string)}
                 >
+                  <MenuItem value="">No specific location</MenuItem>
                   <MenuItem value="Living Room">Living Room</MenuItem>
                   <MenuItem value="Large Dining Room">Large Dining Room</MenuItem>
                   <MenuItem value="Small Dining Room">Small Dining Room</MenuItem>
@@ -943,6 +1084,13 @@ export default function HouseDisplayManagePage() {
                   <MenuItem value="Kitchen">Kitchen</MenuItem>
                 </Select>
               </FormControl>
+              <TextField
+                label="Facilitator"
+                value={addOneTimeFacilitator}
+                onChange={(e) => setAddOneTimeFacilitator(e.target.value)}
+                fullWidth
+                slotProps={{ input: { "aria-label": "Facilitator name" } }}
+              />
               {addOneTimeError ? (
                 <Typography variant="body2" color="error">
                   {addOneTimeError}
@@ -955,7 +1103,7 @@ export default function HouseDisplayManagePage() {
               Cancel
             </Button>
             <Button type="submit" variant="contained">
-              Add
+              {oneTimeFormMode === "edit" ? "Save" : "Add"}
             </Button>
           </DialogActions>
         </Box>

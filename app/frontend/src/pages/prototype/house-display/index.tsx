@@ -25,7 +25,7 @@
 */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
-import { Box, Typography } from "@mui/material";
+import { Box, Chip, Typography } from "@mui/material";
 import type { RootState } from "@/store";
 import type { HouseDisplayEventVisualState } from "@/features/house-display/types";
 import type { HouseDisplaySpotlightItem } from "../../../features/house-display/types";
@@ -568,6 +568,22 @@ export default function HouseDisplayPage() {
                       >
                         {b.title}
                       </Typography>
+                      {b.location ? (
+                        <Chip
+                          size="small"
+                          label={b.location}
+                          variant="outlined"
+                          sx={{ ml: 0.5, height: 20, fontSize: "0.7rem" }}
+                        />
+                      ) : null}
+                      {b.facilitator ? (
+                        <Chip
+                          size="small"
+                          label={`Facilitator: ${b.facilitator}`}
+                          variant="outlined"
+                          sx={{ ml: 0.5, height: 20, fontSize: "0.7rem" }}
+                        />
+                      ) : null}
                       {visualState === "canceled" && (
                         <Typography
                           component="div"
