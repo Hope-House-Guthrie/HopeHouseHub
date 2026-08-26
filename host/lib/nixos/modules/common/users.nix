@@ -1,9 +1,20 @@
-{ lib, adminPublicKeys, ... }:
 {
+  lib,
+  adminPublicKeys,
+  config,
+  self,
+  ...
+}:
+{
+  age.secrets.root_passwd = {
+    file = "${self}/host/lib/secrets/root_passwd.age";
+    mode = "0400";
+  };
+
   users = {
     mutableUsers = false;
 
-    users.root.hashedPassword = "!";
+    users.root.hashedPasswordFile = config.age.secrets.root_passwd.path;
 
     users.admin = {
       isNormalUser = true;

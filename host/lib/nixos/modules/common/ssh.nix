@@ -12,6 +12,12 @@
         type = "ed25519";
       }
     ];
+
+    settings = {
+      PasswordAuthentication = false;
+      KbdInteractiveAuthentication = false;
+      PermitRootLogin = "prohibit-password";
+    };
   };
 
   virtualisation.vmVariant = {

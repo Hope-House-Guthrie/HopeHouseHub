@@ -67,6 +67,8 @@
 
       hub-gateway-ipv4Address = "104.215.78.1";
       hub-services-ipv4Address = "192.168.0.90";
+      hub-display-kitchen-ipv4Address = "192.168.2.201";
+      hub-display-common-ipv4Address = "192.168.2.149";
 
       wireguardNetwork = {
         hub-gateway = {
@@ -77,6 +79,14 @@
         hub-services = {
           ipv4Address = "172.16.42.2";
           publicKey = "vjsUWQojwUtD/+WRcY7zM8UTBoxVvKWk/rCZhCKUFi4=";
+        };
+        hub-display-kitchen = {
+          ipv4Address = "172.16.42.3";
+          publicKey = "hqvGKVVNXDyV8zt6us5jRYVsm61qRcJ4epI4trbz0FU=";
+        };
+        hub-display-common = {
+          ipv4Address = "172.16.42.4";
+          publicKey = "wYJvaevxwImeYm0nrY2YRU6VdKFvWlR9xHPvJoV44hw=";
         };
       };
 
@@ -104,9 +114,35 @@
         ipv4Address = hub-services-ipv4Address;
       };
 
+      hub-display-kitchen = (import ./host/display-kitchen/host.nix) {
+        inherit
+          adminPublicKeys
+          inputs
+          self
+          system
+          wireguardNetwork
+          ;
+
+        ipv4Address = hub-display-kitchen-ipv4Address;
+      };
+
+      hub-display-common = (import ./host/display-common/host.nix) {
+        inherit
+          adminPublicKeys
+          inputs
+          self
+          system
+          wireguardNetwork
+          ;
+
+        ipv4Address = hub-display-common-ipv4Address;
+      };
+
       hosts = [
         hub-gateway
         hub-services
+        hub-display-kitchen
+        hub-display-common
       ];
 
       devShell = (import ./shell/dev-shell/default.nix) {
@@ -138,6 +174,8 @@
 
       nixosConfigurations.hub-gateway = hub-gateway.nixosConfiguration;
       nixosConfigurations.hub-services = hub-services.nixosConfiguration;
+      nixosConfigurations.hub-display-kitchen = hub-display-kitchen.nixosConfiguration;
+      nixosConfigurations.hub-display-common = hub-display-common.nixosConfiguration;
 
       devShells.${system}.default = devShell;
     };

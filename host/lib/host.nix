@@ -1,13 +1,13 @@
 {
   adminPublicKeys,
   ipv4Address,
-  imageFormat,
+  imageFormat ? null,
   inputs,
   name,
   nixosOptions,
   self,
   system,
-  terranixOptions,
+  terranixOptions ? null,
   wireguardNetwork,
 }:
 let
@@ -29,19 +29,24 @@ let
     ];
   };
 
-  imagePackage = nixosConfiguration.config.system.build.images.${imageFormat};
+  imagePackage =
+    if imageFormat != null then nixosConfiguration.config.system.build.images.${imageFormat} else null;
 
-  imageConfiguration = imagePackage.passthru.config;
+  imageConfiguration = if imagePackage != null then imagePackage.passthru.config else null;
 
-  terranixConfiguration = inputs.terranix.lib.terranixConfiguration {
-    inherit system;
+  terranixConfiguration =
+    if terranixOptions != null then
+      inputs.terranix.lib.terranixConfiguration {
+        inherit system;
 
-    modules = terranixOptions.modules;
+        modules = terranixOptions.modules;
 
-    extraArgs = terranixOptions.extraArgs // {
-      inherit imageConfiguration imagePackage;
-    };
-  };
+        extraArgs = terranixOptions.extraArgs // {
+          inherit imageConfiguration imagePackage;
+        };
+      }
+    else
+      null;
 in
 {
   inherit
