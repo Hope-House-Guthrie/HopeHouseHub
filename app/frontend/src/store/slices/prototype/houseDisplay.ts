@@ -10,20 +10,21 @@
  * - Persist sources only after mutators (not agendaItems)
  * - TV + manage read content; TV never reads schedule
  *
- * DONE (S2.2–S2.3 partial):
+ * DONE (S2.2–S2.4):
  * - addRecurringClass (UI id; force active true)
  * - editRecurringClass (keep id + active; no exception changes)
- * - Edit UI / shared dialog still on manage (next)
+ * - endRecurringClass (active false only; keep row; no exception changes)
+ * - Cancel/Restore = day exception only (series stays active)
+ * - End Class ≠ Cancel ≠ Delete
  *
  * NOT YET:
- * - manage Edit dialog wiring
- * - End Class reducer, one-time CRUD
- * - override exception UI, delete definition
+ * - one-time CRUD
+ * - override exception UI, delete definition, reopen/ended list
  * - Backend API / thunks
  * - Midnight re-resolve without refresh
  *
  * Who uses this:
- *   - manage.tsx  → Today cancel/restore; Add Class; Edit next
+ *   - manage.tsx  → Today cancel/restore; Add/Edit/End Class
  *   - index.tsx   → TV selects content only
  */
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
@@ -74,6 +75,17 @@ export type EditRecurringClassPayload = {
   startMin: number;
   endMin: number;
   daysOfWeek: HouseDisplayWeekday[];
+  /** America/Chicago calendar day YYYY-MM-DD */
+  dateYmd: string;
+};
+
+/**
+ * End Class - seriesstay in schedule; stops generating occurrences.
+ * active false only. Not Cancel (day exception). Not Delete.
+ * dateYmd = Chicago day for agenda re-resolve only.
+ */
+export type EndRecurringClassPayload = {
+  id: string;
   /** America/Chicago calendar day YYYY-MM-DD */
   dateYmd: string;
 };
@@ -382,8 +394,14 @@ export const houseDisplaySlice = createSlice({
       state,
       action: PayloadAction<EditRecurringClassPayload>,
     ) => {
-      const { id: rawId, title: rawTitle, startMin, endMin, daysOfWeek, dateYmd } =
-        action.payload;
+      const {
+        id: rawId,
+        title: rawTitle,
+        startMin,
+        endMin,
+        daysOfWeek,
+        dateYmd,
+      } = action.payload;
       if (!dateYmd) return;
 
       const id = typeof rawId === "string" ? rawId.trim() : "";
@@ -415,6 +433,30 @@ export const houseDisplaySlice = createSlice({
       syncAgendaFromSchedule(state, dateYmd);
       persistScheduleSources(state);
     },
+    /**
+     * End Class: set active false. Keep id/title/times/days.
+     * Does not touch exceptions. Not Delete.
+     * Unknown id = no-op. Already inactive = idempotent (still sync+persist).
+     * No clock/random/id generation.
+     */
+    endRecurringClass: (
+      state,
+      action: PayloadAction<EndRecurringClassPayload>,
+    ) => {
+      const { id: rawId, dateYmd } = action.payload;
+      if (!dateYmd) return;
+
+      const id = typeof rawId === "string" ? rawId.trim() : "";
+      if (!id) return;
+
+      const existing = state.schedule.recurring.find((r) => r.id === id);
+      if (!existing) return;
+
+      existing.active = false;
+
+      syncAgendaFromSchedule(state, dateYmd);
+      persistScheduleSources(state);
+    },
   },
 });
 
@@ -424,5 +466,6 @@ export const {
   restoreOccurrence,
   addRecurringClass,
   editRecurringClass,
+  endRecurringClass,
 } = houseDisplaySlice.actions;
 export default houseDisplaySlice.reducer;

@@ -27,11 +27,19 @@
  * - Edit on Recurring Classes rows; prefill via formatMinToTimeInput
  * - validateRecurringClassForm; add keeps new id; edit dispatches editRecurringClass (keep id/active)
  *
- * NEXT: S2.4 End Class (not started)
+ * DONE (S2.4 End Class):
+ * - Confirm dialog on Recurring rows (separate from Add/Edit)
+ * - endRecurringClass → series.active = false; row kept (not Delete)
+ * - Immediate: drops off Today + future resolve (not CANCELED chip)
+ * - Cancel (Today) = one-day exception only; series stays active
+ * - No Reopen / Ended list / end-date fields (later if needed)
+ *
+ * NEXT: S2.5 one-time event forms (not started)
  *
  * NOT YET:
  * - one-time event forms
  * - Edit this occurrence (override exceptions)
+ * - Reopen / Ended Classes archive UI
  * - Spotlight management / flyer upload
  * - UP NEXT derived from agenda (TV known cleanup)
  * - Backend persistence (replaces localStorage)
@@ -83,6 +91,7 @@ import {
   addRecurringClass,
   cancelOccurrence,
   editRecurringClass,
+  endRecurringClass,
   restoreOccurrence,
 } from "../../../store/slices/prototype/houseDisplay";
 
@@ -173,6 +182,33 @@ export default function HouseDisplayManagePage() {
   const handleCloseAddClass = () => {
     setAddClassOpen(false);
     resetAddClassForm();
+  };
+
+  // --- End Class confirm (separate from Add/Edit dialog) ---
+  /** Series waiting on End confirm; null when dialog closed */
+  const [endingClass, setEndingClass] =
+    useState<HouseDisplayRecurringEvent | null>(null);
+
+  const handleOpenEndClass = (series: HouseDisplayRecurringEvent) => {
+    setEndingClass(series);
+  };
+
+  const handleCloseEndClass = () => {
+    setEndingClass(null);
+  };
+
+  /** Condirm End Class - active false via reducer; then close dialog. */
+  const handleConfirmEndClass = () => {
+    if (!endingClass) return;
+
+    dispatch(
+      endRecurringClass({
+        id: endingClass.id,
+        dateYmd: hopeNow.dateKey,
+      }),
+    );
+
+    handleCloseEndClass();
   };
 
   /** Prefill shared dialog from an active series (edit path). Does not call reset. */
@@ -414,9 +450,10 @@ export default function HouseDisplayManagePage() {
               series definition — not today&apos;s cancel/restore list.
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-              Add or edit a class when the weekly schedule changes. End Class
-              comes later — ending stops future days without deleting the
-              record.
+              Add, edit, or end a class when the weekly schedule changes. End
+              Class sets the series inactive (record kept) and drops today plus
+              future days — not the same as Cancel on Today&apos;s Schedule,
+              which only cancels one day.
             </Typography>
             <Box sx={{ mt: 1.5 }}>
               <Button
@@ -466,7 +503,14 @@ export default function HouseDisplayManagePage() {
                     >
                       {timeRange}
                     </Typography>
-                    <Box sx={{ mt: 1 }}>
+                    <Box
+                      sx={{
+                        mt: 1,
+                        display: "flex",
+                        flexWrap: "wrap",
+                        gap: 1,
+                      }}
+                    >
                       <Button
                         type="button"
                         size="small"
@@ -474,6 +518,15 @@ export default function HouseDisplayManagePage() {
                         onClick={() => handleOpenEditClass(series)}
                       >
                         Edit
+                      </Button>
+                      <Button
+                        type="button"
+                        size="small"
+                        variant="outlined"
+                        color="warning"
+                        onClick={() => handleOpenEndClass(series)}
+                      >
+                        End Class
                       </Button>
                     </Box>
                   </Box>
@@ -586,6 +639,47 @@ export default function HouseDisplayManagePage() {
             </Button>
           </DialogActions>
         </Box>
+      </Dialog>
+
+      {/* End Class confirm — separate from Add/Edit; dispatch in a later step */}
+      <Dialog
+        open={endingClass !== null}
+        onClose={handleCloseEndClass}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>End Class</DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" sx={{ mt: 1 }}>
+            End{" "}
+            <Box component="span" sx={{ fontWeight: 600 }}>
+              {endingClass?.title ?? "this class"}
+            </Box>
+            ?
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>
+            Ending removes it from today&apos;s schedule and all future days on
+            the house display. The class record is kept (not deleted).
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            This is different from Cancel on Today&apos;s Schedule, which only
+            cancels one day&apos;s occurrence and leaves the weekly class
+            active.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button type="button" onClick={handleCloseEndClass}>
+            Cancel
+          </Button>
+          <Button
+            type="button" 
+            variant="contained" 
+            color="warning"
+            onClick={handleConfirmEndClass}
+          >
+            End Class
+          </Button>
+        </DialogActions>
       </Dialog>
     </Box>
   );
