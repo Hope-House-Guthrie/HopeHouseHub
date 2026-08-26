@@ -31,6 +31,8 @@ export interface HouseDisplayRecurringEvent {
    * false = End Class (staff wording); do not generate.
    */
   active: boolean;
+  /** Optional location where the event takes place (Living Room, Back House, etc.) */
+  location?: string;
 }
 
 /**
@@ -48,14 +50,18 @@ export interface HouseDisplayOneTimeEvent {
   active: boolean;
   /** true = show on TV that day with CANCELED treatment. */
   canceled: boolean;
+  /** Optional location where the event takes place */
+  location?: string;
 }
 
 /**
  * Exception against one recurring series on one Chicago date.
- * cancel = this day only CANCELED; series stays active.
+ * cancel = this day only CANCELED on TV (still visible).
+ * suppress = Replace/Hide for this date — omit occurrence entirely (not CANCELED).
  * override = edit-this-occurrence later (fields optional; unused in s1 UI).
+ * Never End Class / Delete series.
  */
-export type HouseDisplayExceptionKind = "cancel" | "override";
+export type HouseDisplayExceptionKind = "cancel" | "suppress" | "override";
 
 export interface HouseDisplayOccurrenceException {
   id: string;
@@ -64,7 +70,7 @@ export interface HouseDisplayOccurrenceException {
   /** Hope House calendar day YYYY-MM-DD */
   dateYmd: string;
   kind: HouseDisplayExceptionKind;
-  /** override only (S3); ignore for cancel */
+  /** override only (S3); ignore for cancel/suppress */
   title?: string;
   startMin?: number;
   endMin?: number;

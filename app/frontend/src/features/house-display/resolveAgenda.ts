@@ -2,8 +2,17 @@
  * STATUS — resolve schedule SOURCES → today's TV agenda (pure)
  * Branch: feature/house-display
  *
- * DONE: resolveAgendaForDate, cancel/override paths, stable seriesId:dateYmd ids,
- * keep overlaps, sort by startMin. No React/Redux.
+ * DONE: resolveAgendaForDate, cancel/suppress/override paths,
+ * stable seriesId:dateYmd ids, keep overlaps, sort by startMin.
+ * No React/Redux.
+ *
+ * Recurring exception precedence (first match wins):
+ * 1) !active series → skip
+ * 2) weekday mismatch → skip
+ * 3) suppress → omit entirely (Replace/Hide this date)
+ * 4) cancel → occurrence with canceled: true
+ * 5) override → patched fields, canceled false
+ * 6) else normal occurrence
  */
 
 import type { HouseDisplayAgendaItem } from "./types";
@@ -50,10 +59,10 @@ function findException(
 }
 
 /**
-* Resolve all sources for one Hope House calendar day → TV agenda items.
-* Caller supplies dateYmd (usually HopeHouseNow.dateKey) and optional weekday
-* (defaults from dateYmd).
-*/
+ * Resolve all sources for one Hope House calendar day → TV agenda items.
+ * Caller supplies dateYmd (usually HopeHouseNow.dateKey) and optional weekday
+ * (defaults from dateYmd). sourceType added for explicit source identity.
+ */
 export function resolveAgendaForDate(args: {
   dateYmd: string;
   weekday?: HouseDisplayWeekday;
@@ -70,6 +79,11 @@ export function resolveAgendaForDate(args: {
     const ex = findException(sources.exceptions, series.id, dateYmd);
     const kind: HouseDisplayExceptionKind | undefined = ex?.kind;
 
+    // Replace/Hide this date — omit entirely (not CANCELED chrome)
+    if (kind === "suppress") {
+      continue;
+    }
+
     if (kind === "cancel") {
       out.push({
         id: recurringOccurrenceId(series.id, dateYmd),
@@ -77,6 +91,8 @@ export function resolveAgendaForDate(args: {
         startMin: series.startMin,
         endMin: series.endMin,
         canceled: true,
+        sourceType: "recurring",
+        location: series.location,
       });
       continue;
     }
@@ -88,6 +104,8 @@ export function resolveAgendaForDate(args: {
         startMin: ex.startMin ?? series.startMin,
         endMin: ex.endMin ?? series.endMin,
         canceled: false,
+        sourceType: "recurring",
+        location: series.location,
       });
       continue;
     }
@@ -98,6 +116,8 @@ export function resolveAgendaForDate(args: {
       startMin: series.startMin,
       endMin: series.endMin,
       canceled: false,
+      sourceType: "recurring",
+      location: series.location,
     });
   }
 
@@ -110,6 +130,8 @@ export function resolveAgendaForDate(args: {
       startMin: item.startMin,
       endMin: item.endMin,
       canceled: item.canceled,
+      sourceType: "oneTime",
+      location: item.location,
     });
   }
 

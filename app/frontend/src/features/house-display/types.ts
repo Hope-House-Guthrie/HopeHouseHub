@@ -48,13 +48,11 @@ export type HouseDisplayEventVisualState =
   | "canceled";
 
 /**
- * One agenda block on today's proportional timeline.
- * This is a resolved occurrence for the board (not a recurring rule definition).
- * Duration = endMin - startMin (must be > 0).
- *
- * Cancel = keep on board with canceled: true (not the same as remove/delete).
- * Remove = omit from agendaItems entirely.
+ * Resolved arrival for one agenda block (derived from schedule sources).
+ * sourceType distinguishes recurring class vs one-time event.
  */
+export type HouseDisplayAgendaSourceType = "recurring" | "oneTime";
+
 export interface HouseDisplayAgendaItem {
   id: string;
   title: string;
@@ -67,6 +65,10 @@ export interface HouseDisplayAgendaItem {
    * Normal occurrences use false.
    */
   canceled: boolean;
+  /** Explicit source identity (recurring series or one-time event). */
+  sourceType: HouseDisplayAgendaSourceType;
+  /** Optional location where the event takes place */
+  location?: string;
 }
 
 /** Thin "up next" strip item (static mock until derived from agenda + now). */

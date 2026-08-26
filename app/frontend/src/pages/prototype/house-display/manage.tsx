@@ -11,14 +11,12 @@
  * - Schedule sources in Redux + DEV localStorage hydrate (hhg-dev-house-display-schedule-v1)
  * - Pure resolveAgendaForDate; confirmed recurring seed; TV contract unchanged
  *
- * DONE (S2.1):
- * - Recurring Classes list (active series only) from schedule.recurring
+ * DONE (S2.1: Recurring Classes list):
  * - Display-only sort (startMin, title); no Redux reorder
  * - scheduleFormat weekday + time-range labels
  *
  * DONE (S2.2 Add Class):
  * - Dialog fields: Class Name, Start/End time, Repeats On (Sun–Sat multi)
- * - Validate name/times/end>start/≥1 weekday; overlaps allowed
  * - UI id newRecurringClassId(); dispatch addRecurringClass + Chicago dateYmd
  * - Close/reset on success; DEV schedule persist via existing slice path
  *
@@ -30,20 +28,25 @@
  * DONE (S2.4 End Class):
  * - Confirm dialog on Recurring rows (separate from Add/Edit)
  * - endRecurringClass → series.active = false; row kept (not Delete)
- * - Immediate: drops off Today + future resolve (not CANCELED chip)
  * - Cancel (Today) = one-day exception only; series stays active
- * - No Reopen / Ended list / end-date fields (later if needed)
  *
- * NEXT: S2.5 one-time event forms (not started)
+ * DONE (S2.5 partial):
+ * - addOneTimeEvent / editOneTimeEvent (force active true + canceled false on add; edit keeps id/active/canceled)
+ *
+ * DONE (Stage C):
+ * - sourceType field on agenda items (recurring | oneTime)
+ *
+ * DONE (Stage B):
+ * - exception kind "suppress" (Replace/Hide this date ≠ cancel)
+ * - suppressRecurringOccurrence / unsuppressRecurringOccurrence
+ *
+ * NEXT: Stage D Conflict UI for Add/Edit Class
  *
  * NOT YET:
- * - one-time event forms
- * - Edit this occurrence (override exceptions)
- * - Reopen / Ended Classes archive UI
- * - Spotlight management / flyer upload
- * - UP NEXT derived from agenda (TV known cleanup)
- * - Backend persistence (replaces localStorage)
- * - Live cross-tab sync (refresh Full Display after cancel is OK for S1)
+ * - manage One-Time UI / conflict UI (Stage C)
+ * - override exception UI, delete definition, reopen/ended list
+ * - Backend API / thunks
+ * - Midnight re-resolve without refresh
  *
  * PAIR:
  * - TV: pages/prototype/house-display/index.tsx → /house-display
@@ -63,8 +66,12 @@ import {
   DialogContent,
   DialogTitle,
   Divider,
+  FormControl,
   FormControlLabel,
   FormGroup,
+  InputLabel,
+  MenuItem,
+  Select,
   Stack,
   TextField,
   Typography,
@@ -79,21 +86,32 @@ import {
 import {
   formatMinToTimeInput,
   newRecurringClassId,
+  newOneTimeEventId,
   validateRecurringClassForm,
+  validateOneTimeEventForm,
 } from "../../../features/house-display/scheduleForm";
 import type {
+  HouseDisplayOneTimeEvent,
   HouseDisplayRecurringEvent,
   HouseDisplayWeekday,
+  HouseDisplayScheduleSources,
 } from "../../../features/house-display/scheduleTypes";
+import type { HouseDisplayAgendaSourceType } from "../../../features/house-display/types";
 import { formatTimeLabel } from "../../../features/house-display/timeline";
 import { getHopeHouseNow } from "../../../features/house-display/time";
 import {
+  addOneTimeEvent,
   addRecurringClass,
   cancelOccurrence,
   editRecurringClass,
   endRecurringClass,
   restoreOccurrence,
 } from "../../../store/slices/prototype/houseDisplay";
+import {
+  type ScheduleConflict,
+  findScheduleConflicts,
+  type ScheduleConflictCandidate,
+} from "../../../features/house-display/scheduleConflicts";
 
 /**
  * Open the presentation-only TV route in a new tab so Hub stays open.
@@ -125,6 +143,12 @@ export default function HouseDisplayManagePage() {
   const recurring = useSelector(
     (state: RootState) => state.houseDisplay.schedule.recurring,
   );
+  const oneTime = useSelector(
+    (state: RootState) => state.houseDisplay.schedule.oneTime,
+  );
+  const scheduleSources = useSelector(
+    (state: RootState) => state.houseDisplay.schedule,
+  );
 
   // Display-only: active series, sorted for staff scan — never mutate Redux arrays
   const activeRecurringClasses = useMemo(() => {
@@ -136,6 +160,18 @@ export default function HouseDisplayManagePage() {
         return a.title.localeCompare(b.title);
       });
   }, [recurring]);
+
+  // Display-only: active one-time events, sorted for staff scan
+  const activeOneTimeEvents = useMemo(() => {
+    return oneTime
+      .filter((event) => event.active)
+      .slice()
+      .sort((a, b) => {
+        if (a.dateYmd !== b.dateYmd) return a.dateYmd.localeCompare(b.dateYmd);
+        if (a.startMin !== b.startMin) return a.startMin - b.startMin;
+        return a.title.localeCompare(b.title);
+      });
+  }, [oneTime]);
 
   // Hope House calendar day for labels + Cancel/Restore payloads (not browser TZ alone)
   const hopeNow = getHopeHouseNow();
@@ -153,6 +189,27 @@ export default function HouseDisplayManagePage() {
   /** Weekday numbers 0=Sun … 6=Sat (empty ≠ every day) */
   const [addDays, setAddDays] = useState<number[]>([]);
   const [addError, setAddError] = useState("");
+  const [addLocation, setAddLocation] = useState<string>("Living Room");
+
+  // --- One-Time Event dialog state ---
+  const [addOneTimeOpen, setAddOneTimeOpen] = useState(false);
+  const [addOneTimeTitle, setAddOneTimeTitle] = useState("");
+  const [addOneTimeDate, setAddOneTimeDate] = useState<string>(""); // YYYY-MM-DD
+  const [addOneTimeStartTime, setAddOneTimeStartTime] = useState("");
+  const [addOneTimeEndTime, setAddOneTimeEndTime] = useState("");
+  const [addOneTimeLocation, setAddOneTimeLocation] = useState<string>("Living Room");
+  const [addOneTimeError, setAddOneTimeError] = useState("");
+
+  // --- Conflict Dialog state ---
+  const [pendingClassData, setPendingClassData] = useState<{
+    event: HouseDisplayRecurringEvent;
+    candidate: ScheduleConflictCandidate;
+  } | null>(null);
+  const [pendingConflicts, setPendingConflicts] = useState<ScheduleConflict[]>([]);
+  const [endingExistingClasses, setEndingExistingClasses] = useState<
+    HouseDisplayRecurringEvent[]
+  >([]);
+  const [conflictDialogOpen, setConflictDialogOpen] = useState(false);
 
   const resetAddClassForm = () => {
     setClassFormMode("add");
@@ -184,6 +241,58 @@ export default function HouseDisplayManagePage() {
     resetAddClassForm();
   };
 
+  // --- One-Time Event handlers ---
+  const handleOpenAddOneTimeEvent = () => {
+    setAddOneTimeTitle("");
+    setAddOneTimeDate(hopeNow.dateKey); // default to today
+    setAddOneTimeStartTime("");
+    setAddOneTimeEndTime("");
+    setAddOneTimeLocation("Living Room");
+    setAddOneTimeError("");
+    setAddOneTimeOpen(true);
+  };
+
+  const handleCloseAddOneTimeEvent = () => {
+    setAddOneTimeOpen(false);
+  };
+
+  const handleAddOneTimeEventSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    setAddOneTimeError("");
+
+    const validated = validateOneTimeEventForm({
+      title: addOneTimeTitle,
+      dateYmd: addOneTimeDate,
+      startTime: addOneTimeStartTime,
+      endTime: addOneTimeEndTime,
+    });
+
+    if (!validated.ok) {
+      setAddOneTimeError(validated.error);
+      return;
+    }
+
+    const { title, dateYmd, startMin, endMin } = validated;
+
+    dispatch(
+      addOneTimeEvent({
+        event: {
+          id: newOneTimeEventId(),
+          title,
+          dateYmd,
+          startMin,
+          endMin,
+          location: addOneTimeLocation,
+          active: true,
+          canceled: false,
+        },
+        dateYmd: hopeNow.dateKey,
+      }),
+    );
+
+    handleCloseAddOneTimeEvent();
+  };
+
   // --- End Class confirm (separate from Add/Edit dialog) ---
   /** Series waiting on End confirm; null when dialog closed */
   const [endingClass, setEndingClass] =
@@ -197,7 +306,7 @@ export default function HouseDisplayManagePage() {
     setEndingClass(null);
   };
 
-  /** Condirm End Class - active false via reducer; then close dialog. */
+  /** Confirm End Class - active false via reducer; then close dialog. */
   const handleConfirmEndClass = () => {
     if (!endingClass) return;
 
@@ -219,13 +328,83 @@ export default function HouseDisplayManagePage() {
     setAddStartTime(formatMinToTimeInput(series.startMin));
     setAddEndTime(formatMinToTimeInput(series.endMin));
     setAddDays([...series.daysOfWeek].sort((a, b) => a - b));
+    setAddLocation(series.location ?? "Living Room");
     setAddError("");
     setAddClassOpen(true);
+  };
+
+  /** Select which recurring conflicts to End. */
+  const handleSelectConflictToKill = (seriesId: string) => {
+    setEndingExistingClasses((prev) => {
+      if (prev.some((e) => e.id === seriesId)) {
+        return prev.filter((e) => e.id !== seriesId);
+      }
+      const existing = scheduleSources.recurring.find((r) => r.id === seriesId);
+      if (!existing) return prev;
+      return [...prev, existing];
+    });
+  };
+
+  /** Save both the pending class and selected ends, then close dialog. */
+  const handleSaveWithSelectedEnds = () => {
+    if (!pendingClassData) return;
+    const { event } = pendingClassData;
+    const isEdit = editingClassId !== null && event.id === editingClassId;
+
+    // End selected conflicts first
+    for (const ec of endingExistingClasses) {
+      dispatch(endRecurringClass({ id: ec.id, dateYmd: hopeNow.dateKey }));
+    }
+
+    // Then save the pending class
+    if (isEdit) {
+      dispatch(
+        editRecurringClass({
+          id: event.id,
+          title: event.title,
+          startMin: event.startMin,
+          endMin: event.endMin,
+          daysOfWeek: event.daysOfWeek,
+          dateYmd: hopeNow.dateKey,
+          location: event.location,
+        }),
+      );
+    } else {
+      dispatch(addRecurringClass({ event, dateYmd: hopeNow.dateKey }));
+    }
+
+    setPendingClassData(null);
+    setPendingConflicts([]);
+    setEndingExistingClasses([]);
+    setConflictDialogOpen(false);
+    handleCloseAddClass();
+  };
+
+  /** Cancel conflict resolution → close dialog, return to form. */
+  const handleCancelConflictDialog = () => {
+    setPendingClassData(null);
+    setPendingConflicts([]);
+    setEndingExistingClasses([]);
+    setConflictDialogOpen(false);
+    // Keep form open with values intact
+  };
+
+  /** Keep Both (save anyway) → close dialog, save. */
+  const handleKeepBoth = () => {
+    if (!pendingClassData) return;
+    const { event } = pendingClassData;
+    dispatch(addRecurringClass({ event, dateYmd: hopeNow.dateKey }));
+    setPendingClassData(null);
+    setPendingConflicts([]);
+    setEndingExistingClasses([]);
+    setConflictDialogOpen(false);
+    handleCloseAddClass();
   };
 
   /**
    * Shared Add/Edit submit.
    * Add: UI generates id + active true. Edit: existing id; reducer keeps active.
+   * Stage D: detect conflicts before dispatch.
    */
   const handleAddClassSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -245,39 +424,64 @@ export default function HouseDisplayManagePage() {
     const { title, startMin, endMin, daysOfWeek } = validated;
     const submitDateYmd = hopeNow.dateKey;
 
-    if (classFormMode === "edit") {
-      if (!editingClassId) {
-        setAddError("Missing class id for edit.");
-        return;
+    // Build pending event with proper id for add vs edit
+    const isEdit = editingClassId !== null;
+    const event: HouseDisplayRecurringEvent = {
+      id: isEdit ? editingClassId! : newRecurringClassId(),
+      title,
+      startMin,
+      endMin,
+      daysOfWeek,
+      active: true,
+      location: addLocation,
+    };
+
+    // Build candidate for conflict detection
+    const candidate: ScheduleConflictCandidate = {
+      type: "recurring",
+      startMin,
+      endMin,
+      daysOfWeek,
+      dateYmd: hopeNow.dateKey,
+      excludeId: isEdit ? editingClassId : undefined,
+    };
+
+    // Check for conflicts
+    const conflicts = findScheduleConflicts({
+      sources: scheduleSources,
+      candidate,
+    });
+
+    // Filter to recurring only (one-time conflicts handled in Stage E)
+    const recurringConflicts = conflicts.filter(
+      (c) => c.kind === "recurring",
+    );
+
+    if (recurringConflicts.length === 0) {
+      // No conflicts → save directly
+      if (isEdit) {
+        dispatch(
+          editRecurringClass({
+            id: event.id,
+            title: event.title,
+            startMin: event.startMin,
+            endMin: event.endMin,
+            daysOfWeek: event.daysOfWeek,
+            dateYmd: submitDateYmd,
+          }),
+        );
+      } else {
+        dispatch(addRecurringClass({ event, dateYmd: submitDateYmd }));
       }
-      dispatch(
-        editRecurringClass({
-          id: editingClassId,
-          title,
-          startMin,
-          endMin,
-          daysOfWeek,
-          dateYmd: submitDateYmd,
-        }),
-      );
-    } else {
-      const event: HouseDisplayRecurringEvent = {
-        id: newRecurringClassId(),
-        title,
-        startMin,
-        endMin,
-        daysOfWeek,
-        active: true,
-      };
-      dispatch(
-        addRecurringClass({
-          event,
-          dateYmd: submitDateYmd,
-        }),
-      );
+      handleCloseAddClass();
+      return;
     }
 
-    handleCloseAddClass();
+    // Open conflict dialog
+    setPendingClassData({ event, candidate });
+    setPendingConflicts(recurringConflicts);
+    setEndingExistingClasses([]);
+    setConflictDialogOpen(true);
   };
 
   return (
@@ -288,8 +492,7 @@ export default function HouseDisplayManagePage() {
         </Typography>
         <Typography variant="body1" color="text.secondary" sx={{ mt: 0.5 }}>
           Manage what the house TV shows. Start with today&apos;s class schedule
-          — cancel or restore a single day without changing the weekly class
-          list.
+          — cancel or restore a single occurrence. Add/Edit handles next.
         </Typography>
       </Box>
 
@@ -312,14 +515,13 @@ export default function HouseDisplayManagePage() {
             View Full Display
           </Button>
           <Typography variant="caption" color="text.secondary">
-            Prototype note: after Cancel or Restore, refresh the Full Display
-            tab to see the update. Schedule changes are saved in this browser
-            for the mock; a future backend will replace that.
+            Prototype note: content changes save in this browser for the mock;
+            a future backend will replace that.
           </Typography>
         </CardContent>
       </Card>
 
-      {/* Today's Schedule — primary ops control */}
+      {/* Today&apos;s Schedule */}
       <Card sx={{ maxWidth: 720 }}>
         <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
           <Box>
@@ -378,13 +580,7 @@ export default function HouseDisplayManagePage() {
                       >
                         <Typography
                           variant="body1"
-                          sx={{
-                            fontWeight: 600,
-                            textDecoration: item.canceled
-                              ? "line-through"
-                              : "none",
-                            opacity: item.canceled ? 0.85 : 1,
-                          }}
+                          sx={{ fontWeight: 500 }}
                         >
                           {item.title}
                         </Typography>
@@ -398,40 +594,6 @@ export default function HouseDisplayManagePage() {
                         ) : null}
                       </Box>
                     </Box>
-
-                    {item.canceled ? (
-                      <Button
-                        type="button"
-                        variant="outlined"
-                        color="primary"
-                        onClick={() =>
-                          dispatch(
-                            restoreOccurrence({
-                              occurrenceId: item.id,
-                              dateYmd,
-                            }),
-                          )
-                        }
-                      >
-                        Restore
-                      </Button>
-                    ) : (
-                      <Button
-                        type="button"
-                        variant="outlined"
-                        color="warning"
-                        onClick={() =>
-                          dispatch(
-                            cancelOccurrence({
-                              occurrenceId: item.id,
-                              dateYmd,
-                            }),
-                          )
-                        }
-                      >
-                        Cancel
-                      </Button>
-                    )}
                   </Box>
                 );
               })}
@@ -440,42 +602,26 @@ export default function HouseDisplayManagePage() {
         </CardContent>
       </Card>
 
-      {/* Recurring Classes — series definitions (not today's occurrences) */}
+      {/* Recurring Classes */}
       <Card sx={{ maxWidth: 720 }}>
         <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
           <Box>
             <Typography variant="h6">Recurring Classes</Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-              Weekly class list the house runs on matching days. This is the
-              series definition — not today&apos;s cancel/restore list.
+              Weekly schedule; active (blue) generate today&apos;s TV agenda.
+              End Class hides future occurrences; Cancel removes today only.
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-              Add, edit, or end a class when the weekly schedule changes. End
-              Class sets the series inactive (record kept) and drops today plus
-              future days — not the same as Cancel on Today&apos;s Schedule,
-              which only cancels one day.
-            </Typography>
-            <Box sx={{ mt: 1.5 }}>
-              <Button
-                type="button"
-                variant="contained"
-                onClick={handleOpenAddClass}
-              >
-                Add Class
-              </Button>
-            </Box>
           </Box>
 
           <Divider />
 
           {activeRecurringClasses.length === 0 ? (
             <Typography variant="body2" color="text.secondary">
-              No active recurring classes.
+              No active classes.
             </Typography>
           ) : (
             <Stack divider={<Divider flexItem />} spacing={0}>
               {activeRecurringClasses.map((series) => {
-                const daysLabel = formatRecurringDaysLabel(series.daysOfWeek);
                 const timeRange = formatScheduleTimeRange(
                   series.startMin,
                   series.endMin,
@@ -485,49 +631,156 @@ export default function HouseDisplayManagePage() {
                     key={series.id}
                     sx={{
                       display: "flex",
-                      flexDirection: "column",
-                      gap: 0.25,
+                      flexWrap: "wrap",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 1.5,
                       py: 1.5,
                     }}
                   >
-                    <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                      {series.title}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {daysLabel}
-                    </Typography>
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      sx={{ fontWeight: 600 }}
-                    >
-                      {timeRange}
-                    </Typography>
-                    <Box
-                      sx={{
-                        mt: 1,
-                        display: "flex",
-                        flexWrap: "wrap",
-                        gap: 1,
-                      }}
-                    >
-                      <Button
-                        type="button"
-                        size="small"
-                        variant="outlined"
-                        onClick={() => handleOpenEditClass(series)}
+                    <Box sx={{ minWidth: 0, flex: "1 1 220px" }}>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          flexWrap: "wrap",
+                          alignItems: "center",
+                          gap: 0.5,
+                        }}
                       >
-                        Edit
-                      </Button>
-                      <Button
-                        type="button"
-                        size="small"
-                        variant="outlined"
-                        color="warning"
-                        onClick={() => handleOpenEndClass(series)}
+                        <Typography
+                          variant="body2"
+                          color="text.secondary"
+                          sx={{ fontWeight: 600 }}
+                        >
+                          {timeRange}
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                          {series.title}
+                        </Typography>
+                        <Chip
+                          size="small"
+                          label={formatRecurringDaysLabel(series.daysOfWeek)}
+                          variant="outlined"
+                        />
+                        {series.location ? (
+                          <Chip
+                            size="small"
+                            label={series.location}
+                            variant="outlined"
+                            color="info"
+                          />
+                        ) : null}
+                        <Button
+                          type="button"
+                          size="small"
+                          variant="text"
+                          onClick={() => handleOpenEditClass(series)}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          type="button"
+                          size="small"
+                          variant="text"
+                          color="error"
+                          onClick={() => handleOpenEndClass(series)}
+                        >
+                          End
+                        </Button>
+                      </Box>
+                    </Box>
+                  </Box>
+                );
+              })}
+            </Stack>
+          )}
+
+          <Button
+            type="button"
+            variant="contained"
+            onClick={handleOpenAddClass}
+          >
+            Add Class
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* One-Time Events */}
+      <Card sx={{ maxWidth: 720 }}>
+        <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <Box>
+            <Typography variant="h6">One-Time Events</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              Special events scheduled for a specific Hope House calendar day.
+            </Typography>
+          </Box>
+
+          <Divider />
+
+          <Button
+            type="button"
+            variant="contained"
+            onClick={handleOpenAddOneTimeEvent}
+          >
+            Add One-Time Event
+          </Button>
+
+          {activeOneTimeEvents.length === 0 ? (
+            <Typography variant="body2" color="text.secondary">
+              No active one-time events.
+            </Typography>
+          ) : (
+            <Stack divider={<Divider flexItem />} spacing={0}>
+              {activeOneTimeEvents.map((event) => {
+                const timeRange = formatScheduleTimeRange(event.startMin, event.endMin);
+                return (
+                  <Box
+                    key={event.id}
+                    sx={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 1.5,
+                      py: 1.5,
+                    }}
+                  >
+                    <Box sx={{ minWidth: 0, flex: "1 1 220px" }}>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          flexWrap: "wrap",
+                          alignItems: "center",
+                          gap: 0.5,
+                        }}
                       >
-                        End Class
-                      </Button>
+                        <Typography
+                          variant="body2"
+                          color="text.secondary"
+                          sx={{ fontWeight: 600 }}
+                        >
+                          {timeRange}
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                          {event.title}
+                        </Typography>
+                        {event.canceled ? (
+                          <Chip
+                            size="small"
+                            label="CANCELED"
+                            color="error"
+                            variant="outlined"
+                          />
+                        ) : null}
+                        {event.location ? (
+                          <Chip
+                            size="small"
+                            label={event.location}
+                            variant="outlined"
+                            color="info"
+                          />
+                        ) : null}
+                      </Box>
                     </Box>
                   </Box>
                 );
@@ -537,13 +790,8 @@ export default function HouseDisplayManagePage() {
         </CardContent>
       </Card>
 
-      {/* Shared Add / Edit Class dialog */}
-      <Dialog
-        open={addClassOpen}
-        onClose={handleCloseAddClass}
-        maxWidth="sm"
-        fullWidth
-      >
+      {/* Add/Edit Class dialog */}
+      <Dialog open={addClassOpen} onClose={handleCloseAddClass}>
         <Box component="form" onSubmit={handleAddClassSubmit}>
           <DialogTitle>
             {classFormMode === "edit" ? "Edit Class" : "Add Class"}
@@ -556,10 +804,8 @@ export default function HouseDisplayManagePage() {
                 onChange={(e) => setAddTitle(e.target.value)}
                 required
                 fullWidth
-                autoFocus
-                autoComplete="off"
+                slotProps={{ input: { "aria-label": "Class name" } }}
               />
-
               <TextField
                 label="Start Time"
                 type="time"
@@ -572,7 +818,6 @@ export default function HouseDisplayManagePage() {
                   htmlInput: { step: 60 },
                 }}
               />
-
               <TextField
                 label="End Time"
                 type="time"
@@ -585,44 +830,39 @@ export default function HouseDisplayManagePage() {
                   htmlInput: { step: 60 },
                 }}
               />
-
-              <Box>
-                <Typography
-                  variant="subtitle2"
-                  component="div"
-                  sx={{ mb: 0.5, fontWeight: 600 }}
+              <FormGroup>
+                <Typography variant="subtitle2">Repeats On</Typography>
+                {ADD_CLASS_WEEKDAY_OPTIONS.map((opt) => (
+                  <FormControlLabel
+                    key={opt.value}
+                    control={
+                      <Checkbox
+                        checked={addDays.includes(opt.value)}
+                        onChange={() => toggleAddDay(opt.value)}
+                        slotProps={{
+                          input: { "aria-label": opt.label },
+                        }}
+                      />
+                    }
+                    label={opt.label}
+                  />
+                ))}
+              </FormGroup>
+              <FormControl fullWidth>
+                <InputLabel>Location</InputLabel>
+                <Select
+                  value={addLocation}
+                  label="Location"
+                  onChange={(e) => setAddLocation(e.target.value as string)}
                 >
-                  Repeats On
-                </Typography>
-                <Typography
-                  variant="caption"
-                  color="text.secondary"
-                  sx={{ display: "block", mb: 1 }}
-                >
-                  Select at least one day. Empty is not every day.
-                </Typography>
-                <FormGroup row sx={{ gap: 0.5 }}>
-                  {ADD_CLASS_WEEKDAY_OPTIONS.map(({ value, label }) => (
-                    <FormControlLabel
-                      key={value}
-                      control={
-                        <Checkbox
-                          checked={addDays.includes(value)}
-                          onChange={() => toggleAddDay(value)}
-                          size="small"
-                          slotProps={{
-                            input: {
-                              "aria-label": `Repeats on ${label}`,
-                            },
-                          }}
-                        />
-                      }
-                      label={label}
-                    />
-                  ))}
-                </FormGroup>
-              </Box>
-
+                  <MenuItem value="Living Room">Living Room</MenuItem>
+                  <MenuItem value="Large Dining Room">Large Dining Room</MenuItem>
+                  <MenuItem value="Small Dining Room">Small Dining Room</MenuItem>
+                  <MenuItem value="Back House">Back House</MenuItem>
+                  <MenuItem value="Computer Lab">Computer Lab</MenuItem>
+                  <MenuItem value="Kitchen">Kitchen</MenuItem>
+                </Select>
+              </FormControl>
               {addError ? (
                 <Typography variant="body2" color="error">
                   {addError}
@@ -635,48 +875,163 @@ export default function HouseDisplayManagePage() {
               Cancel
             </Button>
             <Button type="submit" variant="contained">
-              {classFormMode === "edit" ? "Save Changes" : "Add Class"}
+              {classFormMode === "edit" ? "Save" : "Add"}
             </Button>
           </DialogActions>
         </Box>
       </Dialog>
 
-      {/* End Class confirm — separate from Add/Edit; dispatch in a later step */}
+      {/* Add One-Time Event dialog */}
+      <Dialog open={addOneTimeOpen} onClose={handleCloseAddOneTimeEvent}>
+        <Box component="form" onSubmit={handleAddOneTimeEventSubmit}>
+          <DialogTitle>Add One-Time Event</DialogTitle>
+          <DialogContent>
+            <Stack spacing={2} sx={{ mt: 1 }}>
+              <TextField
+                label="Event Name"
+                value={addOneTimeTitle}
+                onChange={(e) => setAddOneTimeTitle(e.target.value)}
+                required
+                fullWidth
+                slotProps={{ input: { "aria-label": "Event name" } }}
+              />
+              <TextField
+                label="Date"
+                type="date"
+                value={addOneTimeDate}
+                onChange={(e) => setAddOneTimeDate(e.target.value)}
+                required
+                fullWidth
+                slotProps={{ inputLabel: { shrink: true } }}
+              />
+              <TextField
+                label="Start Time"
+                type="time"
+                value={addOneTimeStartTime}
+                onChange={(e) => setAddOneTimeStartTime(e.target.value)}
+                required
+                fullWidth
+                slotProps={{
+                  inputLabel: { shrink: true },
+                  htmlInput: { step: 60 },
+                }}
+              />
+              <TextField
+                label="End Time"
+                type="time"
+                value={addOneTimeEndTime}
+                onChange={(e) => setAddOneTimeEndTime(e.target.value)}
+                required
+                fullWidth
+                slotProps={{
+                  inputLabel: { shrink: true },
+                  htmlInput: { step: 60 },
+                }}
+              />
+              <FormControl fullWidth>
+                <InputLabel>Location</InputLabel>
+                <Select
+                  value={addOneTimeLocation}
+                  label="Location"
+                  onChange={(e) => setAddOneTimeLocation(e.target.value as string)}
+                >
+                  <MenuItem value="Living Room">Living Room</MenuItem>
+                  <MenuItem value="Large Dining Room">Large Dining Room</MenuItem>
+                  <MenuItem value="Small Dining Room">Small Dining Room</MenuItem>
+                  <MenuItem value="Back House">Back House</MenuItem>
+                  <MenuItem value="Computer Lab">Computer Lab</MenuItem>
+                  <MenuItem value="Kitchen">Kitchen</MenuItem>
+                </Select>
+              </FormControl>
+              {addOneTimeError ? (
+                <Typography variant="body2" color="error">
+                  {addOneTimeError}
+                </Typography>
+              ) : null}
+            </Stack>
+          </DialogContent>
+          <DialogActions>
+            <Button type="button" onClick={handleCloseAddOneTimeEvent}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="contained">
+              Add
+            </Button>
+          </DialogActions>
+        </Box>
+      </Dialog>
+
+      {/* Conflict Dialog */}
       <Dialog
-        open={endingClass !== null}
-        onClose={handleCloseEndClass}
+        open={conflictDialogOpen}
+        onClose={handleCancelConflictDialog}
         maxWidth="sm"
         fullWidth
       >
+        <DialogTitle>Schedule Conflict</DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="body2" sx={{ mb: 1 }}>
+            The class you are adding/editing conflicts with existing classes:
+          </Typography>
+          <Stack divider={<Divider flexItem />} spacing={1}>
+            {pendingConflicts.map((conflict) => {
+              if (conflict.kind !== "recurring") return null;
+              const isChecked = endingExistingClasses.some(
+                (e) => e.id === conflict.seriesId,
+              );
+              const recurring = conflict as any;
+              return (
+                <Box
+                  key={conflict.seriesId}
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1,
+                  }}
+                >
+                  <Checkbox
+                    checked={isChecked}
+                    onChange={() => handleSelectConflictToKill(conflict.seriesId)}
+                    aria-label={`End ${conflict.title}`}
+                  />
+                  <Box>
+                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                      {conflict.title}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {conflict.startMin}–{conflict.endMin} on{" "}
+                      {recurring.weekdays.map((d: number) => formatRecurringDaysLabel([d])).join(", ")}
+                    </Typography>
+                  </Box>
+                </Box>
+              );
+            })}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancelConflictDialog}>Cancel</Button>
+          <Button onClick={handleKeepBoth}>Keep Both</Button>
+          <Button
+            variant="contained"
+            onClick={handleSaveWithSelectedEnds}
+          >
+            Save (End Selected Conflicts)
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* End Class confirm */}
+      <Dialog open={endingClass !== null} onClose={handleCloseEndClass}>
         <DialogTitle>End Class</DialogTitle>
         <DialogContent>
-          <Typography variant="body1" sx={{ mt: 1 }}>
-            End{" "}
-            <Box component="span" sx={{ fontWeight: 600 }}>
-              {endingClass?.title ?? "this class"}
-            </Box>
-            ?
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>
-            Ending removes it from today&apos;s schedule and all future days on
-            the house display. The class record is kept (not deleted).
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-            This is different from Cancel on Today&apos;s Schedule, which only
-            cancels one day&apos;s occurrence and leaves the weekly class
-            active.
+          <Typography>
+            End {endingClass?.title}? It will not appear on future TV dates,
+            but the class definition is preserved.
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button type="button" onClick={handleCloseEndClass}>
-            Cancel
-          </Button>
-          <Button
-            type="button" 
-            variant="contained" 
-            color="warning"
-            onClick={handleConfirmEndClass}
-          >
+          <Button onClick={handleCloseEndClass}>Cancel</Button>
+          <Button color="error" onClick={handleConfirmEndClass}>
             End Class
           </Button>
         </DialogActions>

@@ -17,14 +17,22 @@
  * - Cancel/Restore = day exception only (series stays active)
  * - End Class ≠ Cancel ≠ Delete
  *
+ * DONE (S2.5 partial):
+ * - addOneTimeEvent / editOneTimeEvent (force active true + canceled false on add;
+ *   edit keeps id/active/canceled)
+ *
+ * DONE (conflicts Stage B):
+ * - exception kind "suppress" (Replace/Hide this date ≠ cancel)
+ * - suppressRecurringOccurrence / unsuppressRecurringOccurrence
+ *
  * NOT YET:
- * - one-time CRUD
+ * - manage One-Time UI / conflict UI (Stage C)
  * - override exception UI, delete definition, reopen/ended list
  * - Backend API / thunks
  * - Midnight re-resolve without refresh
  *
  * Who uses this:
- *   - manage.tsx  → Today cancel/restore; Add/Edit/End Class
+ *   - manage.tsx  → Today cancel/restore; Add/Edit/End Class; One-Time next
  *   - index.tsx   → TV selects content only
  */
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
@@ -38,6 +46,7 @@ import { getHopeHouseNow } from "../../../features/house-display/time";
 import { resolveAgendaForDate } from "../../../features/house-display/resolveAgenda";
 import { INITIAL_SCHEDULE_SOURCES } from "../../../features/house-display/scheduleSeed";
 import type {
+  HouseDisplayOneTimeEvent,
   HouseDisplayRecurringEvent,
   HouseDisplayScheduleSources,
   HouseDisplayWeekday,
@@ -77,6 +86,8 @@ export type EditRecurringClassPayload = {
   daysOfWeek: HouseDisplayWeekday[];
   /** America/Chicago calendar day YYYY-MM-DD */
   dateYmd: string;
+  /** Optional location (Living Room, Back House, etc.) */
+  location?: string;
 };
 
 /**
@@ -88,6 +99,31 @@ export type EndRecurringClassPayload = {
   id: string;
   /** America/Chicago calendar day YYYY-MM-DD */
   dateYmd: string;
+};
+
+/** Add one-time - full event (id set in UI); dateYmd = today resolve only. */
+export type AddOneTimeEventPayload = {
+  event: HouseDisplayOneTimeEvent;
+  /** America/Chicago calendar day for agenda re-resolve (usually today). */
+  dateYmd: string;
+};
+
+/**
+ * Edit one-time fields only.
+ * Keeps id / active / canceled. eventDateYmd = the event's day.
+ * resolveDateYmd = Chicago day for agenda re-resolve (usually today).
+ */
+export type EditOneTimeEventPayload = {
+  id: string;
+  title: string;
+  /** Event's Hope House civil day YYYY-MM-DD */
+  eventDateYmd: string;
+  startMin: number;
+  endMin: number;
+  /** America/Chicago day for agenda re-resolve */
+  resolveDateYmd: string;
+  /** Optional location — edit keeps existing location if not provided */
+  location?: string;
 };
 
 /** Deep-ish copy so seed arrays are not shared/mutated by accident. */
@@ -108,6 +144,21 @@ function cloneScheduleSources(
 function cancelExceptionId(seriesId: string, dateYmd: string): string {
   return `cancel:${seriesId}:${dateYmd}`;
 }
+
+/** Deterministic suppress (Replace/Hide) exception id. */
+function suppressExceptionId(seriesId: string, dateYmd: string): string {
+  return `suppress:${seriesId}:${dateYmd}`;
+}
+
+/**
+ * Suppress one recurring series on one Chicago day (Replace/Hide).
+ * Omits occurrence from agenda — not CANCELED chrome. Series stays active.
+ */
+export type SuppressRecurringOccurrencePayload = {
+  seriesId: string;
+  /** America/Chicago calendar day YYYY-MM-DD */
+  dateYmd: string;
+};
 
 /**
  * Recurring TV ids are "seriesId:YYYY-MM-DD".
@@ -150,6 +201,37 @@ function persistScheduleSources(state: HouseDisplayState): void {
     oneTime: state.schedule.oneTime,
     exceptions: state.schedule.exceptions,
   });
+}
+
+/**
+ * Real calendar YYYY-MM-DD (pure, TZ-independent). Same idea as
+ * scheduleForm.parseDateInputToYmd — kept local so the slice does not
+ * depend on form helpers.
+ */
+function isRealDateYmd(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+  const trimmed = value.trim();
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
+  if (!match) return false;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (
+    !Number.isInteger(year) ||
+    !Number.isInteger(month) ||
+    !Number.isInteger(day)
+  ) {
+    return false;
+  }
+  if (month < 1 || month > 12 || day < 1 || day > 31) return false;
+
+  const utc = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+  return (
+    utc.getUTCFullYear() === year &&
+    utc.getUTCMonth() === month - 1 &&
+    utc.getUTCDate() === day
+  );
 }
 
 /** Unique 0-6 weekdays, sorted. Empty -> []. No Daily Duties empty=every-day rule. */
@@ -380,6 +462,7 @@ export const houseDisplaySlice = createSlice({
         endMin,
         daysOfWeek,
         active: true,
+        location: event.location,
       });
 
       syncAgendaFromSchedule(state, dateYmd);
@@ -401,6 +484,7 @@ export const houseDisplaySlice = createSlice({
         endMin,
         daysOfWeek,
         dateYmd,
+        location,
       } = action.payload;
       if (!dateYmd) return;
 
@@ -428,6 +512,7 @@ export const houseDisplaySlice = createSlice({
         startMin,
         endMin,
         daysOfWeek: normalizedDays,
+        location: location,
       };
 
       syncAgendaFromSchedule(state, dateYmd);
@@ -457,6 +542,173 @@ export const houseDisplaySlice = createSlice({
       syncAgendaFromSchedule(state, dateYmd);
       persistScheduleSources(state);
     },
+    /**
+     * Add one one-time event (single Chicago dateYmd).
+     * UI supplies full event including id. Force active true, canceled false.
+     * payload.dateYmd = agenda re-resolve day (usually today), not only event day.
+     * No clock/random/id generation. Overlaps allowed. No exception/recurring changes.
+     */
+    addOneTimeEvent: (
+      state,
+      action: PayloadAction<AddOneTimeEventPayload>,
+    ) => {
+      const { event, dateYmd: resolveDateYmd } = action.payload;
+      if (!event || !resolveDateYmd || !isRealDateYmd(resolveDateYmd)) return;
+
+      const id = typeof event.id === "string" ? event.id.trim() : "";
+      if (!id) return;
+
+      const title = typeof event.title === "string" ? event.title.trim() : "";
+      if (!title) return;
+
+      const eventDateRaw =
+        typeof event.dateYmd === "string" ? event.dateYmd.trim() : "";
+      if (!isRealDateYmd(eventDateRaw)) return;
+
+      const startMin = event.startMin;
+      const endMin = event.endMin;
+      if (!Number.isInteger(startMin) || !Number.isInteger(endMin)) return;
+      if (endMin <= startMin) return;
+
+      // Duplicate id — no-op (do not replace)
+      if (state.schedule.oneTime.some((o) => o.id === id)) return;
+
+      state.schedule.oneTime.push({
+        id,
+        title,
+        dateYmd: eventDateRaw,
+        startMin,
+        endMin,
+        active: true,
+        canceled: false,
+        location: event.location,
+      });
+
+      syncAgendaFromSchedule(state, resolveDateYmd);
+      persistScheduleSources(state);
+    },
+    /**
+     * Edit one one-time event fields only.
+     * Keeps id / active / canceled. Does not touch exceptions or recurring.
+     * resolveDateYmd = agenda re-resolve day (usually today).
+     * No clock/random/id generation. Overlaps allowed.
+     */
+    editOneTimeEvent: (
+      state,
+      action: PayloadAction<EditOneTimeEventPayload>,
+    ) => {
+      const {
+        id: rawId,
+        title: rawTitle,
+        eventDateYmd,
+        startMin,
+        endMin,
+        resolveDateYmd,
+        location,
+      } = action.payload;
+      if (!resolveDateYmd || !isRealDateYmd(resolveDateYmd)) return;
+
+      const id = typeof rawId === "string" ? rawId.trim() : "";
+      if (!id) return;
+
+      const index = state.schedule.oneTime.findIndex((o) => o.id === id);
+      if (index < 0) return;
+
+      const title = typeof rawTitle === "string" ? rawTitle.trim() : "";
+      if (!title) return;
+
+      const eventDateRaw =
+        typeof eventDateYmd === "string" ? eventDateYmd.trim() : "";
+      if (!isRealDateYmd(eventDateRaw)) return;
+
+      if (!Number.isInteger(startMin) || !Number.isInteger(endMin)) return;
+      if (endMin <= startMin) return;
+
+      const existing = state.schedule.oneTime[index];
+      if (!existing) return;
+
+      state.schedule.oneTime[index] = {
+        id: existing.id,
+        active: existing.active,
+        canceled: existing.canceled,
+        title,
+        dateYmd: eventDateRaw,
+        startMin,
+        endMin,
+        location: location ?? existing.location,
+      };
+
+      syncAgendaFromSchedule(state, resolveDateYmd);
+      persistScheduleSources(state);
+    },
+    /**
+     * Replace/Hide: suppress one recurring occurrence on an explicit Chicago day.
+     * kind "suppress" — omit from agenda (not CANCELED). Series stays active.
+     * Deterministic id. Idempotent. Does not remove cancel exceptions if present
+     * (resolver prefers suppress over cancel if both exist).
+     * No clock/random. No series field changes.
+     */
+    suppressRecurringOccurrence: (
+      state,
+      action: PayloadAction<SuppressRecurringOccurrencePayload>,
+    ) => {
+      const { seriesId: rawSeriesId, dateYmd } = action.payload;
+      if (!dateYmd) return;
+
+      const seriesId =
+        typeof rawSeriesId === "string" ? rawSeriesId.trim() : "";
+      if (!seriesId) return;
+
+      // Series must exist and be active? Allow suppress even if inactive for
+      // safety — still no-op if missing series is OK for future restore.
+      const series = state.schedule.recurring.find((r) => r.id === seriesId);
+      if (!series) return;
+
+      const exId = suppressExceptionId(seriesId, dateYmd);
+      const already = state.schedule.exceptions.some(
+        (e) =>
+          e.id === exId ||
+          (e.kind === "suppress" &&
+            e.seriesId === seriesId &&
+            e.dateYmd === dateYmd),
+      );
+      if (!already) {
+        state.schedule.exceptions.push({
+          id: exId,
+          seriesId,
+          dateYmd,
+          kind: "suppress",
+        });
+      }
+
+      syncAgendaFromSchedule(state, dateYmd);
+      persistScheduleSources(state);
+    },
+    /**
+     * Remove suppress (Replace/Hide) for one series on one Chicago day.
+     * Does not touch cancel/override. Series unchanged.
+     */
+    unsuppressRecurringOccurrence: (
+      state,
+      action: PayloadAction<SuppressRecurringOccurrencePayload>,
+    ) => {
+      const { seriesId: rawSeriesId, dateYmd } = action.payload;
+      if (!dateYmd) return;
+
+      const seriesId =
+        typeof rawSeriesId === "string" ? rawSeriesId.trim() : "";
+      if (!seriesId) return;
+
+      state.schedule.exceptions = state.schedule.exceptions.filter((e) => {
+        if (e.kind !== "suppress") return true;
+        if (e.seriesId !== seriesId) return true;
+        if (e.dateYmd !== dateYmd) return true;
+        return false;
+      });
+
+      syncAgendaFromSchedule(state, dateYmd);
+      persistScheduleSources(state);
+    },
   },
 });
 
@@ -467,5 +719,9 @@ export const {
   addRecurringClass,
   editRecurringClass,
   endRecurringClass,
+  addOneTimeEvent,
+  editOneTimeEvent,
+  suppressRecurringOccurrence,
+  unsuppressRecurringOccurrence,
 } = houseDisplaySlice.actions;
 export default houseDisplaySlice.reducer;
