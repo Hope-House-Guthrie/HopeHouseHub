@@ -10,10 +10,11 @@
  * - Persist sources only after mutators (not agendaItems)
  * - TV + manage read content; TV never reads schedule
  *
- * DONE (S2.2–S2.4):
+ * DONE (S2.2–S2.5):
  * - addRecurringClass (UI id; force active true)
  * - editRecurringClass (keep id + active; no exception changes)
  * - endRecurringClass (active false only; keep row; no exception changes)
+ * - reinstateRecurringClass (active true; exact inverse of End; idempotent)
  * - Cancel/Restore = day exception only (series stays active)
  * - End Class ≠ Cancel ≠ Delete
  *
@@ -26,13 +27,12 @@
  * - suppressRecurringOccurrence / unsuppressRecurringOccurrence
  *
  * NOT YET:
- * - manage One-Time UI / conflict UI (Stage C)
- * - override exception UI, delete definition, reopen/ended list
+ * - override exception UI, delete definition, ended-list conflict UI
  * - Backend API / thunks
  * - Midnight re-resolve without refresh
  *
  * Who uses this:
- *   - manage.tsx  → Today cancel/restore; Add/Edit/End Class; One-Time next
+ *   - manage.tsx  → Today cancel/restore; Add/Edit/End/Reinstate Recurring; One-Time add/edit
  *   - index.tsx   → TV selects content only
  */
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
@@ -93,8 +93,9 @@ export type EditRecurringClassPayload = {
 };
 
 /**
- * End Class - seriesstay in schedule; stops generating occurrences.
- * active false only. Not Cancel (day exception). Not Delete.
+ * End Class / Reinstate Class - series stays in schedule.
+ * End: active false; Reinstate: active true (exact inverse).
+ * Not Cancel (day exception). Not Delete.
  * dateYmd = Chicago day for agenda re-resolve only.
  */
 export type EndRecurringClassPayload = {
@@ -552,6 +553,32 @@ export const houseDisplaySlice = createSlice({
       persistScheduleSources(state);
     },
     /**
+     * Reinstate an ended recurring class — exact inverse of endRecurringClass.
+     * active false → true. All other fields (id/title/times/days/location/
+     * facilitator) untouched. No exception changes.
+     * Unknown id = no-op. Already active = idempotent (still sync+persist).
+     * No clock/random/id generation. Reinstating does NOT create a duplicate
+     * — the row already exists in state.schedule.recurring.
+     */
+    reinstateRecurringClass: (
+      state,
+      action: PayloadAction<EndRecurringClassPayload>,
+    ) => {
+      const { id: rawId, dateYmd } = action.payload;
+      if (!dateYmd) return;
+
+      const id = typeof rawId === "string" ? rawId.trim() : "";
+      if (!id) return;
+
+      const existing = state.schedule.recurring.find((r) => r.id === id);
+      if (!existing) return;
+
+      existing.active = true;
+
+      syncAgendaFromSchedule(state, dateYmd);
+      persistScheduleSources(state);
+    },
+    /**
      * Add one one-time event (single Chicago dateYmd).
      * UI supplies full event including id. Force active true, canceled false.
      * payload.dateYmd = agenda re-resolve day (usually today), not only event day.
@@ -733,6 +760,7 @@ export const {
   addRecurringClass,
   editRecurringClass,
   endRecurringClass,
+  reinstateRecurringClass,
   addOneTimeEvent,
   editOneTimeEvent,
   suppressRecurringOccurrence,
