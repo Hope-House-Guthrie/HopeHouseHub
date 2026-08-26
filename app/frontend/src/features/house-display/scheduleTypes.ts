@@ -78,6 +78,12 @@ export interface HouseDisplayOccurrenceException {
   title?: string;
   startMin?: number;
   endMin?: number;
+  /**
+   * One-time event that caused this suppression, if any.
+   * Enables safe removal when that source event is later edited.
+   * Staff cancel/manual suppress entries leave this undefined.
+   */
+  sourceOneTimeEventId?: string;
 }
 
 /**

@@ -63,6 +63,7 @@ import { useDispatch, useSelector } from "react-redux";
 import {
   Box,
   Button,
+  capitalize,
   Card,
   CardContent,
   Checkbox,
@@ -114,11 +115,13 @@ import {
   endRecurringClass,
   reinstateRecurringClass,
   restoreOccurrence,
+  suppressRecurringOccurrence,
 } from "../../../store/slices/prototype/houseDisplay";
 import {
   type ScheduleConflict,
   findScheduleConflicts,
   type ScheduleConflictCandidate,
+  type OneTimeConflictCandidate,
 } from "../../../features/house-display/scheduleConflicts";
 
 /**
@@ -223,23 +226,41 @@ export default function HouseDisplayManagePage() {
   const [addOneTimeDate, setAddOneTimeDate] = useState<string>(""); // YYYY-MM-DD
   const [addOneTimeStartTime, setAddOneTimeStartTime] = useState("");
   const [addOneTimeEndTime, setAddOneTimeEndTime] = useState("");
-  const [addOneTimeLocation, setAddOneTimeLocation] = useState<string>("Living Room");
-  const [addOneTimeFacilitator, setAddOneTimeFacilitator] = useState<string>("");
+  const [addOneTimeLocation, setAddOneTimeLocation] =
+    useState<string>("Living Room");
+  const [addOneTimeFacilitator, setAddOneTimeFacilitator] =
+    useState<string>("");
   const [addOneTimeError, setAddOneTimeError] = useState("");
 
   // --- Conflict Dialog state ---
-  const [pendingClassData, setPendingClassData] = useState<{
-    event: HouseDisplayRecurringEvent;
-    candidate: ScheduleConflictCandidate;
-  } | null>(null);
-  const [pendingConflicts, setPendingConflicts] = useState<ScheduleConflict[]>([]);
+  const [pendingClassData, setPendingClassData] = useState<
+    | {
+        event: HouseDisplayRecurringEvent;
+        candidate: ScheduleConflictCandidate;
+      }
+    | {
+        event: {
+          title: string;
+          dateYmd: string;
+          startMin: number;
+          endMin: number;
+          location?: string;
+          facilitator?: string;
+        };
+        candidate: ScheduleConflictCandidate;
+      }
+    | null
+  >(null);
+  const [pendingConflicts, setPendingConflicts] = useState<ScheduleConflict[]>(
+    [],
+  );
   const [endingExistingClasses, setEndingExistingClasses] = useState<
     HouseDisplayRecurringEvent[]
   >([]);
   const [conflictDialogOpen, setConflictDialogOpen] = useState(false);
   /** Shared conflict reconciliation: how to save the pending class. */
   const [pendingSaveKind, setPendingSaveKind] = useState<
-    "add" | "edit" | "reinstate"
+    "add" | "edit" | "reinstate" | "oneTimeAdd" | "oneTimeEdit"
   >("add");
 
   const resetAddClassForm = () => {
@@ -362,6 +383,46 @@ export default function HouseDisplayManagePage() {
 
     const { title, dateYmd, startMin, endMin } = validated;
 
+    // Stage E: detect conflicts before dispatching.
+    const oneTimeCandidate: OneTimeConflictCandidate = {
+      type: "oneTime",
+      dateYmd,
+      startMin,
+      endMin,
+      excludeId:
+        oneTimeFormMode === "edit" && editingOneTimeId
+          ? editingOneTimeId
+          : undefined,
+    };
+
+    const otConflicts = findScheduleConflicts({
+      sources: scheduleSources,
+      candidate: oneTimeCandidate,
+    });
+
+    if (otConflicts.length > 0) {
+      setPendingClassData({
+        event: {
+          title: capitalizeTitle(title),
+          dateYmd,
+          startMin,
+          endMin,
+          location: addOneTimeLocation || undefined,
+          facilitator: addOneTimeFacilitator
+            ? capitalizeTitle(addOneTimeFacilitator)
+            : undefined,
+        },
+        candidate: oneTimeCandidate,
+      });
+      setPendingConflicts(otConflicts);
+      setEndingExistingClasses([]);
+      setPendingSaveKind(
+        oneTimeFormMode == "edit" ? "oneTimeEdit" : "oneTimeAdd",
+      );
+      setConflictDialogOpen(true);
+      return;
+    }
+
     if (oneTimeFormMode === "edit" && editingOneTimeId) {
       // EDIT MODE: update existing event
       dispatch(
@@ -373,7 +434,9 @@ export default function HouseDisplayManagePage() {
           endMin,
           resolveDateYmd: hopeNow.dateKey,
           location: addOneTimeLocation || undefined,
-          facilitator: addOneTimeFacilitator ? capitalizeTitle(addOneTimeFacilitator) : "",
+          facilitator: addOneTimeFacilitator
+            ? capitalizeTitle(addOneTimeFacilitator)
+            : "",
         }),
       );
     } else {
@@ -387,7 +450,9 @@ export default function HouseDisplayManagePage() {
             startMin,
             endMin,
             location: addOneTimeLocation || undefined,
-            facilitator: addOneTimeFacilitator ? capitalizeTitle(addOneTimeFacilitator) : undefined,
+            facilitator: addOneTimeFacilitator
+              ? capitalizeTitle(addOneTimeFacilitator)
+              : undefined,
             active: true,
             canceled: false,
           },
@@ -466,9 +531,7 @@ export default function HouseDisplayManagePage() {
       candidate,
     });
     // Filter to recurring only (one-time conflicts handled in Stage E).
-    const recurringConflicts = conflicts.filter(
-      (c) => c.kind === "recurring",
-    );
+    const recurringConflicts = conflicts.filter((c) => c.kind === "recurring");
 
     // Close the confirm dialog either way once Reinstate is confirmed.
     handleCloseReinstate();
@@ -525,34 +588,89 @@ export default function HouseDisplayManagePage() {
     if (!pendingClassData) return;
     const { event } = pendingClassData;
     const isEdit = pendingSaveKind === "edit";
-
-    // End selected conflicts first
-    for (const ec of endingExistingClasses) {
-      dispatch(endRecurringClass({ id: ec.id, dateYmd: hopeNow.dateKey }));
+    const sourceOneTimeEventId =
+      pendingSaveKind === "oneTimeAdd"
+        ? newOneTimeEventId()
+        : pendingSaveKind === "oneTimeEdit"
+          ? editingOneTimeId!
+          : undefined;
+    // Resolve selected recurring conflicts.
+    if (pendingSaveKind === "oneTimeAdd" || pendingSaveKind === "oneTimeEdit") {
+      for (const ec of endingExistingClasses) {
+        dispatch(
+          suppressRecurringOccurrence({
+            seriesId: ec.id,
+            dateYmd: hopeNow.dateKey,
+            sourceOneTimeEventId,
+          }),
+        );
+      }
+    } else {
+      for (const ec of endingExistingClasses) {
+        dispatch(
+          endRecurringClass({
+            id: ec.id,
+            dateYmd: hopeNow.dateKey,
+          }),
+        );
+      }
     }
 
     // Then save the pending class / reinstate it
     if (pendingSaveKind === "reinstate") {
+      const ev = event as HouseDisplayRecurringEvent;
       dispatch(
         reinstateRecurringClass({
-          id: event.id,
+          id: ev.id,
           dateYmd: hopeNow.dateKey,
         }),
       );
-    } else if (isEdit) {
+    } else if (pendingSaveKind === "edit") {
+      const ev = event as HouseDisplayRecurringEvent;
       dispatch(
         editRecurringClass({
-          id: event.id,
-          title: event.title,
-          startMin: event.startMin,
-          endMin: event.endMin,
-          daysOfWeek: event.daysOfWeek,
+          id: ev.id,
+          title: ev.title,
+          startMin: ev.startMin,
+          endMin: ev.endMin,
+          daysOfWeek: ev.daysOfWeek,
           dateYmd: hopeNow.dateKey,
-          location: event.location,
+          location: ev.location,
+          facilitator: ev.facilitator,
         }),
       );
-    } else {
-      dispatch(addRecurringClass({ event, dateYmd: hopeNow.dateKey }));
+    } else if (pendingSaveKind === "oneTimeAdd") {
+      dispatch(
+        addOneTimeEvent({
+          event: {
+            ...(event as any),
+            id: sourceOneTimeEventId!,
+            active: true,
+            canceled: false,
+          },
+          dateYmd: hopeNow.dateKey,
+        }),
+      );
+    } else if (pendingSaveKind === "oneTimeEdit") {
+      dispatch(
+        editOneTimeEvent({
+          id: sourceOneTimeEventId!,
+          title: (event as any).title,
+          eventDateYmd: (event as any).dateYmd,
+          startMin: (event as any).startMin,
+          endMin: (event as any).endMin,
+          resolveDateYmd: hopeNow.dateKey,
+          location: event.location,
+          facilitator: (event as any).facilitator ?? "",
+        }),
+      );
+    } else if (pendingSaveKind === "add") {
+      dispatch(
+        addRecurringClass({
+          event: event as HouseDisplayRecurringEvent,
+          dateYmd: hopeNow.dateKey,
+        }),
+      );
     }
 
     setPendingClassData(null);
@@ -581,14 +699,66 @@ export default function HouseDisplayManagePage() {
     const { event } = pendingClassData;
 
     if (pendingSaveKind === "reinstate") {
+      const ev = event as HouseDisplayRecurringEvent;
       dispatch(
         reinstateRecurringClass({
-          id: event.id,
+          id: ev.id,
           dateYmd: hopeNow.dateKey,
         }),
       );
+    } else if (pendingSaveKind === "oneTimeAdd") {
+      const ot = event as {
+        title: string;
+        dateYmd: string;
+        startMin: number;
+        endMin: number;
+        location?: string;
+        facilitator?: string;
+      };
+      dispatch(
+        addOneTimeEvent({
+          event: {
+            id: newOneTimeEventId(),
+            title: ot.title,
+            dateYmd: ot.dateYmd,
+            startMin: ot.startMin,
+            endMin: ot.endMin,
+            location: ot.location,
+            facilitator: ot.facilitator,
+            active: true,
+            canceled: false,
+          },
+          dateYmd: hopeNow.dateKey,
+        }),
+      );
+    } else if (pendingSaveKind === "oneTimeEdit") {
+      const ot = event as {
+        title: string;
+        dateYmd: string;
+        startMin: number;
+        endMin: number;
+        location?: string;
+        facilitator?: string;
+      };
+      dispatch(
+        editOneTimeEvent({
+          id: editingOneTimeId!,
+          title: ot.title,
+          eventDateYmd: ot.dateYmd,
+          startMin: ot.startMin,
+          endMin: ot.endMin,
+          resolveDateYmd: hopeNow.dateKey,
+          location: ot.location,
+          facilitator: ot.facilitator ?? "",
+        }),
+      );
     } else {
-      dispatch(addRecurringClass({ event, dateYmd: hopeNow.dateKey }));
+      dispatch(
+        addRecurringClass({
+          event: event as HouseDisplayRecurringEvent,
+          dateYmd: hopeNow.dateKey,
+        }),
+      );
     }
 
     setPendingClassData(null);
@@ -654,9 +824,7 @@ export default function HouseDisplayManagePage() {
     });
 
     // Filter to recurring only (one-time conflicts handled in Stage E)
-    const recurringConflicts = conflicts.filter(
-      (c) => c.kind === "recurring",
-    );
+    const recurringConflicts = conflicts.filter((c) => c.kind === "recurring");
 
     if (recurringConflicts.length === 0) {
       // No conflicts → save directly
@@ -719,8 +887,8 @@ export default function HouseDisplayManagePage() {
             View Full Display
           </Button>
           <Typography variant="caption" color="text.secondary">
-            Prototype note: content changes save in this browser for the mock;
-            a future backend will replace that.
+            Prototype note: content changes save in this browser for the mock; a
+            future backend will replace that.
           </Typography>
         </CardContent>
       </Card>
@@ -782,10 +950,7 @@ export default function HouseDisplayManagePage() {
                           mt: 0.25,
                         }}
                       >
-                        <Typography
-                          variant="body1"
-                          sx={{ fontWeight: 500 }}
-                        >
+                        <Typography variant="body1" sx={{ fontWeight: 500 }}>
                           {item.title}
                         </Typography>
                         {item.canceled ? (
@@ -930,7 +1095,11 @@ export default function HouseDisplayManagePage() {
           >
             <Box>
               <Typography variant="h6">Ended Classes</Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ mt: 0.5 }}
+              >
                 Inactive series no longer generate occurrences. Reinstate to
                 resume the same schedule without creating a duplicate.
               </Typography>
@@ -953,90 +1122,95 @@ export default function HouseDisplayManagePage() {
               <Divider />
 
               {endedRecurringClasses.length === 0 ? (
-            <Typography variant="body2" color="text.secondary">
-              No ended classes.
-            </Typography>
-          ) : (
-            <Stack divider={<Divider flexItem />} spacing={0}>
-              {endedRecurringClasses.map((series) => {
-                const timeRange = formatScheduleTimeRange(
-                  series.startMin,
-                  series.endMin,
-                );
-                return (
-                  <Box
-                    key={series.id}
-                    sx={{
-                      display: "flex",
-                      flexWrap: "wrap",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      gap: 1.5,
-                      py: 1.5,
-                    }}
-                  >
-                    <Box sx={{ minWidth: 0, flex: "1 1 220px" }}>
+                <Typography variant="body2" color="text.secondary">
+                  No ended classes.
+                </Typography>
+              ) : (
+                <Stack divider={<Divider flexItem />} spacing={0}>
+                  {endedRecurringClasses.map((series) => {
+                    const timeRange = formatScheduleTimeRange(
+                      series.startMin,
+                      series.endMin,
+                    );
+                    return (
                       <Box
+                        key={series.id}
                         sx={{
                           display: "flex",
                           flexWrap: "wrap",
                           alignItems: "center",
-                          gap: 0.5,
+                          justifyContent: "space-between",
+                          gap: 1.5,
+                          py: 1.5,
                         }}
                       >
-                        <Typography
-                          variant="body2"
-                          color="text.secondary"
-                          sx={{ fontWeight: 600 }}
-                        >
-                          {timeRange}
-                        </Typography>
-                        <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                          {series.title}
-                        </Typography>
-                        <Chip
-                          size="small"
-                          label={formatRecurringDaysLabel(series.daysOfWeek)}
-                          variant="outlined"
-                        />
-                        {series.location ? (
-                          <Chip
+                        <Box sx={{ minWidth: 0, flex: "1 1 220px" }}>
+                          <Box
+                            sx={{
+                              display: "flex",
+                              flexWrap: "wrap",
+                              alignItems: "center",
+                              gap: 0.5,
+                            }}
+                          >
+                            <Typography
+                              variant="body2"
+                              color="text.secondary"
+                              sx={{ fontWeight: 600 }}
+                            >
+                              {timeRange}
+                            </Typography>
+                            <Typography
+                              variant="body1"
+                              sx={{ fontWeight: 500 }}
+                            >
+                              {series.title}
+                            </Typography>
+                            <Chip
+                              size="small"
+                              label={formatRecurringDaysLabel(
+                                series.daysOfWeek,
+                              )}
+                              variant="outlined"
+                            />
+                            {series.location ? (
+                              <Chip
+                                size="small"
+                                label={series.location}
+                                variant="outlined"
+                                color="info"
+                              />
+                            ) : null}
+                            {series.facilitator ? (
+                              <Chip
+                                size="small"
+                                label={`Facilitator: ${series.facilitator}`}
+                                variant="outlined"
+                              />
+                            ) : null}
+                            <Chip
+                              size="small"
+                              label="Ended"
+                              variant="outlined"
+                              color="default"
+                            />
+                          </Box>
+                        </Box>
+                        <Box sx={{ display: "flex", gap: 1 }}>
+                          <Button
+                            type="button"
                             size="small"
-                            label={series.location}
-                            variant="outlined"
-                            color="info"
-                          />
-                        ) : null}
-                        {series.facilitator ? (
-                          <Chip
-                            size="small"
-                            label={`Facilitator: ${series.facilitator}`}
-                            variant="outlined"
-                          />
-                        ) : null}
-                        <Chip
-                          size="small"
-                          label="Ended"
-                          variant="outlined"
-                          color="default"
-                        />
+                            variant="text"
+                            onClick={() => handleOpenReinstate(series)}
+                          >
+                            Reinstate
+                          </Button>
+                        </Box>
                       </Box>
-                    </Box>
-                    <Box sx={{ display: "flex", gap: 1 }}>
-                      <Button
-                        type="button"
-                        size="small"
-                        variant="text"
-                        onClick={() => handleOpenReinstate(series)}
-                      >
-                        Reinstate
-                      </Button>
-                    </Box>
-                  </Box>
-                );
-              })}
-            </Stack>
-          )}
+                    );
+                  })}
+                </Stack>
+              )}
             </>
           ) : null}
         </CardContent>
@@ -1068,7 +1242,10 @@ export default function HouseDisplayManagePage() {
           ) : (
             <Stack divider={<Divider flexItem />} spacing={0}>
               {activeOneTimeEvents.map((event) => {
-                const timeRange = formatScheduleTimeRange(event.startMin, event.endMin);
+                const timeRange = formatScheduleTimeRange(
+                  event.startMin,
+                  event.endMin,
+                );
                 return (
                   <Box
                     key={event.id}
@@ -1218,7 +1395,9 @@ export default function HouseDisplayManagePage() {
                 >
                   <MenuItem value="">No specific location</MenuItem>
                   <MenuItem value="Living Room">Living Room</MenuItem>
-                  <MenuItem value="Large Dining Room">Large Dining Room</MenuItem>
+                  <MenuItem value="Large Dining Room">
+                    Large Dining Room
+                  </MenuItem>
                   <MenuItem value="Back House">Back House</MenuItem>
                   <MenuItem value="Computer Lab">Computer Lab</MenuItem>
                 </Select>
@@ -1252,7 +1431,9 @@ export default function HouseDisplayManagePage() {
       <Dialog open={addOneTimeOpen} onClose={handleCloseAddOneTimeEvent}>
         <Box component="form" onSubmit={handleAddOneTimeEventSubmit}>
           <DialogTitle>
-            {oneTimeFormMode === "edit" ? "Edit One-Time Event" : "Add One-Time Event"}
+            {oneTimeFormMode === "edit"
+              ? "Edit One-Time Event"
+              : "Add One-Time Event"}
           </DialogTitle>
           <DialogContent>
             <Stack spacing={2} sx={{ mt: 1 }}>
@@ -1312,12 +1493,18 @@ export default function HouseDisplayManagePage() {
                 <Select
                   value={addOneTimeLocation}
                   label="Location"
-                  onChange={(e) => setAddOneTimeLocation(e.target.value as string)}
+                  onChange={(e) =>
+                    setAddOneTimeLocation(e.target.value as string)
+                  }
                 >
                   <MenuItem value="">No specific location</MenuItem>
                   <MenuItem value="Living Room">Living Room</MenuItem>
-                  <MenuItem value="Large Dining Room">Large Dining Room</MenuItem>
-                  <MenuItem value="Small Dining Room">Small Dining Room</MenuItem>
+                  <MenuItem value="Large Dining Room">
+                    Large Dining Room
+                  </MenuItem>
+                  <MenuItem value="Small Dining Room">
+                    Small Dining Room
+                  </MenuItem>
                   <MenuItem value="Back House">Back House</MenuItem>
                   <MenuItem value="Computer Lab">Computer Lab</MenuItem>
                   <MenuItem value="Kitchen">Kitchen</MenuItem>
@@ -1380,7 +1567,9 @@ export default function HouseDisplayManagePage() {
                 >
                   <Checkbox
                     checked={isChecked}
-                    onChange={() => handleSelectConflictToKill(conflict.seriesId)}
+                    onChange={() =>
+                      handleSelectConflictToKill(conflict.seriesId)
+                    }
                     aria-label={`End ${conflict.title}`}
                   />
                   <Box>
@@ -1389,7 +1578,9 @@ export default function HouseDisplayManagePage() {
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
                       {conflict.startMin}–{conflict.endMin} on{" "}
-                      {recurring.weekdays.map((d: number) => formatRecurringDaysLabel([d])).join(", ")}
+                      {recurring.weekdays
+                        .map((d: number) => formatRecurringDaysLabel([d]))
+                        .join(", ")}
                     </Typography>
                   </Box>
                 </Box>
@@ -1400,10 +1591,7 @@ export default function HouseDisplayManagePage() {
         <DialogActions>
           <Button onClick={handleCancelConflictDialog}>Cancel</Button>
           <Button onClick={handleKeepBoth}>Keep Both</Button>
-          <Button
-            variant="contained"
-            onClick={handleSaveWithSelectedEnds}
-          >
+          <Button variant="contained" onClick={handleSaveWithSelectedEnds}>
             {pendingSaveKind === "reinstate"
               ? "Reinstate (End Selected Conflicts)"
               : "Save (End Selected Conflicts)"}
@@ -1416,8 +1604,8 @@ export default function HouseDisplayManagePage() {
         <DialogTitle>End Class</DialogTitle>
         <DialogContent>
           <Typography>
-            End {endingClass?.title}? It will not appear on future TV dates,
-            but the class definition is preserved.
+            End {endingClass?.title}? It will not appear on future TV dates, but
+            the class definition is preserved.
           </Typography>
         </DialogContent>
         <DialogActions>
@@ -1441,7 +1629,11 @@ export default function HouseDisplayManagePage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseReinstate}>Cancel</Button>
-          <Button color="primary" variant="contained" onClick={handleConfirmReinstate}>
+          <Button
+            color="primary"
+            variant="contained"
+            onClick={handleConfirmReinstate}
+          >
             Reinstate
           </Button>
         </DialogActions>

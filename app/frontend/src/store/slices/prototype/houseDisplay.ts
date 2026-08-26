@@ -150,8 +150,19 @@ function cancelExceptionId(seriesId: string, dateYmd: string): string {
   return `cancel:${seriesId}:${dateYmd}`;
 }
 
-/** Deterministic suppress (Replace/Hide) exception id. */
-function suppressExceptionId(seriesId: string, dateYmd: string): string {
+/** Deterministic suppress (Replace/Hide) exception id.
+ * When sourceOneTimeEventId is provided, the ID is scoped to that one-time
+ * event so multiple one-time events can independently suppress the same
+ * recurring occurrence on the same date.
+ */
+function suppressExceptionId(
+  seriesId: string,
+  dateYmd: string,
+  sourceOneTimeEventId?: string,
+): string {
+  if (sourceOneTimeEventId) {
+    return `suppress:${sourceOneTimeEventId}:${seriesId}:${dateYmd}`;
+  }
   return `suppress:${seriesId}:${dateYmd}`;
 }
 
@@ -163,6 +174,12 @@ export type SuppressRecurringOccurrencePayload = {
   seriesId: string;
   /** America/Chicago calendar day YYYY-MM-DD */
   dateYmd: string;
+  /** One-time event that caused this suppression, if any.
+   * When present, creates a per-source-event suppression exception so
+   * multiple one-time events can independently suppress the same occurrence.
+   * Staff-initiated suppress passes undefined (legacy singular behavior).
+   */
+  sourceOneTimeEventId?: string;
 };
 
 /**
@@ -513,7 +530,8 @@ export const houseDisplaySlice = createSlice({
       const existing = state.schedule.recurring[index];
       if (!existing) return;
       // For facilitator: undefined means keep existing, "" means clear
-      const newFacilitator = typeof facilitator === "string" ? facilitator : existing.facilitator;
+      const newFacilitator =
+        typeof facilitator === "string" ? facilitator : existing.facilitator;
       state.schedule.recurring[index] = {
         id: existing.id,
         active: existing.active,
@@ -584,10 +602,7 @@ export const houseDisplaySlice = createSlice({
      * payload.dateYmd = agenda re-resolve day (usually today), not only event day.
      * No clock/random/id generation. Overlaps allowed. No exception/recurring changes.
      */
-    addOneTimeEvent: (
-      state,
-      action: PayloadAction<AddOneTimeEventPayload>,
-    ) => {
+    addOneTimeEvent: (state, action: PayloadAction<AddOneTimeEventPayload>) => {
       const { event, dateYmd: resolveDateYmd } = action.payload;
       if (!event || !resolveDateYmd || !isRealDateYmd(resolveDateYmd)) return;
 
@@ -666,7 +681,8 @@ export const houseDisplaySlice = createSlice({
       if (!existing) return;
 
       // For facilitator: undefined means keep existing, "" means clear
-      const newFacilitator = typeof facilitator === "string" ? facilitator : existing.facilitator;
+      const newFacilitator =
+        typeof facilitator === "string" ? facilitator : existing.facilitator;
       state.schedule.oneTime[index] = {
         id: existing.id,
         active: existing.active,
@@ -693,7 +709,12 @@ export const houseDisplaySlice = createSlice({
       state,
       action: PayloadAction<SuppressRecurringOccurrencePayload>,
     ) => {
-      const { seriesId: rawSeriesId, dateYmd } = action.payload;
+      const {
+        seriesId: rawSeriesId,
+        dateYmd,
+        sourceOneTimeEventId,
+      } = action.payload;
+
       if (!dateYmd) return;
 
       const seriesId =
@@ -705,20 +726,24 @@ export const houseDisplaySlice = createSlice({
       const series = state.schedule.recurring.find((r) => r.id === seriesId);
       if (!series) return;
 
-      const exId = suppressExceptionId(seriesId, dateYmd);
+      const exId = suppressExceptionId(seriesId, dateYmd, sourceOneTimeEventId);
+
       const already = state.schedule.exceptions.some(
         (e) =>
           e.id === exId ||
           (e.kind === "suppress" &&
             e.seriesId === seriesId &&
-            e.dateYmd === dateYmd),
+            e.dateYmd === dateYmd &&
+            e.sourceOneTimeEventId === sourceOneTimeEventId),
       );
+
       if (!already) {
         state.schedule.exceptions.push({
           id: exId,
           seriesId,
           dateYmd,
           kind: "suppress",
+          sourceOneTimeEventId,
         });
       }
 
@@ -733,7 +758,12 @@ export const houseDisplaySlice = createSlice({
       state,
       action: PayloadAction<SuppressRecurringOccurrencePayload>,
     ) => {
-      const { seriesId: rawSeriesId, dateYmd } = action.payload;
+      const {
+        seriesId: rawSeriesId,
+        dateYmd,
+        sourceOneTimeEventId,
+      } = action.payload;
+
       if (!dateYmd) return;
 
       const seriesId =
@@ -744,7 +774,14 @@ export const houseDisplaySlice = createSlice({
         if (e.kind !== "suppress") return true;
         if (e.seriesId !== seriesId) return true;
         if (e.dateYmd !== dateYmd) return true;
-        return false;
+
+        if (sourceOneTimeEventId) {
+          return e.sourceOneTimeEventId !== sourceOneTimeEventId;
+        }
+
+        // Legacy/manual behavior: remove only an unowned suppression.
+        // Do not remove suppressions belonging to one-time events.
+        return e.sourceOneTimeEventId !== undefined;
       });
 
       syncAgendaFromSchedule(state, dateYmd);
