@@ -22,8 +22,15 @@
  * - UI id newRecurringClassId(); dispatch addRecurringClass + Chicago dateYmd
  * - Close/reset on success; DEV schedule persist via existing slice path
  *
- * NOT YET (S2.3+):
- * - Edit / End Class, one-time event forms
+ * DONE (S2.3 Edit Class UI):
+ * - Shared Add/Edit dialog (classFormMode + editingClassId)
+ * - Edit on Recurring Classes rows; prefill via formatMinToTimeInput
+ * - validateRecurringClassForm; add keeps new id; edit dispatches editRecurringClass (keep id/active)
+ *
+ * NEXT: S2.4 End Class (not started)
+ *
+ * NOT YET:
+ * - one-time event forms
  * - Edit this occurrence (override exceptions)
  * - Spotlight management / flyer upload
  * - UP NEXT derived from agenda (TV known cleanup)
@@ -62,8 +69,9 @@ import {
   formatScheduleTimeRange,
 } from "../../../features/house-display/scheduleFormat";
 import {
+  formatMinToTimeInput,
   newRecurringClassId,
-  parseTimeInputToMin,
+  validateRecurringClassForm,
 } from "../../../features/house-display/scheduleForm";
 import type {
   HouseDisplayRecurringEvent,
@@ -74,6 +82,7 @@ import { getHopeHouseNow } from "../../../features/house-display/time";
 import {
   addRecurringClass,
   cancelOccurrence,
+  editRecurringClass,
   restoreOccurrence,
 } from "../../../store/slices/prototype/houseDisplay";
 
@@ -125,6 +134,10 @@ export default function HouseDisplayManagePage() {
 
   // --- Add Class dialog ---
   const [addClassOpen, setAddClassOpen] = useState(false);
+  /** "add" = new series; "edit" = existing series (id in editingClassId) */
+  const [classFormMode, setClassFormMode] = useState<"add" | "edit">("add");
+  /** Set only in edit mode; null in add mode */
+  const [editingClassId, setEditingClassId] = useState<string | null>(null);
   const [addTitle, setAddTitle] = useState("");
   const [addStartTime, setAddStartTime] = useState(""); // "HH:mm"
   const [addEndTime, setAddEndTime] = useState("");
@@ -133,6 +146,8 @@ export default function HouseDisplayManagePage() {
   const [addError, setAddError] = useState("");
 
   const resetAddClassForm = () => {
+    setClassFormMode("add");
+    setEditingClassId(null);
     setAddTitle("");
     setAddStartTime("");
     setAddEndTime("");
@@ -160,54 +175,71 @@ export default function HouseDisplayManagePage() {
     resetAddClassForm();
   };
 
-  /** Validate + create recurring class (UI id; Redux stays deterministic). */
+  /** Prefill shared dialog from an active series (edit path). Does not call reset. */
+  const handleOpenEditClass = (series: HouseDisplayRecurringEvent) => {
+    setClassFormMode("edit");
+    setEditingClassId(series.id);
+    setAddTitle(series.title);
+    setAddStartTime(formatMinToTimeInput(series.startMin));
+    setAddEndTime(formatMinToTimeInput(series.endMin));
+    setAddDays([...series.daysOfWeek].sort((a, b) => a - b));
+    setAddError("");
+    setAddClassOpen(true);
+  };
+
+  /**
+   * Shared Add/Edit submit.
+   * Add: UI generates id + active true. Edit: existing id; reducer keeps active.
+   */
   const handleAddClassSubmit = (e: FormEvent) => {
     e.preventDefault();
     setAddError("");
 
-    const title = addTitle.trim();
-    if (!title) {
-      setAddError("Class name is required.");
+    const validated = validateRecurringClassForm({
+      title: addTitle,
+      startTime: addStartTime,
+      endTime: addEndTime,
+      days: addDays,
+    });
+    if (!validated.ok) {
+      setAddError(validated.error);
       return;
     }
 
-    const startMin = parseTimeInputToMin(addStartTime);
-    if (startMin == null) {
-      setAddError("Start time is required.")
-      return;
+    const { title, startMin, endMin, daysOfWeek } = validated;
+    const submitDateYmd = hopeNow.dateKey;
+
+    if (classFormMode === "edit") {
+      if (!editingClassId) {
+        setAddError("Missing class id for edit.");
+        return;
+      }
+      dispatch(
+        editRecurringClass({
+          id: editingClassId,
+          title,
+          startMin,
+          endMin,
+          daysOfWeek,
+          dateYmd: submitDateYmd,
+        }),
+      );
+    } else {
+      const event: HouseDisplayRecurringEvent = {
+        id: newRecurringClassId(),
+        title,
+        startMin,
+        endMin,
+        daysOfWeek,
+        active: true,
+      };
+      dispatch(
+        addRecurringClass({
+          event,
+          dateYmd: submitDateYmd,
+        }),
+      );
     }
-
-    const endMin = parseTimeInputToMin(addEndTime);
-    if (endMin == null) {
-      setAddError("End time is required.");
-      return;
-    }
-
-    if (endMin <= startMin) {
-      setAddError("End time must be later than start time.")
-      return;
-    }
-
-    if (addDays.length === 0) {
-      setAddError("Select at least one day. Empty is not every day.");
-      return;
-    }
-
-    const event: HouseDisplayRecurringEvent = {
-      id: newRecurringClassId(),
-      title,
-      startMin,
-      endMin,
-      daysOfWeek: addDays as HouseDisplayWeekday[],
-      active: true,
-    };
-
-    dispatch(
-      addRecurringClass({
-        event,
-        dateYmd: hopeNow.dateKey,
-      }),
-    );
 
     handleCloseAddClass();
   };
@@ -219,9 +251,9 @@ export default function HouseDisplayManagePage() {
           House Display
         </Typography>
         <Typography variant="body1" color="text.secondary" sx={{ mt: 0.5 }}>
-          Manage what the house TV shows. Start with today&apos;s class
-          schedule — cancel or restore a single day without changing the
-          weekly class list.
+          Manage what the house TV shows. Start with today&apos;s class schedule
+          — cancel or restore a single day without changing the weekly class
+          list.
         </Typography>
       </Box>
 
@@ -258,20 +290,12 @@ export default function HouseDisplayManagePage() {
             <Typography variant="h6">Today&apos;s Schedule</Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
               {hopeNow.dateText}
-              <Box
-                component="span"
-                sx={{ mx: 1, opacity: 0.5 }}
-                aria-hidden
-              >
+              <Box component="span" sx={{ mx: 1, opacity: 0.5 }} aria-hidden>
                 ·
               </Box>
               Hope House day {dateYmd}
             </Typography>
-            <Typography
-              variant="body2"
-              color="text.secondary"
-              sx={{ mt: 1 }}
-            >
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
               Cancel applies to this day only. The weekly class definition stays
               active for future days. Restore removes today&apos;s cancellation.
             </Typography>
@@ -390,8 +414,8 @@ export default function HouseDisplayManagePage() {
               series definition — not today&apos;s cancel/restore list.
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-              Add a class here when the weekly schedule changes. Edit and End
-              Class come later. Ending stops future days without deleting the
+              Add or edit a class when the weekly schedule changes. End Class
+              comes later — ending stops future days without deleting the
               record.
             </Typography>
             <Box sx={{ mt: 1.5 }}>
@@ -442,6 +466,16 @@ export default function HouseDisplayManagePage() {
                     >
                       {timeRange}
                     </Typography>
+                    <Box sx={{ mt: 1 }}>
+                      <Button
+                        type="button"
+                        size="small"
+                        variant="outlined"
+                        onClick={() => handleOpenEditClass(series)}
+                      >
+                        Edit
+                      </Button>
+                    </Box>
                   </Box>
                 );
               })}
@@ -450,7 +484,7 @@ export default function HouseDisplayManagePage() {
         </CardContent>
       </Card>
 
-      {/* Add Class dialog — shell only (fields + dispatch in Step 4) */}
+      {/* Shared Add / Edit Class dialog */}
       <Dialog
         open={addClassOpen}
         onClose={handleCloseAddClass}
@@ -458,7 +492,9 @@ export default function HouseDisplayManagePage() {
         fullWidth
       >
         <Box component="form" onSubmit={handleAddClassSubmit}>
-          <DialogTitle>Add Class</DialogTitle>
+          <DialogTitle>
+            {classFormMode === "edit" ? "Edit Class" : "Add Class"}
+          </DialogTitle>
           <DialogContent>
             <Stack spacing={2} sx={{ mt: 1 }}>
               <TextField
@@ -499,39 +535,39 @@ export default function HouseDisplayManagePage() {
 
               <Box>
                 <Typography
-                variant="subtitle2"
-                component="div"
-                sx={{ mb: 0.5, fontWeight: 600 }}
-              >
-                Repeats On
-              </Typography>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ display: "block", mb: 1 }}
-              >
-                Select at least one day. Empty is not every day.
-              </Typography>
-              <FormGroup row sx={{ gap: 0.5 }}>
-                {ADD_CLASS_WEEKDAY_OPTIONS.map(({ value, label }) => (
-                  <FormControlLabel
-                    key={value}
-                    control={
-                      <Checkbox
-                        checked={addDays.includes(value)}
-                        onChange={() => toggleAddDay(value)}
-                        size="small"
-                        slotProps={{
-                          input: {
-                            "aria-label": `Repeats on ${label}`,
-                          }
-                        }}
-                      />
-                    }
-                    label={label}
-                  />
-                ))}
-              </FormGroup>
+                  variant="subtitle2"
+                  component="div"
+                  sx={{ mb: 0.5, fontWeight: 600 }}
+                >
+                  Repeats On
+                </Typography>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ display: "block", mb: 1 }}
+                >
+                  Select at least one day. Empty is not every day.
+                </Typography>
+                <FormGroup row sx={{ gap: 0.5 }}>
+                  {ADD_CLASS_WEEKDAY_OPTIONS.map(({ value, label }) => (
+                    <FormControlLabel
+                      key={value}
+                      control={
+                        <Checkbox
+                          checked={addDays.includes(value)}
+                          onChange={() => toggleAddDay(value)}
+                          size="small"
+                          slotProps={{
+                            input: {
+                              "aria-label": `Repeats on ${label}`,
+                            },
+                          }}
+                        />
+                      }
+                      label={label}
+                    />
+                  ))}
+                </FormGroup>
               </Box>
 
               {addError ? (
@@ -541,13 +577,12 @@ export default function HouseDisplayManagePage() {
               ) : null}
             </Stack>
           </DialogContent>
-        <DialogActions>
-
+          <DialogActions>
             <Button type="button" onClick={handleCloseAddClass}>
               Cancel
             </Button>
             <Button type="submit" variant="contained">
-              Add Class
+              {classFormMode === "edit" ? "Save Changes" : "Add Class"}
             </Button>
           </DialogActions>
         </Box>
