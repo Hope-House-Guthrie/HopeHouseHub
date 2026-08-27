@@ -326,6 +326,21 @@ function buildContent(
         imageUrl: hopeChangesEverythingUrl,
         imageAlt: "Hope Changes Everything / Family Reunification flyer",
       },
+      {
+        id: "s4",
+        kind: "video",
+        sortOrder: 3,
+        active: false,
+        pinMode: "none",
+        title: "Test Video",
+        subtitle: "",
+        message: "",
+        imageUrl: "",
+        imageAlt: "",
+        videoUrl: "house-display/test-VideoColorSpace.mp4",
+        videoMimeType: "video/mp4",
+        videoSoundEnabled: false,
+      },
     ],
     // Still mock strip — not derived from agenda yet (known cleanup)
     upcomingItems: [

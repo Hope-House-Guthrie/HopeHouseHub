@@ -94,7 +94,7 @@ export interface HouseDisplayBirthday {
 }
 
 /** Spotlight slide kind for the right ~40% House Spotlight region. */
-export type HouseDisplaySpotlightKind = "card" | "flyer";
+export type HouseDisplaySpotlightKind = "card" | "flyer" | "video";
 
 /**
  * Pin policy for one Spotlight item.
@@ -134,6 +134,12 @@ export interface HouseDisplaySpotlightItem {
   imageUrl: string;
   /** Flyer alt text; "" ok - UI may fall back to title. */
   imageAlt: string;
+  /** Video public path or URL; "" when unused. */
+  videoUrl?: string;
+  /** Video MIME type, e.g. "video/mp4; "" when unused. */
+  videoMimeType?: string;
+  /** Whether this video is allowed to play audio when house rules permit. */
+  videoSoundEnabled?: boolean;
 }
 
 /**

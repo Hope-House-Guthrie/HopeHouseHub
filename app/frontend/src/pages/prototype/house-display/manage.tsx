@@ -116,6 +116,7 @@ import {
   reinstateRecurringClass,
   restoreOccurrence,
   suppressRecurringOccurrence,
+  unsuppressRecurringOccurrence,
 } from "../../../store/slices/prototype/houseDisplay";
 import {
   type ScheduleConflict,
@@ -123,6 +124,7 @@ import {
   type ScheduleConflictCandidate,
   type OneTimeConflictCandidate,
 } from "../../../features/house-display/scheduleConflicts";
+import type { HouseDisplayOccurrenceException } from "../../../features/house-display/scheduleTypes";
 
 /**
  * Open the presentation-only TV route in a new tab so Hub stays open.
@@ -157,47 +159,12 @@ export default function HouseDisplayManagePage() {
   const oneTime = useSelector(
     (state: RootState) => state.houseDisplay.schedule.oneTime,
   );
+  const exceptions = useSelector(
+    (state: RootState) => state.houseDisplay.schedule.exceptions,
+  );
   const scheduleSources = useSelector(
     (state: RootState) => state.houseDisplay.schedule,
   );
-
-  // Display-only: active series, sorted for staff scan — never mutate Redux arrays
-  const activeRecurringClasses = useMemo(() => {
-    return recurring
-      .filter((series) => series.active)
-      .slice()
-      .sort((a, b) => {
-        if (a.startMin !== b.startMin) return a.startMin - b.startMin;
-        return a.title.localeCompare(b.title);
-      });
-  }, [recurring]);
-
-  // Display-only: ended (inactive) recurring classes, sorted for staff scan
-  const endedRecurringClasses = useMemo(() => {
-    return recurring
-      .filter((series) => !series.active)
-      .slice()
-      .sort((a, b) => {
-        if (a.startMin !== b.startMin) return a.startMin - b.startMin;
-        return a.title.localeCompare(b.title);
-      });
-  }, [recurring]);
-
-  // Display-only: active one-time events, sorted for staff scan
-  const activeOneTimeEvents = useMemo(() => {
-    return oneTime
-      .filter((event) => event.active)
-      .slice()
-      .sort((a, b) => {
-        if (a.dateYmd !== b.dateYmd) return a.dateYmd.localeCompare(b.dateYmd);
-        if (a.startMin !== b.startMin) return a.startMin - b.startMin;
-        return a.title.localeCompare(b.title);
-      });
-  }, [oneTime]);
-
-  // Hope House calendar day for labels + Cancel/Restore payloads (not browser TZ alone)
-  const hopeNow = getHopeHouseNow();
-  const dateYmd = hopeNow.dateKey;
 
   // --- Add Class dialog ---
   const [addClassOpen, setAddClassOpen] = useState(false);
@@ -330,6 +297,28 @@ export default function HouseDisplayManagePage() {
     setAddOneTimeOpen(true);
   };
 
+  // --- Helpers for managing suppressions ---
+  /** Find all suppress exceptions for a given one-time event ID */
+  const findSuppressionsForOneTime = (oneTimeEventId: string) => {
+    return exceptions.filter(
+      (e) => e.kind === "suppress" && e.sourceOneTimeEventId === oneTimeEventId,
+    );
+  };
+
+  /** Clear all suppressions associated with a one-time event */
+  const clearSuppressionsForOneTime = (oneTimeEventId: string) => {
+    const toRemove = findSuppressionsForOneTime(oneTimeEventId);
+    for (const ex of toRemove) {
+      dispatch(
+        unsuppressRecurringOccurrence({
+          seriesId: ex.seriesId,
+          dateYmd: ex.dateYmd,
+          sourceOneTimeEventId: oneTimeEventId,
+        }),
+      );
+    }
+  };
+
   // Helper: add 1 hour to time string (24-hour rollover)
   const addOneHourToTime = (time: string): string => {
     if (!time) return time;
@@ -382,6 +371,11 @@ export default function HouseDisplayManagePage() {
     }
 
     const { title, dateYmd, startMin, endMin } = validated;
+
+    // For EDIT MODE: clear existing suppressions before checking conflicts
+    if (oneTimeFormMode === "edit" && editingOneTimeId) {
+      clearSuppressionsForOneTime(editingOneTimeId);
+    }
 
     // Stage E: detect conflicts before dispatching.
     const oneTimeCandidate: OneTimeConflictCandidate = {
@@ -464,6 +458,31 @@ export default function HouseDisplayManagePage() {
     handleCloseAddOneTimeEvent();
   };
 
+  // --- Cancel/Restore for one-time events ---
+  const handleCancelOneTimeOccurrence = (eventId: string) => {
+    const event = oneTime.find((o) => o.id === eventId);
+    if (event) {
+      dispatch(
+        cancelOccurrence({
+          occurrenceId: eventId,
+          dateYmd: event.dateYmd,
+        }),
+      );
+    }
+  };
+
+  const handleRestoreOneTimeOccurrence = (eventId: string) => {
+    const event = oneTime.find((o) => o.id === eventId);
+    if (event?.canceled) {
+      dispatch(
+        restoreOccurrence({
+          occurrenceId: eventId,
+          dateYmd: event.dateYmd,
+        }),
+      );
+    }
+  };
+
   // --- End Class confirm (separate from Add/Edit dialog) ---
   /** Series waiting on End confirm; null when dialog closed */
   const [endingClass, setEndingClass] =
@@ -503,9 +522,6 @@ export default function HouseDisplayManagePage() {
   const handleCloseReinstate = () => {
     setReinstatingClass(null);
   };
-
-  // Ended Classes section — collapsed by default; toggle to reveal the list
-  const [showEndedClasses, setShowEndedClasses] = useState(false);
 
   /**
    * Confirm Reinstate.
@@ -568,6 +584,7 @@ export default function HouseDisplayManagePage() {
     setAddLocation(series.location ?? "Living Room");
     setAddFacilitator(series.facilitator ?? "");
     setAddError("");
+    addClassEndTimeManuallySet.current = false;
     setAddClassOpen(true);
   };
 
@@ -594,13 +611,14 @@ export default function HouseDisplayManagePage() {
         : pendingSaveKind === "oneTimeEdit"
           ? editingOneTimeId!
           : undefined;
+
     // Resolve selected recurring conflicts.
     if (pendingSaveKind === "oneTimeAdd" || pendingSaveKind === "oneTimeEdit") {
       for (const ec of endingExistingClasses) {
         dispatch(
           suppressRecurringOccurrence({
             seriesId: ec.id,
-            dateYmd: hopeNow.dateKey,
+            dateYmd: (event as any).dateYmd,
             sourceOneTimeEventId,
           }),
         );
@@ -673,18 +691,22 @@ export default function HouseDisplayManagePage() {
       );
     }
 
+    const originalSaveKind = pendingSaveKind;
     setPendingClassData(null);
     setPendingConflicts([]);
     setEndingExistingClasses([]);
     setPendingSaveKind("add");
     setConflictDialogOpen(false);
-    if (pendingSaveKind !== "reinstate") {
+    if (originalSaveKind === "oneTimeAdd" || originalSaveKind === "oneTimeEdit") {
+      handleCloseAddOneTimeEvent();
+    } else if (originalSaveKind !== "reinstate") {
       handleCloseAddClass();
     }
   };
 
   /** Cancel conflict resolution → close dialog, return to form. */
   const handleCancelConflictDialog = () => {
+    const originalSaveKind = pendingSaveKind;
     setPendingClassData(null);
     setPendingConflicts([]);
     setEndingExistingClasses([]);
@@ -761,6 +783,7 @@ export default function HouseDisplayManagePage() {
       );
     }
 
+    const originalSaveKind = pendingSaveKind;
     setPendingClassData(null);
     setPendingConflicts([]);
     setEndingExistingClasses([]);
@@ -855,6 +878,44 @@ export default function HouseDisplayManagePage() {
     setEndingExistingClasses([]);
     setConflictDialogOpen(true);
   };
+
+  // Display-only: active recurring classes, sorted for staff scan — never mutate Redux arrays
+  const activeRecurringClasses = useMemo(() => {
+    return recurring
+      .filter((series) => series.active)
+      .slice()
+      .sort((a, b) => {
+        if (a.startMin !== b.startMin) return a.startMin - b.startMin;
+        return a.title.localeCompare(b.title);
+      });
+  }, [recurring]);
+
+  // Display-only: ended (inactive) recurring classes, sorted for staff scan
+  const endedRecurringClasses = useMemo(() => {
+    return recurring
+      .filter((series) => !series.active)
+      .slice()
+      .sort((a, b) => {
+        if (a.startMin !== b.startMin) return a.startMin - b.startMin;
+        return a.title.localeCompare(b.title);
+      });
+  }, [recurring]);
+
+  // Display-only: active one-time events, sorted for staff scan
+  const activeOneTimeEvents = useMemo(() => {
+    return oneTime
+      .filter((event) => event.active)
+      .slice()
+      .sort((a, b) => {
+        if (a.dateYmd !== b.dateYmd) return a.dateYmd.localeCompare(b.dateYmd);
+        if (a.startMin !== b.startMin) return a.startMin - b.startMin;
+        return a.title.localeCompare(b.title);
+      });
+  }, [oneTime]);
+
+  // Hope House calendar day for labels + Cancel/Restore payloads (not browser TZ alone)
+  const hopeNow = getHopeHouseNow();
+  const dateYmd = hopeNow.dateKey;
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
@@ -1078,245 +1139,6 @@ export default function HouseDisplayManagePage() {
           >
             Add Class
           </Button>
-        </CardContent>
-      </Card>
-
-      {/* Ended Classes (inactive series - reinstateable) */}
-      <Card sx={{ maxWidth: 720 }}>
-        <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <Box
-            sx={{
-              display: "flex",
-              flexWrap: "wrap",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 1,
-            }}
-          >
-            <Box>
-              <Typography variant="h6">Ended Classes</Typography>
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{ mt: 0.5 }}
-              >
-                Inactive series no longer generate occurrences. Reinstate to
-                resume the same schedule without creating a duplicate.
-              </Typography>
-            </Box>
-            <Button
-              type="button"
-              variant="outlined"
-              size="small"
-              onClick={() => setShowEndedClasses((prev) => !prev)}
-              aria-expanded={showEndedClasses}
-            >
-              {showEndedClasses
-                ? "Hide Ended Classes"
-                : `Show Ended Classes (${endedRecurringClasses.length})`}
-            </Button>
-          </Box>
-
-          {showEndedClasses ? (
-            <>
-              <Divider />
-
-              {endedRecurringClasses.length === 0 ? (
-                <Typography variant="body2" color="text.secondary">
-                  No ended classes.
-                </Typography>
-              ) : (
-                <Stack divider={<Divider flexItem />} spacing={0}>
-                  {endedRecurringClasses.map((series) => {
-                    const timeRange = formatScheduleTimeRange(
-                      series.startMin,
-                      series.endMin,
-                    );
-                    return (
-                      <Box
-                        key={series.id}
-                        sx={{
-                          display: "flex",
-                          flexWrap: "wrap",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          gap: 1.5,
-                          py: 1.5,
-                        }}
-                      >
-                        <Box sx={{ minWidth: 0, flex: "1 1 220px" }}>
-                          <Box
-                            sx={{
-                              display: "flex",
-                              flexWrap: "wrap",
-                              alignItems: "center",
-                              gap: 0.5,
-                            }}
-                          >
-                            <Typography
-                              variant="body2"
-                              color="text.secondary"
-                              sx={{ fontWeight: 600 }}
-                            >
-                              {timeRange}
-                            </Typography>
-                            <Typography
-                              variant="body1"
-                              sx={{ fontWeight: 500 }}
-                            >
-                              {series.title}
-                            </Typography>
-                            <Chip
-                              size="small"
-                              label={formatRecurringDaysLabel(
-                                series.daysOfWeek,
-                              )}
-                              variant="outlined"
-                            />
-                            {series.location ? (
-                              <Chip
-                                size="small"
-                                label={series.location}
-                                variant="outlined"
-                                color="info"
-                              />
-                            ) : null}
-                            {series.facilitator ? (
-                              <Chip
-                                size="small"
-                                label={`Facilitator: ${series.facilitator}`}
-                                variant="outlined"
-                              />
-                            ) : null}
-                            <Chip
-                              size="small"
-                              label="Ended"
-                              variant="outlined"
-                              color="default"
-                            />
-                          </Box>
-                        </Box>
-                        <Box sx={{ display: "flex", gap: 1 }}>
-                          <Button
-                            type="button"
-                            size="small"
-                            variant="text"
-                            onClick={() => handleOpenReinstate(series)}
-                          >
-                            Reinstate
-                          </Button>
-                        </Box>
-                      </Box>
-                    );
-                  })}
-                </Stack>
-              )}
-            </>
-          ) : null}
-        </CardContent>
-      </Card>
-      {/* One-Time Events */}
-      <Card sx={{ maxWidth: 720 }}>
-        <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <Box>
-            <Typography variant="h6">One-Time Events</Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-              Special events scheduled for a specific Hope House calendar day.
-            </Typography>
-          </Box>
-
-          <Divider />
-
-          <Button
-            type="button"
-            variant="contained"
-            onClick={handleOpenAddOneTimeEvent}
-          >
-            Add One-Time Event
-          </Button>
-
-          {activeOneTimeEvents.length === 0 ? (
-            <Typography variant="body2" color="text.secondary">
-              No active one-time events.
-            </Typography>
-          ) : (
-            <Stack divider={<Divider flexItem />} spacing={0}>
-              {activeOneTimeEvents.map((event) => {
-                const timeRange = formatScheduleTimeRange(
-                  event.startMin,
-                  event.endMin,
-                );
-                return (
-                  <Box
-                    key={event.id}
-                    sx={{
-                      display: "flex",
-                      flexWrap: "wrap",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      gap: 1.5,
-                      py: 1.5,
-                    }}
-                  >
-                    <Box sx={{ minWidth: 0, flex: "1 1 220px" }}>
-                      <Box
-                        sx={{
-                          display: "flex",
-                          flexWrap: "wrap",
-                          alignItems: "center",
-                          gap: 0.5,
-                        }}
-                      >
-                        <Typography
-                          variant="body2"
-                          color="text.secondary"
-                          sx={{ fontWeight: 600 }}
-                        >
-                          {timeRange}
-                        </Typography>
-                        <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                          {event.title}
-                        </Typography>
-                        {event.canceled ? (
-                          <Chip
-                            size="small"
-                            label="CANCELED"
-                            color="error"
-                            variant="outlined"
-                          />
-                        ) : null}
-                        {event.location ? (
-                          <Chip
-                            size="small"
-                            label={event.location}
-                            variant="outlined"
-                            color="info"
-                          />
-                        ) : null}
-                        {event.facilitator ? (
-                          <Chip
-                            size="small"
-                            label={`Facilitator: ${event.facilitator}`}
-                            variant="outlined"
-                          />
-                        ) : null}
-                        <Button
-                          type="button"
-                          size="small"
-                          variant="text"
-                          onClick={() => handleOpenEditOneTimeEvent(event)}
-                        >
-                          Edit
-                        </Button>
-                      </Box>
-                    </Box>
-                  </Box>
-                );
-              })}
-            </Stack>
-          )}
-        </CardContent>
-      </Card>
 
       {/* Add/Edit Class dialog */}
       <Dialog open={addClassOpen} onClose={handleCloseAddClass}>
@@ -1427,8 +1249,345 @@ export default function HouseDisplayManagePage() {
         </Box>
       </Dialog>
 
+          {/* Conflict Dialog */}
+          <Dialog
+            open={conflictDialogOpen}
+            onClose={handleCancelConflictDialog}
+            maxWidth="sm"
+            fullWidth
+          >
+            <DialogTitle>Schedule Conflict</DialogTitle>
+            <DialogContent dividers>
+              <Typography variant="body2" sx={{ mb: 1 }}>
+                {pendingSaveKind === "reinstate"
+                  ? "Reinstating this class conflicts with existing classes:"
+                  : "The class you are adding/editing conflicts with existing classes:"}
+              </Typography>
+              <Stack divider={<Divider flexItem />} spacing={1}>
+                {pendingConflicts.map((conflict) => {
+                  if (conflict.kind !== "recurring") return null;
+                  const isChecked = endingExistingClasses.some(
+                    (e) => e.id === conflict.seriesId,
+                  );
+                  const recurring = conflict as any;
+                  return (
+                    <Box
+                      key={conflict.seriesId}
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1,
+                      }}
+                    >
+                      <Checkbox
+                        checked={isChecked}
+                        onChange={() =>
+                          handleSelectConflictToKill(conflict.seriesId)
+                        }
+                        aria-label={`End ${conflict.title}`}
+                      />
+                      <Box>
+                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                          {conflict.title}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {conflict.startMin}–{conflict.endMin} on{" "}
+                          {recurring.weekdays
+                            .map((d: number) => formatRecurringDaysLabel([d]))
+                            .join(", ")}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  );
+                })}
+              </Stack>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={handleCancelConflictDialog}>Cancel</Button>
+              <Button onClick={handleKeepBoth}>Keep Both</Button>
+              <Button
+                variant="contained"
+                disabled={
+                  pendingSaveKind === "oneTimeAdd" ||
+                  pendingSaveKind === "oneTimeEdit"
+                    ? endingExistingClasses.length === 0
+                    : false
+                }
+                onClick={handleSaveWithSelectedEnds}
+              >
+                {pendingSaveKind === "reinstate"
+                  ? "Reinstate (End Selected Conflicts)"
+                  : pendingSaveKind === "oneTimeAdd" ||
+                      pendingSaveKind === "oneTimeEdit"
+                    ? "Save & Replace Selected"
+                    : "Save (End Selected Conflicts)"}
+              </Button>
+            </DialogActions>
+          </Dialog>
+
+          {/* End Class confirm */}
+          <Dialog open={endingClass !== null} onClose={handleCloseEndClass}>
+            <DialogTitle>End Class</DialogTitle>
+            <DialogContent>
+              <Typography>
+                End {endingClass?.title}? It will not appear on future TV dates,
+                but the class definition is preserved.
+              </Typography>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={handleCloseEndClass}>Cancel</Button>
+              <Button color="error" onClick={handleConfirmEndClass}>
+                End Class
+              </Button>
+            </DialogActions>
+          </Dialog>
+          {/* Reinstate Class confirm */}
+          <Dialog
+            open={reinstatingClass !== null}
+            onClose={handleCloseReinstate}
+          >
+            <DialogTitle>Reinstate Class</DialogTitle>
+            <DialogContent>
+              <Typography sx={{ mb: 1 }}>
+                Reinstate {reinstatingClass?.title}?
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                This class will return to its recurring schedule for future
+                scheduled occurrences.
+              </Typography>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={handleCloseReinstate}>Cancel</Button>
+              <Button
+                color="primary"
+                variant="contained"
+                onClick={handleConfirmReinstate}
+              >
+                Reinstate
+              </Button>
+            </DialogActions>
+          </Dialog>
+        </CardContent>
+      </Card>
+
+      {/* One-Time Events */}
+      <Card sx={{ maxWidth: 720 }}>
+        <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <Box>
+            <Typography variant="h6">One-Time Events</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              Special events scheduled for a specific Hope House calendar day.
+            </Typography>
+          </Box>
+
+          <Divider />
+
+          <Button
+            type="button"
+            variant="contained"
+            onClick={handleOpenAddOneTimeEvent}
+          >
+            Add One-Time Event
+          </Button>
+
+          {activeOneTimeEvents.length === 0 ? (
+            <Typography variant="body2" color="text.secondary">
+              No active one-time events.
+            </Typography>
+          ) : (
+            <Stack divider={<Divider flexItem />} spacing={0}>
+              {activeOneTimeEvents.map((event) => {
+                const timeRange = formatScheduleTimeRange(
+                  event.startMin,
+                  event.endMin,
+                );
+                return (
+                  <Box
+                    key={event.id}
+                    sx={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 1.5,
+                      py: 1.5,
+                    }}
+                  >
+                    <Box sx={{ minWidth: 0, flex: "1 1 220px" }}>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          flexWrap: "wrap",
+                          alignItems: "center",
+                          gap: 0.5,
+                        }}
+                      >
+                        <Typography
+                          variant="body2"
+                          color="text.secondary"
+                          sx={{ fontWeight: 600 }}
+                        >
+                          {timeRange}
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                          {event.title}
+                        </Typography>
+                        {event.canceled ? (
+                          <Chip
+                            size="small"
+                            label="CANCELED"
+                            color="error"
+                            variant="outlined"
+                          />
+                        ) : null}
+                        {event.location ? (
+                          <Chip
+                            size="small"
+                            label={event.location}
+                            variant="outlined"
+                            color="info"
+                          />
+                        ) : null}
+                        {event.facilitator ? (
+                          <Chip
+                            size="small"
+                            label={`Facilitator: ${event.facilitator}`}
+                            variant="outlined"
+                          />
+                        ) : null}
+                        <Button
+                          type="button"
+                          size="small"
+                          variant="text"
+                          onClick={() => handleOpenEditOneTimeEvent(event)}
+                        >
+                          Edit
+                        </Button>
+                      </Box>
+                    </Box>
+                  </Box>
+                );
+              })}
+            </Stack>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Conflict Dialog */}
+      <Dialog
+        open={conflictDialogOpen}
+        onClose={handleCancelConflictDialog}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Schedule Conflict</DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="body2" sx={{ mb: 1 }}>
+            {pendingSaveKind === "reinstate"
+              ? "Reinstating this class conflicts with existing classes:"
+              : "The class you are adding/editing conflicts with existing classes:"}
+          </Typography>
+          <Stack divider={<Divider flexItem />} spacing={1}>
+            {pendingConflicts.map((conflict) => {
+              if (conflict.kind !== "recurring") return null;
+              const isChecked = endingExistingClasses.some(
+                (e) => e.id === conflict.seriesId,
+              );
+              const recurring = conflict as any;
+              return (
+                <Box
+                  key={conflict.seriesId}
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1,
+                  }}
+                >
+                  <Checkbox
+                    checked={isChecked}
+                    onChange={() =>
+                      handleSelectConflictToKill(conflict.seriesId)
+                    }
+                    aria-label={`End ${conflict.title}`}
+                  />
+                  <Box>
+                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                      {conflict.title}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {conflict.startMin}–{conflict.endMin} on{" "}
+                      {recurring.weekdays
+                        .map((d: number) => formatRecurringDaysLabel([d]))
+                        .join(", ")}
+                    </Typography>
+                  </Box>
+                </Box>
+              );
+            })}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancelConflictDialog}>Cancel</Button>
+          <Button onClick={handleKeepBoth}>Keep Both</Button>
+          <Button
+            variant="contained"
+            onClick={handleSaveWithSelectedEnds}
+          >
+            {pendingSaveKind === "reinstate"
+              ? "Reinstate (End Selected Conflicts)"
+              : "Save (End Selected Conflicts)"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* End Class confirm */}
+      <Dialog open={endingClass !== null} onClose={handleCloseEndClass}>
+        <DialogTitle>End Class</DialogTitle>
+        <DialogContent>
+          <Typography>
+            End {endingClass?.title}? It will not appear on future TV dates, but
+            the class definition is preserved.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseEndClass}>Cancel</Button>
+          <Button color="error" onClick={handleConfirmEndClass}>
+            End Class
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Reinstate Class confirm */}
+      <Dialog open={reinstatingClass !== null} onClose={handleCloseReinstate}>
+        <DialogTitle>Reinstate Class</DialogTitle>
+        <DialogContent>
+          <Typography sx={{ mb: 1 }}>
+            Reinstate {reinstatingClass?.title}?
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            This class will return to its recurring schedule for future
+            scheduled occurrences.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseReinstate}>Cancel</Button>
+          <Button
+            color="primary"
+            variant="contained"
+            onClick={handleConfirmReinstate}
+          >
+            Reinstate
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       {/* Add One-Time Event dialog */}
-      <Dialog open={addOneTimeOpen} onClose={handleCloseAddOneTimeEvent}>
+      <Dialog
+        open={addOneTimeOpen}
+        onClose={handleCloseAddOneTimeEvent}
+        maxWidth="sm"
+        fullWidth
+      >
         <Box component="form" onSubmit={handleAddOneTimeEventSubmit}>
           <DialogTitle>
             {oneTimeFormMode === "edit"
@@ -1533,110 +1692,6 @@ export default function HouseDisplayManagePage() {
             </Button>
           </DialogActions>
         </Box>
-      </Dialog>
-
-      {/* Conflict Dialog */}
-      <Dialog
-        open={conflictDialogOpen}
-        onClose={handleCancelConflictDialog}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>Schedule Conflict</DialogTitle>
-        <DialogContent dividers>
-          <Typography variant="body2" sx={{ mb: 1 }}>
-            {pendingSaveKind === "reinstate"
-              ? "Reinstating this class conflicts with existing classes:"
-              : "The class you are adding/editing conflicts with existing classes:"}
-          </Typography>
-          <Stack divider={<Divider flexItem />} spacing={1}>
-            {pendingConflicts.map((conflict) => {
-              if (conflict.kind !== "recurring") return null;
-              const isChecked = endingExistingClasses.some(
-                (e) => e.id === conflict.seriesId,
-              );
-              const recurring = conflict as any;
-              return (
-                <Box
-                  key={conflict.seriesId}
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 1,
-                  }}
-                >
-                  <Checkbox
-                    checked={isChecked}
-                    onChange={() =>
-                      handleSelectConflictToKill(conflict.seriesId)
-                    }
-                    aria-label={`End ${conflict.title}`}
-                  />
-                  <Box>
-                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                      {conflict.title}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {conflict.startMin}–{conflict.endMin} on{" "}
-                      {recurring.weekdays
-                        .map((d: number) => formatRecurringDaysLabel([d]))
-                        .join(", ")}
-                    </Typography>
-                  </Box>
-                </Box>
-              );
-            })}
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCancelConflictDialog}>Cancel</Button>
-          <Button onClick={handleKeepBoth}>Keep Both</Button>
-          <Button variant="contained" onClick={handleSaveWithSelectedEnds}>
-            {pendingSaveKind === "reinstate"
-              ? "Reinstate (End Selected Conflicts)"
-              : "Save (End Selected Conflicts)"}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* End Class confirm */}
-      <Dialog open={endingClass !== null} onClose={handleCloseEndClass}>
-        <DialogTitle>End Class</DialogTitle>
-        <DialogContent>
-          <Typography>
-            End {endingClass?.title}? It will not appear on future TV dates, but
-            the class definition is preserved.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseEndClass}>Cancel</Button>
-          <Button color="error" onClick={handleConfirmEndClass}>
-            End Class
-          </Button>
-        </DialogActions>
-      </Dialog>
-      {/* Reinstate Class confirm */}
-      <Dialog open={reinstatingClass !== null} onClose={handleCloseReinstate}>
-        <DialogTitle>Reinstate Class</DialogTitle>
-        <DialogContent>
-          <Typography sx={{ mb: 1 }}>
-            Reinstate {reinstatingClass?.title}?
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            This class will return to its recurring schedule for future
-            scheduled occurrences.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseReinstate}>Cancel</Button>
-          <Button
-            color="primary"
-            variant="contained"
-            onClick={handleConfirmReinstate}
-          >
-            Reinstate
-          </Button>
-        </DialogActions>
       </Dialog>
     </Box>
   );

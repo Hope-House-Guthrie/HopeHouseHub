@@ -13,11 +13,11 @@
 * - NOW line on schedule (hidden outside 7am–9pm); label in time gutter
 * - Spotlight auto-rotation every 15s (local index; pin pauses)
 * - Spotlight soft slide + crossfade ~750ms (dual local layers; ±30px; TV only)
+* - Overlap column layout for simultaneous events
 *
 * NOT YET:
 * - Weather API (header still uses seed weatherText)
 * - UP NEXT strip still static mock (does not follow resolved agenda) — cleanup
-* - Overlap columns (Men's + Women's NA same slot both valid; layout later)
 * - Spotlight manage forms / upload / backend
 * - Fallback right-rail when Spotlight empty
 * - Half-hour ticks / themes
@@ -202,19 +202,74 @@ export default function HouseDisplayPage() {
     if (item.kind === "flyer") {
       return (
         <Box
-          component="img"
-          src={item.imageUrl}
-          alt={item.imageAlt || item.title}
+          sx={{
+            position: "relative",
+            width: "100%",
+            height: "100%",
+            minHeight: 0,
+            overflow: "hidden",
+          }}
+        >
+          {/* Blurred background copy */}
+          <Box
+            component="img"
+            src={item.imageUrl}
+            alt=""
+            aria-hidden="true"
+            sx={{
+              position: "absolute",
+              inset: 0,
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              objectPosition: "center",
+              filter: "blur(18px) brightness(0.45)",
+              transform: "scale(1.08)",
+            }}
+          />
+
+          {/* Full Flyer */}
+          <Box
+            component="img"
+            src={item.imageUrl}
+            alt={item.imageAlt || item.title}
+            sx={{
+              position: "relative",
+              zIndex: 1,
+              width: "100%",
+              height: "100%",
+              objectFit: "contain",
+              objectPosition: "center",
+              display: "block",
+            }}
+          />
+        </Box>
+      );
+    }
+
+    /** Video Section */
+    if (item.kind === "video") {
+      return (
+        <Box
+          component="video"
+          src={item.videoUrl}
+          autoPlay
+          playsInline
+          muted={!item.videoSoundEnabled}
+          controls={false}
           sx={{
             width: "100%",
             height: "100%",
             objectFit: "contain",
             objectPosition: "center",
             display: "block",
+            bgcolor: "black",
           }}
         />
       );
     }
+    
+    {/*  Otherwise Render Card */}
     return (
       <Box
         sx={{
@@ -377,8 +432,8 @@ export default function HouseDisplayPage() {
         {/* Schedule column ~60% width */}
         <Box
           sx={{
-            flex: "0 0 60%",
-            maxWidth: "60%",
+            flex: "0 0 50%",
+            maxWidth: "50%",
             minWidth: 0,
             minHeight: 0,
             display: "flex",
@@ -513,8 +568,8 @@ export default function HouseDisplayPage() {
                     key={b.id}
                     sx={{
                       position: "absolute",
-                      left: 8,
-                      right: 8,
+                      left: `${b.leftPct}%`,
+                      width: `${b.widthPct}%`,
                       top: `${b.topPct}%`,
                       height: `${b.heightPct}%`,
                       // One title line must fit even on 30-min slots (track ~ half viewport)
@@ -613,8 +668,8 @@ export default function HouseDisplayPage() {
         {/* House Spotlight ~40% — one card or flyer; empty if none active */}
         <Box
           sx={{
-            flex: "0 0 40%",
-            maxWidth: "40%",
+            flex: "0 0 50%",
+            maxWidth: "50%",
             minWidth: 0,
             minHeight: 0,
             display: "flex",
