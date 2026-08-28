@@ -372,11 +372,6 @@ export default function HouseDisplayManagePage() {
 
     const { title, dateYmd, startMin, endMin } = validated;
 
-    // For EDIT MODE: clear existing suppressions before checking conflicts
-    if (oneTimeFormMode === "edit" && editingOneTimeId) {
-      clearSuppressionsForOneTime(editingOneTimeId);
-    }
-
     // Stage E: detect conflicts before dispatching.
     const oneTimeCandidate: OneTimeConflictCandidate = {
       type: "oneTime",
@@ -418,7 +413,11 @@ export default function HouseDisplayManagePage() {
     }
 
     if (oneTimeFormMode === "edit" && editingOneTimeId) {
-      // EDIT MODE: update existing event
+      // EDIT MODE: update existing event.
+      // This confirmed save replaces nothing (no conflicts on the new date),
+      // so release any prior suppressions owned by this one-time event and let
+      // those recurring occurrences return. Confirmed save only — not on cancel.
+      clearSuppressionsForOneTime(editingOneTimeId);
       dispatch(
         editOneTimeEvent({
           id: editingOneTimeId,
@@ -614,6 +613,27 @@ export default function HouseDisplayManagePage() {
 
     // Resolve selected recurring conflicts.
     if (pendingSaveKind === "oneTimeAdd" || pendingSaveKind === "oneTimeEdit") {
+      if (pendingSaveKind === "oneTimeEdit") {
+        // Replace Selected (edit): reconcile source-owned suppressions.
+        // Remove prior suppressions owned by this one-time event that are no
+        // longer part of the newly-selected set on this date, then (below) add
+        // the newly-selected occurrences. No endRecurringClass is used.
+        const newDateYmd = (event as any).dateYmd;
+        const selectedIds = new Set(
+          endingExistingClasses.map((e) => e.id),
+        );
+        for (const ex of findSuppressionsForOneTime(sourceOneTimeEventId!)) {
+          if (!(selectedIds.has(ex.seriesId) && ex.dateYmd === newDateYmd)) {
+            dispatch(
+              unsuppressRecurringOccurrence({
+                seriesId: ex.seriesId,
+                dateYmd: ex.dateYmd,
+                sourceOneTimeEventId,
+              }),
+            );
+          }
+        }
+      }
       for (const ec of endingExistingClasses) {
         dispatch(
           suppressRecurringOccurrence({
@@ -754,6 +774,10 @@ export default function HouseDisplayManagePage() {
         }),
       );
     } else if (pendingSaveKind === "oneTimeEdit") {
+      // Keep Both: this confirmed save replaces nothing for this one-time
+      // event, so release prior source-owned suppressions and let those
+      // recurring occurrences return. No new suppressions are added here.
+      clearSuppressionsForOneTime(editingOneTimeId!);
       const ot = event as {
         title: string;
         dateYmd: string;
@@ -1256,12 +1280,20 @@ export default function HouseDisplayManagePage() {
             maxWidth="sm"
             fullWidth
           >
-            <DialogTitle>Schedule Conflict</DialogTitle>
+            <DialogTitle>
+              {pendingSaveKind === "oneTimeAdd" ||
+              pendingSaveKind === "oneTimeEdit"
+                ? "One-Time Event Conflict"
+                : "Schedule Conflict"}
+            </DialogTitle>
             <DialogContent dividers>
               <Typography variant="body2" sx={{ mb: 1 }}>
                 {pendingSaveKind === "reinstate"
                   ? "Reinstating this class conflicts with existing classes:"
-                  : "The class you are adding/editing conflicts with existing classes:"}
+                  : pendingSaveKind === "oneTimeAdd" ||
+                    pendingSaveKind === "oneTimeEdit"
+                    ? "This one-time event conflicts with recurring classes on its date. Keep Both keeps everything; Save & Replace Selected hides only the selected recurring occurrence(s) for that day."
+                    : "The class you are adding/editing conflicts with existing classes:"}
               </Typography>
               <Stack divider={<Divider flexItem />} spacing={1}>
                 {pendingConflicts.map((conflict) => {
@@ -1284,7 +1316,12 @@ export default function HouseDisplayManagePage() {
                         onChange={() =>
                           handleSelectConflictToKill(conflict.seriesId)
                         }
-                        aria-label={`End ${conflict.title}`}
+                        aria-label={
+                          pendingSaveKind === "oneTimeAdd" ||
+                          pendingSaveKind === "oneTimeEdit"
+                            ? `Replace ${conflict.title}`
+                            : `End ${conflict.title}`
+                        }
                       />
                       <Box>
                         <Typography variant="body2" sx={{ fontWeight: 500 }}>
@@ -1472,114 +1509,6 @@ export default function HouseDisplayManagePage() {
           )}
         </CardContent>
       </Card>
-
-      {/* Conflict Dialog */}
-      <Dialog
-        open={conflictDialogOpen}
-        onClose={handleCancelConflictDialog}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>Schedule Conflict</DialogTitle>
-        <DialogContent dividers>
-          <Typography variant="body2" sx={{ mb: 1 }}>
-            {pendingSaveKind === "reinstate"
-              ? "Reinstating this class conflicts with existing classes:"
-              : "The class you are adding/editing conflicts with existing classes:"}
-          </Typography>
-          <Stack divider={<Divider flexItem />} spacing={1}>
-            {pendingConflicts.map((conflict) => {
-              if (conflict.kind !== "recurring") return null;
-              const isChecked = endingExistingClasses.some(
-                (e) => e.id === conflict.seriesId,
-              );
-              const recurring = conflict as any;
-              return (
-                <Box
-                  key={conflict.seriesId}
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 1,
-                  }}
-                >
-                  <Checkbox
-                    checked={isChecked}
-                    onChange={() =>
-                      handleSelectConflictToKill(conflict.seriesId)
-                    }
-                    aria-label={`End ${conflict.title}`}
-                  />
-                  <Box>
-                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                      {conflict.title}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {conflict.startMin}–{conflict.endMin} on{" "}
-                      {recurring.weekdays
-                        .map((d: number) => formatRecurringDaysLabel([d]))
-                        .join(", ")}
-                    </Typography>
-                  </Box>
-                </Box>
-              );
-            })}
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCancelConflictDialog}>Cancel</Button>
-          <Button onClick={handleKeepBoth}>Keep Both</Button>
-          <Button
-            variant="contained"
-            onClick={handleSaveWithSelectedEnds}
-          >
-            {pendingSaveKind === "reinstate"
-              ? "Reinstate (End Selected Conflicts)"
-              : "Save (End Selected Conflicts)"}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* End Class confirm */}
-      <Dialog open={endingClass !== null} onClose={handleCloseEndClass}>
-        <DialogTitle>End Class</DialogTitle>
-        <DialogContent>
-          <Typography>
-            End {endingClass?.title}? It will not appear on future TV dates, but
-            the class definition is preserved.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseEndClass}>Cancel</Button>
-          <Button color="error" onClick={handleConfirmEndClass}>
-            End Class
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Reinstate Class confirm */}
-      <Dialog open={reinstatingClass !== null} onClose={handleCloseReinstate}>
-        <DialogTitle>Reinstate Class</DialogTitle>
-        <DialogContent>
-          <Typography sx={{ mb: 1 }}>
-            Reinstate {reinstatingClass?.title}?
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            This class will return to its recurring schedule for future
-            scheduled occurrences.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseReinstate}>Cancel</Button>
-          <Button
-            color="primary"
-            variant="contained"
-            onClick={handleConfirmReinstate}
-          >
-            Reinstate
-          </Button>
-        </DialogActions>
-      </Dialog>
 
       {/* Add One-Time Event dialog */}
       <Dialog

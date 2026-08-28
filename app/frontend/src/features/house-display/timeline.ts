@@ -337,23 +337,59 @@ export function layoutAgendaItems(
 
   const assignments = assignColumns(events);
 
-  // Count total columns needed
-  let totalColumns = 1;
-  for (const [, assignment] of assignments) {
-    totalColumns = Math.max(totalColumns, assignment.columnIndex + 1);
-  }
-
-  // Apply column assignments with correct widths
+  // Apply column assignments first (preserve existing semantics).
   for (const layout of basicLayouts) {
     const assignment = assignments.get(layout.id);
     if (assignment) {
       layout.columnIndex = assignment.columnIndex;
       layout.columnSpan = assignment.columnSpan;
     }
+  }
 
-    // Calculate left and width based on column count
-    layout.leftPct = (layout.columnIndex / totalColumns) * 100;
-    layout.widthPct = (1 / totalColumns) * 100;
+  // Group connected overlap clusters (transitive overlaps, so A–B–C where B
+  // bridges A and C forms one cluster). Width/left then use each cluster's own
+  // column count — not a single day-global total — so unrelated overlap
+  // clusters elsewhere in the day never shrink one another.
+  const clusterOf = new Map<string, number>();
+  let clusterCount = 0;
+  for (const seed of basicLayouts) {
+    if (clusterOf.has(seed.id)) continue;
+    const queue = [seed];
+    clusterOf.set(seed.id, clusterCount);
+    while (queue.length > 0) {
+      const cur = queue.shift()!;
+      for (const other of basicLayouts) {
+        if (clusterOf.has(other.id)) continue;
+        if (
+          eventsOverlap(
+            cur.startMin,
+            cur.endMin,
+            other.startMin,
+            other.endMin,
+          )
+        ) {
+          clusterOf.set(other.id, clusterCount);
+          queue.push(other);
+        }
+      }
+    }
+    clusterCount++;
+  }
+
+  // Required columns per cluster = max assigned column + 1. The sweep gives
+  // every mutually-overlapping event a distinct column and creates columns
+  // contiguously from 0, so all columns 0..max are used within one cluster.
+  const clusterColumns = new Map<number, number>();
+  for (const layout of basicLayouts) {
+    const c = clusterOf.get(layout.id)!;
+    clusterColumns.set(c, Math.max(clusterColumns.get(c) ?? 0, layout.columnIndex + 1));
+  }
+
+  // Calculate left and width from the local cluster column count.
+  for (const layout of basicLayouts) {
+    const cols = clusterColumns.get(clusterOf.get(layout.id)!)!;
+    layout.leftPct = (layout.columnIndex / cols) * 100;
+    layout.widthPct = (1 / cols) * 100;
   }
 
   return basicLayouts;
