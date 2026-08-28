@@ -84,6 +84,7 @@ export const INITIAL_RECURRING_SCHEDULE: HouseDisplayRecurringEvent[] = [
     endMin: 20 * 60, // 8:00 PM
     daysOfWeek: [5], // Friday
     active: true,
+    logoKey: "game-night",
   },
 ];
 

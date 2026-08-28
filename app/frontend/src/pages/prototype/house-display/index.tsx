@@ -25,7 +25,7 @@
 */
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
-import { Box, Typography, useMediaQuery } from "@mui/material";
+import { Box, keyframes, Typography, useMediaQuery } from "@mui/material";
 import type { RootState } from "@/store";
 import type {
   HouseDisplayEventVisualState,
@@ -53,6 +53,7 @@ import techQuestLogoUrl from "@assets/house-display/logos/tech-quest.png";
 import iMatterLogoUrl from "@assets/house-display/logos/i-matter.png";
 import dbsaLogoUrl from "@assets/house-display/logos/dbsa.png";
 import naLogoUrl from "@assets/house-display/logos/na.jpeg";
+import gameNightLogoUrl from "@assets/house-display/logos/game-night.png";
 
 /* ---- One-time event perimeter glow (visual prototype) ----
  * Tunable knobs for browser testing. The glow is drawn with an SVG path
@@ -182,7 +183,17 @@ const ACTIVE_EVENT_LOGOS: Record<string, string> = {
   "i-matter": iMatterLogoUrl,
   "dbsa": dbsaLogoUrl,
   "na": naLogoUrl,
+  "game-night": gameNightLogoUrl,
 };
+
+function formatMinutesAsTime(totalMinutes: number): string {
+  const hours24 = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  const hours12 = hours24 % 12 || 12;
+  const period = hours24 >= 12 ? "PM" : "AM";
+
+  return `${hours12}:${minutes.toString().padStart(2, "0")} ${period}`;
+}
 
 /** Resolve a logo asset URL for an agenda item, or undefined for text-only. */
 function activeEventLogoSrc(ev: HouseDisplayAgendaItem): string | undefined {
@@ -194,6 +205,47 @@ function activeEventLogoSrc(ev: HouseDisplayAgendaItem): string | undefined {
 function agendaItemToSlide(ev: HouseDisplayAgendaItem): SpotlightSlide {
   return { kind: "activeEvent", id: ev.id, event: ev };
 }
+
+const birthdayShimmer = keyframes`
+  0%, 100% {
+    text-shadow: 0 0 0 rgba(255, 215, 64, 0);
+  }
+
+  50% {
+    text-shadow:
+      0 0 6px rgba(255, 215, 64, 0.35),
+      0 0 12px rgba(255, 193, 7, 0.15);
+  }`;
+
+const birthdayNameGlow = keyframes`
+  0%, 100% {
+  text-shadow: 0 0 0 rgba(255, 215, 64, 0);
+}
+  
+  50% {
+    text-shadow:
+      0 0 6px rgba(255, 215, 64, 0.35),
+      0 0 12px rgba(255, 193, 7, 0.15);
+  }`;
+
+const birthdayConfetti = keyframes`
+  0% {
+    transform: translateY(-8px) rotate(0deg);
+    opacity: 0;
+  }
+    
+  15% {
+    opacity: 0.9;
+  }
+    
+  85% {
+    opacity: 0.9;
+  }
+    
+  100% {
+    transform: translateY(70px) rotate(240deg);
+    opacity: 0;
+  };`
 
 export default function HouseDisplayPage() {
   const content = useSelector((state: RootState) => state.houseDisplay.content);
@@ -211,6 +263,8 @@ export default function HouseDisplayPage() {
   /** One snapshot -> header clock/date, event states, NOW line. */
   const hopeNow = useHopeHouseNow();
 
+  const hasBirthdayToday = Boolean(birthday?.name?.trim());
+
   /** Respect user OS reduced-motion preference (static glow instead of travel). */
   const reduceMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
 
@@ -218,6 +272,15 @@ export default function HouseDisplayPage() {
     () => layoutAgendaItems(agendaItems, timeline),
     [agendaItems, timeline]
   );
+  const nextAgendaItems = useMemo(
+    () =>
+      agendaItems
+      .filter((item) => !item.canceled && item.startMin > hopeNow.nowMin)
+      .sort((a, b) => a.startMin - b.startMin)
+      .slice(0, 3),
+    [agendaItems, hopeNow.nowMin],
+  );
+
   const marks = useMemo(() => hourMarks(timeline), [timeline]);
 
   /** id → canceled flag from seed (layout blocks do not carry canceled yet). */
@@ -301,16 +364,16 @@ export default function HouseDisplayPage() {
   }, [slideCount, SPOTLIGHT_ROTATE_MS]);
 
   // Resolve the currently-shown slide from the live pool + rotation index.
-    let spotlightSlide: SpotlightSlide | null = null;
-  if (takeoverActive) {
-    const ev = activeEvents[rotateIndex];
-    spotlightSlide = ev ? agendaItemToSlide(ev) : null;
-  } else {
+  // useMemo (identity-stable): the crossfade effect below depends on this
+  // object, so it must not be a fresh object on every render.
+  const spotlightSlide = useMemo<SpotlightSlide | null>(() => {
+    if (takeoverActive) {
+      const ev = activeEvents[rotateIndex];
+      return ev ? agendaItemToSlide(ev) : null;
+    }
     const item = activeSpotlight[rotateIndex];
-    spotlightSlide = item
-      ? { kind: "spotlight", id: item.id, item }
-      : null;
-  }
+    return item ? { kind: "spotlight", id: item.id, item } : null;
+  }, [takeoverActive, activeEvents, activeSpotlight, rotateIndex]);
 
   const nowMarker = useMemo(
     () => nowLineLayout(hopeNow.nowMin, timeline),
@@ -1222,16 +1285,17 @@ export default function HouseDisplayPage() {
             overflow: "hidden",
           }}
         >
-          {upcomingItems.map((item) => (
+          {nextAgendaItems.map((item) => (
             <Typography
               key={item.id}
               sx={{
                 fontWeight: 600,
-                fontSize: "clamp(0.95rem, 1.6vw, 1.4rem)",
+                fontSize: "clamp(0.95rem, 1.0vw, 1.4rem)",
                 whiteSpace: "nowrap",
               }}
             >
-              {item.timeLabel} — {item.title}
+
+              {formatMinutesAsTime(item.startMin)} - {item.title}
             </Typography>
           ))}
         </Box>
@@ -1317,7 +1381,48 @@ export default function HouseDisplayPage() {
             ))}
           </Box>
 
-          <Box sx={{ flex: "0 0 auto", pt: 0.5 }}>
+            {hasBirthdayToday ? (
+          <Box sx={{
+            flex: "0 0 auto",
+            pt: 0.5,
+            position: "relative",
+            overflow: "hidden",
+            borderRadius: 2,
+            border: "1px solid rgba(255, 215, 0, 0.28)",
+            background:
+              "linear-gradient(135deg, rgba(255, 193, 7, 0.08), rgba(255, 105, 180, 0.06))",
+            }}
+          >
+            {!reduceMotion &&
+            [
+              { left: "8%", delay: "0s", duration: "3.4s" },
+              { left: "23%", delay: "1.1s", duration: "4.1s" },
+              { left: "42%", delay: "0.5s", duration: "3.7s" },
+              { left: "61%", delay: "1.7s", duration: "4.3s" },
+              { left: "78%", delay: "0.8s", duration: "3.5s" },
+              { left: "92%", delay: "2.1s", duration: "4s" },
+            ].map((piece, index) => (
+              <Box
+                key={piece.left}
+                sx={{
+                  position: "absolute",
+                  top: 0,
+                  left: piece.left,
+                  width: index % 2 === 0 ? 5 : 4,
+                  height: index % 2 === 0 ? 9 : 7,
+                  borderRadius: "2px",
+                  backgroundColor:
+                    index % 3 === 0
+                      ? "#FFD740"
+                      : index % 3 === 1
+                        ? "#FF8A65"
+                        : "#80CBC4",
+                  opacity: 0,
+                  pointerEvents: "none",
+                  animation: `${birthdayConfetti} ${piece.duration} linear ${piece.delay} infinite`,
+                }}
+              />
+            ))}
             <Typography
               sx={{
                 fontWeight: 700,
@@ -1325,14 +1430,20 @@ export default function HouseDisplayPage() {
                 textTransform: "uppercase",
                 mb: 0.5,
                 fontSize: "clamp(0.7rem, 1.1vw, 0.95rem)",
+                animation: reduceMotion
+                  ? "none"
+                  : `${birthdayShimmer} 2.4s ease-in-out infinite`,
               }}
             >
-              Birthday
+             🎂 Happy Birthday!
             </Typography>
             <Typography
               sx={{
                 fontWeight: 700,
                 fontSize: "clamp(1rem, 1.8vw, 1.5rem)",
+                animation: reduceMotion
+                  ? "none"
+                  : `${birthdayNameGlow} 3.2s ease-in-out infinite`,
               }}
             >
               {birthday.name}
@@ -1346,6 +1457,7 @@ export default function HouseDisplayPage() {
               {birthday.dateLabel}
             </Typography>
           </Box>
+          ) : null}
         </Box>
       </Box>
     </Box>
