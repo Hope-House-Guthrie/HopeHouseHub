@@ -127,6 +127,15 @@ export function newOneTimeEventId(): string {
   return `once-${crypto.randomUUID()}`;
 }
 
+/**
+ * Staff-created announcement id for the TV lower band.
+ * Prefix ann- vs class- / once- / seed ids (n1, n2).
+ * UI only - never call inside reducers (same rule as class/once ids).
+ */
+export function newAnnouncementId(): string {
+  return `ann-${crypto.randomUUID()}`;
+}
+
 /** Raw fields from Add/Edit One-Time dialog (date + HTML times). */
 export type ValidateOneTimeEventFormInput = {
   title: string;

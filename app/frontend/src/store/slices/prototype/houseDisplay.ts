@@ -37,6 +37,7 @@
  */
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import type {
+  HouseDisplayAnnouncement,
   HouseDisplayContent,
   HouseDisplayState,
 } from "../../../features/house-display/types";
@@ -52,6 +53,7 @@ import type {
   HouseDisplayWeekday,
 } from "../../../features/house-display/scheduleTypes";
 import {
+  loadAnnouncements,
   loadScheduleSources,
   saveScheduleSources,
 } from "../../../features/house-display/schedulePersistence";
@@ -218,11 +220,15 @@ function syncAgendaFromSchedule(
  * Backend will replace this later — not a general app persistence layer.
  */
 function persistScheduleSources(state: HouseDisplayState): void {
-  saveScheduleSources({
-    recurring: state.schedule.recurring,
-    oneTime: state.schedule.oneTime,
-    exceptions: state.schedule.exceptions,
-  });
+  // One DEV write path: schedule sources + current announcement lines.
+  saveScheduleSources(
+    {
+      recurring: state.schedule.recurring,
+      oneTime: state.schedule.oneTime,
+      exceptions: state.schedule.exceptions,
+    },
+    state.content.announcements,
+  );
 }
 
 /**
@@ -270,14 +276,28 @@ function normalizeRecurringWeekdays(
   ].sort((a, b) => a - b);
 }
 
+/** Seed/mock announcements shown when DEV storage has none (ids n1, n2). */
+const SEED_ANNOUNCEMENTS: HouseDisplayAnnouncement[] = [
+  {
+    id: "n1",
+    text: "Kitchen closes at 8:00 PM. Please rinse dishes before then.",
+  },
+  {
+    id: "n2",
+    text: "House Meeting is mandatory - be in the living room by 3:25 PM.",
+  },
+];
+
 /**
  * Build TV content tree. agendaItems = resolve(Chicago dateKey, sources).
  * Spotlight / lower band still static seed for now.
  * getHopeHouseNow OK here for first paint only — not inside Cancel/Restore.
+ * announcements: stored lines when present, else the seed pair above.
  */
 function buildContent(
   schedule: HouseDisplayScheduleSources,
   dateYmd?: string,
+  announcements: HouseDisplayAnnouncement[] = SEED_ANNOUNCEMENTS,
 ): HouseDisplayContent {
   const ymd = dateYmd ?? getHopeHouseNow().dateKey;
   return {
@@ -350,16 +370,7 @@ function buildContent(
     ],
     affirmationText:
       "Progress, not perfection - show up for yourself and the house today.",
-    announcements: [
-      {
-        id: "n1",
-        text: "Kitchen closes at 8:00 PM. Please rinse dishes before then.",
-      },
-      {
-        id: "n2",
-        text: "House Meeting is mandatory - be in the living room by 3:25 PM.",
-      },
-    ],
+    announcements,
     birthday: {
       name: "Alex M.",
       dateLabel: "Thu, Aug 27",
@@ -369,14 +380,20 @@ function buildContent(
 
 // Hydrate schedule SOURCES only. Invalid/missing localStorage → seed.
 // agendaItems always come from resolve (never read from storage).
+// Announcements hydrate from the same DEV key; missing/invalid → seed pair.
 const persistedSchedule = loadScheduleSources();
 const initialSchedule = cloneScheduleSources(
   persistedSchedule ?? INITIAL_SCHEDULE_SOURCES,
 );
+const persistedAnnouncements = loadAnnouncements();
 
 const initialState: HouseDisplayState = {
   schedule: initialSchedule,
-  content: buildContent(initialSchedule),
+  content: buildContent(
+    initialSchedule,
+    undefined,
+    persistedAnnouncements ?? SEED_ANNOUNCEMENTS,
+  ),
 };
 
 export const houseDisplaySlice = createSlice({
@@ -386,6 +403,44 @@ export const houseDisplaySlice = createSlice({
     /** Replace full TV content tree (rare). Prefer schedule mutators. */
     setContent: (state, action: PayloadAction<HouseDisplayContent>) => {
       state.content = action.payload;
+    },
+
+    /**
+     * Add one staff-created announcement line (TV lower band).
+     * UI generates id via newAnnouncementId() BEFORE dispatch — no
+     * clock/random here. Trimmed text required; duplicate id is a no-op.
+     * Persists via the shared DEV storage path.
+     */
+    addAnnouncement: (
+      state,
+      action: PayloadAction<HouseDisplayAnnouncement>,
+    ) => {
+      const rawId = action.payload.id;
+      const rawText = action.payload.text;
+      const id = typeof rawId === "string" ? rawId.trim() : "";
+      const text = typeof rawText === "string" ? rawText.trim() : "";
+      if (!id || !text) return;
+
+      const duplicate = state.content.announcements.some((a) => a.id === id);
+      if (duplicate) return;
+
+      state.content.announcements.push({ id, text });
+      persistScheduleSources(state);
+    },
+
+    /**
+     * Remove one announcement line by id. Idempotent — missing id is a
+     * no-op. Persists via the shared DEV storage path.
+     */
+    removeAnnouncement: (state, action: PayloadAction<{ id: string }>) => {
+      const rawId = action.payload.id;
+      const id = typeof rawId === "string" ? rawId.trim() : "";
+      if (!id) return;
+
+      state.content.announcements = state.content.announcements.filter(
+        (a) => a.id !== id,
+      );
+      persistScheduleSources(state);
     },
 
     /**
@@ -809,6 +864,8 @@ export const houseDisplaySlice = createSlice({
 
 export const {
   setContent,
+  addAnnouncement,
+  removeAnnouncement,
   cancelOccurrence,
   restoreOccurrence,
   addRecurringClass,

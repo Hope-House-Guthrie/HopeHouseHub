@@ -92,6 +92,7 @@ import {
 } from "../../../features/house-display/scheduleFormat";
 import {
   formatMinToTimeInput,
+  newAnnouncementId,
   newRecurringClassId,
   newOneTimeEventId,
   validateRecurringClassForm,
@@ -107,6 +108,7 @@ import type { HouseDisplayAgendaSourceType } from "../../../features/house-displ
 import { formatTimeLabel } from "../../../features/house-display/timeline";
 import { getHopeHouseNow } from "../../../features/house-display/time";
 import {
+  addAnnouncement,
   addOneTimeEvent,
   addRecurringClass,
   cancelOccurrence,
@@ -114,6 +116,7 @@ import {
   editRecurringClass,
   endRecurringClass,
   reinstateRecurringClass,
+  removeAnnouncement,
   restoreOccurrence,
   suppressRecurringOccurrence,
   unsuppressRecurringOccurrence,
@@ -165,6 +168,9 @@ export default function HouseDisplayManagePage() {
   const scheduleSources = useSelector(
     (state: RootState) => state.houseDisplay.schedule,
   );
+  const announcements = useSelector(
+    (state: RootState) => state.houseDisplay.content.announcements,
+  );
 
   // --- Add Class dialog ---
   const [addClassOpen, setAddClassOpen] = useState(false);
@@ -198,6 +204,10 @@ export default function HouseDisplayManagePage() {
   const [addOneTimeFacilitator, setAddOneTimeFacilitator] =
     useState<string>("");
   const [addOneTimeError, setAddOneTimeError] = useState("");
+
+  // --- Announcements state ---
+  const [newAnnouncementText, setNewAnnouncementText] = useState("");
+  const [addAnnouncementError, setAddAnnouncementError] = useState("");
 
   // --- Conflict Dialog state ---
   const [pendingClassData, setPendingClassData] = useState<
@@ -352,6 +362,28 @@ export default function HouseDisplayManagePage() {
   const handleCloseAddOneTimeEvent = () => {
     setAddOneTimeOpen(false);
     resetAddOneTimeForm();
+  };
+
+  // --- Announcement handlers ---
+  const handleAddAnnouncementSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    const text = newAnnouncementText.trim();
+    if (!text) {
+      setAddAnnouncementError("Announcement text is required.");
+      return;
+    }
+    dispatch(
+      addAnnouncement({
+        id: newAnnouncementId(),
+        text,
+      }),
+    );
+    setNewAnnouncementText("");
+    setAddAnnouncementError("");
+  };
+
+  const handleRemoveAnnouncement = (announcementId: string) => {
+    dispatch(removeAnnouncement({ id: announcementId }));
   };
 
   const handleAddOneTimeEventSubmit = (e: FormEvent) => {
@@ -1505,6 +1537,101 @@ export default function HouseDisplayManagePage() {
                   </Box>
                 );
               })}
+            </Stack>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Announcements */}
+      <Card sx={{ maxWidth: 720 }}>
+        <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <Box>
+            <Typography variant="h6">Announcements</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              Lines shown in the TV lower band. Refresh the Full Display to
+              see changes.
+            </Typography>
+          </Box>
+
+          <Divider />
+
+          <Box
+            component="form"
+            onSubmit={handleAddAnnouncementSubmit}
+            sx={{ display: "flex", flexDirection: "column", gap: 1 }}
+          >
+            <Box
+              sx={{
+                display: "flex",
+                flexWrap: "wrap",
+                alignItems: "flex-start",
+                gap: 1,
+              }}
+            >
+              <TextField
+                label="New announcement"
+                value={newAnnouncementText}
+                onChange={(e) => {
+                  setNewAnnouncementText(e.target.value);
+                  if (addAnnouncementError) {
+                    setAddAnnouncementError("");
+                  }
+                }}
+                fullWidth
+                slotProps={{ input: { "aria-label": "New announcement" } }}
+                sx={{ flex: "1 1 240px", minWidth: 0 }}
+              />
+              <Button
+                type="submit"
+                variant="contained"
+                sx={{ flex: "0 0 auto" }}
+              >
+                Add Announcement
+              </Button>
+            </Box>
+            {addAnnouncementError ? (
+              <Typography variant="body2" color="error">
+                {addAnnouncementError}
+              </Typography>
+            ) : null}
+          </Box>
+
+          {announcements.length === 0 ? (
+            <Typography variant="body2" color="text.secondary">
+              No announcements are currently displayed.
+            </Typography>
+          ) : (
+            <Stack divider={<Divider flexItem />} spacing={0}>
+              {announcements.map((announcement) => (
+                <Box
+                  key={announcement.id}
+                  sx={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 1.5,
+                    py: 1.5,
+                  }}
+                >
+                  <Typography
+                    variant="body1"
+                    sx={{ fontWeight: 500, minWidth: 0, flex: "1 1 auto" }}
+                  >
+                    {announcement.text}
+                  </Typography>
+                  <Button
+                    type="button"
+                    size="small"
+                    variant="text"
+                    color="error"
+                    onClick={() => handleRemoveAnnouncement(announcement.id)}
+                    sx={{ flex: "0 0 auto" }}
+                  >
+                    Remove
+                  </Button>
+                </Box>
+              ))}
             </Stack>
           )}
         </CardContent>
