@@ -71,6 +71,12 @@ export interface HouseDisplayAgendaItem {
   location?: string;
   /** Optional facilitator name for this event */
   facilitator?: string;
+  /**
+   * Optional program/logo association key for Spotlight takeover.
+   * Propagated from the schedule source (recurring series or one-time event).
+   * Absent/null = no logo; active Spotlight falls back to text-only card.
+   */
+  logoKey?: string | null;
 }
 
 /** Thin "up next" strip item (static mock until derived from agenda + now). */

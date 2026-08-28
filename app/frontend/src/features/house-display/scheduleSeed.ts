@@ -21,6 +21,7 @@ export const INITIAL_RECURRING_SCHEDULE: HouseDisplayRecurringEvent[] = [
     endMin: 11 * 60, // 11:00 AM
     daysOfWeek: [2, 3, 4, 5], // Tue Wed Thu Fri
     active: true,
+    logoKey: "i-matter",
   },
   {
     id: "tech-quest",
@@ -29,6 +30,7 @@ export const INITIAL_RECURRING_SCHEDULE: HouseDisplayRecurringEvent[] = [
     endMin: 14 * 60, // 2:00 PM
     daysOfWeek: [2], // Tue
     active: true,
+    logoKey: "tech-quest",
   },
   {
     id: "dbsa-wellness",
@@ -37,6 +39,7 @@ export const INITIAL_RECURRING_SCHEDULE: HouseDisplayRecurringEvent[] = [
     endMin: 14 * 60, // 14:00 PM
     daysOfWeek: [4], // Thu
     active: true,
+    logoKey: "dbsa",
   },
   {
     id: "dbsa-support",
@@ -45,6 +48,7 @@ export const INITIAL_RECURRING_SCHEDULE: HouseDisplayRecurringEvent[] = [
     endMin: 14 * 60, // 14:00 PM
     daysOfWeek: [5], // Fri
     active: true,
+    logoKey: "dbsa",
   },
   {
     id: "main-na",
@@ -53,6 +57,7 @@ export const INITIAL_RECURRING_SCHEDULE: HouseDisplayRecurringEvent[] = [
     endMin: 20 * 60, // 8:00 PM
     daysOfWeek: [1, 4], // Monday, Thursday
     active: true,
+    logoKey: "na",
   },
   {
     id: "mens-na",
@@ -61,6 +66,7 @@ export const INITIAL_RECURRING_SCHEDULE: HouseDisplayRecurringEvent[] = [
     endMin: 20 * 60, // 8:00 PM
     daysOfWeek: [3], // Wednesday
     active: true,
+    logoKey: "na",
   },
   {
     id: "womens-na",
@@ -69,6 +75,7 @@ export const INITIAL_RECURRING_SCHEDULE: HouseDisplayRecurringEvent[] = [
     endMin: 20 * 60, // 8:00 PM
     daysOfWeek: [3], // Wednesday
     active: true,
+    logoKey: "na",
   },
   {
     id: "game-night",

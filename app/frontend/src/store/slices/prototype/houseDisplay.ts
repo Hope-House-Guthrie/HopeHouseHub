@@ -556,6 +556,7 @@ export const houseDisplaySlice = createSlice({
         daysOfWeek: normalizedDays,
         location: location ?? existing.location,
         facilitator: newFacilitator,
+        logoKey: existing.logoKey,
       };
 
       syncAgendaFromSchedule(state, dateYmd);
@@ -708,6 +709,7 @@ export const houseDisplaySlice = createSlice({
         endMin,
         location: location ?? existing.location,
         facilitator: newFacilitator,
+        logoKey: existing.logoKey,
       };
 
       syncAgendaFromSchedule(state, resolveDateYmd);

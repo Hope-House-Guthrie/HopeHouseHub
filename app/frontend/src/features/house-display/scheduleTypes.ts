@@ -35,6 +35,13 @@ export interface HouseDisplayRecurringEvent {
   location?: string;
   /** Optional facilitator name for this event */
   facilitator?: string;
+  /**
+   * Optional program/logo association key for Spotlight.
+   * Shared across a series (e.g. Men's/Women's/Main NA can all be "na").
+   * Never inferred from the title. Absent/absent on an ordinary event means
+   * no logo is rendered for it.
+   */
+  logoKey?: string | null;
 }
 
 /**
@@ -56,6 +63,12 @@ export interface HouseDisplayOneTimeEvent {
   location?: string;
   /** Optional facilitator name for this event */
   facilitator?: string;
+  /**
+   * Optional program/logo association key for Spotlight.
+   * Absent/null on an ordinary one-time event means no logo is rendered;
+   * the existing text-only HAPPENING NOW presentation still applies.
+   */
+  logoKey?: string | null;
 }
 
 /**

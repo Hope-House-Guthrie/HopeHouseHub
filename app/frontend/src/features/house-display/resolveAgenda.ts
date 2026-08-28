@@ -94,6 +94,7 @@ export function resolveAgendaForDate(args: {
         sourceType: "recurring",
         location: series.location,
         facilitator: series.facilitator,
+        logoKey: series.logoKey ?? null,
       });
       continue;
     }
@@ -108,6 +109,7 @@ export function resolveAgendaForDate(args: {
         sourceType: "recurring",
         location: series.location,
         facilitator: series.facilitator,
+        logoKey: series.logoKey ?? null,
       });
       continue;
     }
@@ -121,6 +123,7 @@ export function resolveAgendaForDate(args: {
       sourceType: "recurring",
       location: series.location,
       facilitator: series.facilitator,
+      logoKey: series.logoKey ?? null,
     });
   }
 
@@ -136,6 +139,7 @@ export function resolveAgendaForDate(args: {
       sourceType: "oneTime",
       location: item.location,
       facilitator: item.facilitator,
+      logoKey: item.logoKey ?? null,
     });
   }
 

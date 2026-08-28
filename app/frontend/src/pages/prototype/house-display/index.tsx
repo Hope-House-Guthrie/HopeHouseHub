@@ -23,11 +23,14 @@
 * - Half-hour ticks / themes
 * - Schedule day rollover from backend
 */
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
-import { Box, Chip, Typography } from "@mui/material";
+import { Box, Typography, useMediaQuery } from "@mui/material";
 import type { RootState } from "@/store";
-import type { HouseDisplayEventVisualState } from "@/features/house-display/types";
+import type {
+  HouseDisplayEventVisualState,
+  HouseDisplayAgendaItem,
+} from "@/features/house-display/types";
 import type { HouseDisplaySpotlightItem } from "../../../features/house-display/types";
 
 import {
@@ -45,6 +48,152 @@ import {
   SPOTLIGHT_ROTATE_MS,
 } from "../../../features/house-display/spotlight";
 import { useHopeHouseNow } from "../../../features/house-display/useHopeHouseNow";
+// Program logos for active-event Spotlight (bundled @assets, same as flyers).
+import techQuestLogoUrl from "@assets/house-display/logos/tech-quest.png";
+import iMatterLogoUrl from "@assets/house-display/logos/i-matter.png";
+import dbsaLogoUrl from "@assets/house-display/logos/dbsa.png";
+import naLogoUrl from "@assets/house-display/logos/na.jpeg";
+
+/* ---- One-time event perimeter glow (visual prototype) ----
+ * Tunable knobs for browser testing. The glow is drawn with an SVG path
+ * (stroke-dashoffset travel) inside the card, so it follows the rounded card
+ * perimeter on both full-width and narrowed/50-50 overlap cards.
+ */
+/** Full animation cycle time (ms) for the traveling highlight. */
+const ONE_TIME_GLOW_DURATION_MS = 6000;
+/** Highlight travel dash length in viewBox units (10 = ~1%). */
+const ONE_TIME_GLOW_DASH = 34;
+/** Rounded-rect stroke thickness (viewBox units) for the traveling highlight. */
+const ONE_TIME_GLOW_STROKE = 2;
+/** Rounded-rect stroke thickness for the faint static perimeter glow. */
+const ONE_TIME_GLOW_HALO_STROKE = 1;
+/** Traveling highlight color (soft teal-ish accent on the dark track). */
+const ONE_TIME_GLOW_COLOR = "rgba(103, 232, 249, 0.95)";
+/** Faint static perimeter glow color. */
+const ONE_TIME_GLOW_HALO_COLOR = "rgba(103, 232, 249, 0.35)";
+
+/** Stroke path length of the rounded-rect overlay (viewBox units). */
+const ONE_TIME_GLOW_PERIMETER = 2 * (94 + 94); // 4 * side of the inset rect
+
+/** Fixed keyframes rule name (referenced by style strings, so it must be stable). */
+const ONE_TIME_GLOW_ANIM_NAME = "oneTimePerimeterTravel";
+
+/**
+ * The @keyframes rule itself. Injected once via a <style> tag so it is always
+ * present in the DOM (emotion only auto-injects keyframes used in sx/css).
+ * Linear travel = smooth, no flashing/pulse. Offset goes negative to advance.
+ */
+const ONE_TIME_GLOW_CSS = `@keyframes ${ONE_TIME_GLOW_ANIM_NAME} {
+  from { stroke-dashoffset: 0; }
+  to   { stroke-dashoffset: -${ONE_TIME_GLOW_PERIMETER}; }
+}`;
+
+/* ---- Agenda card content (centered hierarchy) ----
+ * Title is primary; location/facilitator form a compact centered secondary
+ * line below it. A simple deterministic duration rule decides whether the
+ * secondary line is shown: any event long enough to comfortably hold the
+ * two-line stack keeps its metadata, and only genuinely short cards drop to
+ * title-only. No pixel measurement.
+ */
+/** Minimum event duration (minutes) to show the secondary line. 60-min events
+ *  must keep metadata; only genuinely short cards hide it. */
+const AGENDA_SECONDARY_MIN_DURATION_MIN = 55;
+
+/** One field block in the secondary metadata line. */
+type AgendaSecondaryBlock = {
+  /** Full-width label, e.g. "Location:" (omitted on narrow cards). */
+  label?: string;
+  /** The actual value, e.g. "The Living Room". */
+  value: string;
+};
+
+/**
+ * Build the metadata blocks for the second line.
+ * Narrow/overlap cards use the compact form (no "Location:"/"Facilitator:"
+ * labels); full-width cards show the labeled form. Only fields with values
+ * are included — no empty labels or separators.
+ */
+function agendaSecondaryBlocks(
+  location: string | undefined,
+  facilitator: string | undefined,
+  narrow: boolean,
+): AgendaSecondaryBlock[] {
+  const blocks: AgendaSecondaryBlock[] = [];
+  if (location) {
+    blocks.push(narrow ? { value: location } : { label: "Location:", value: location });
+  }
+  if (facilitator) {
+    blocks.push(
+      narrow
+        ? { value: facilitator }
+        : { label: "Facilitator:", value: facilitator },
+    );
+  }
+    return blocks;
+}
+
+/**
+ * Format an event start/end range into a human time label, e.g. "1:00 PM – 2:00 PM".
+ */
+function formatTimeRange(startMin: number, endMin: number): string {
+  const fmt = (m: number) => {
+    const h = Math.floor(m / 60);
+    const mi = m % 60;
+    const ampm = h < 12 ? "AM" : "PM";
+    const hh = ((h + 11) % 12) + 1;
+    return `${hh}:${mi.toString().padStart(2, "0")} ${ampm}`;
+  };
+  return `${fmt(startMin)} – ${fmt(endMin)}`;
+}
+
+/**
+ * Derive currently-happening events from the SAME resolved agenda the schedule
+ * uses (agendaItemsForToday), so the Spotlight takeover shares one source of
+ * truth — recurring + one-time events both flow through, and cancellations/
+ * suppressions are already excluded from the resolved agenda.
+ *
+ * Time-boundary rule matches the schedule exactly: startMin <= nowMin < endMin.
+ */
+function useActiveEvents(
+  agendaItems: HouseDisplayAgendaItem[],
+  nowMin: number,
+): HouseDisplayAgendaItem[] {
+  return useMemo(
+    () =>
+      agendaItems.filter(
+        (it) => it.startMin <= nowMin && nowMin < it.endMin,
+      ),
+    [agendaItems, nowMin],
+  );
+}
+
+/** A normalized slide for the Spotlight region. */
+type SpotlightSlide =
+  | { kind: "spotlight"; id: string; item: HouseDisplaySpotlightItem }
+  | { kind: "activeEvent"; id: string; event: HouseDisplayAgendaItem };
+
+/* ---- Active-event Spotlight logos (Phase 2) ----
+ * Explicit logoKey → bundled asset map. Keys are assigned on the schedule
+ * source (never inferred from titles); shared programs reuse one key
+ * (e.g. Men's/Women's/Main NA → "na"). Unknown/absent key = text-only card.
+ */
+const ACTIVE_EVENT_LOGOS: Record<string, string> = {
+  "tech-quest": techQuestLogoUrl,
+  "i-matter": iMatterLogoUrl,
+  "dbsa": dbsaLogoUrl,
+  "na": naLogoUrl,
+};
+
+/** Resolve a logo asset URL for an agenda item, or undefined for text-only. */
+function activeEventLogoSrc(ev: HouseDisplayAgendaItem): string | undefined {
+  if (!ev.logoKey) return undefined;
+  return ACTIVE_EVENT_LOGOS[ev.logoKey];
+}
+
+/** Format an agenda item into a Spotlight-style slide for active-event takeover. */
+function agendaItemToSlide(ev: HouseDisplayAgendaItem): SpotlightSlide {
+  return { kind: "activeEvent", id: ev.id, event: ev };
+}
 
 export default function HouseDisplayPage() {
   const content = useSelector((state: RootState) => state.houseDisplay.content);
@@ -62,6 +211,9 @@ export default function HouseDisplayPage() {
   /** One snapshot -> header clock/date, event states, NOW line. */
   const hopeNow = useHopeHouseNow();
 
+  /** Respect user OS reduced-motion preference (static glow instead of travel). */
+  const reduceMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
+
   const blocks = useMemo(
     () => layoutAgendaItems(agendaItems, timeline),
     [agendaItems, timeline]
@@ -77,13 +229,28 @@ export default function HouseDisplayPage() {
     return map;
   }, [agendaItems]);
 
-  /**
+  /** id → source identity ("recurring" | "oneTime") from resolved agenda. */
+  const sourceTypeById = useMemo(() => {
+    const map = new Map<string, "recurring" | "oneTime">();
+    for (const item of agendaItems) {
+      map.set(item.id, item.sourceType);
+    }
+    return map;
+  }, [agendaItems]);
+
+    /**
    * Spotlight rotation = TV presentation only (not Redux).
    * - pin owns region via selectSpotlightItem; timer off while pinned
    * - no timer for 0 or 1 active item
    * - clamp index when the active list changes
    * - clearInterval on cleanup so index does not advance while pinned
    * - fade is separate dual-layer state below
+   *
+   * Phase 1 overlay: when the resolved agenda has >=1 currently-happening event
+   * (startMin <= nowMin < endMin, excluding canceled/suppressed since the agenda
+   * already omits those), the Spotlight region temporarily rotates between the
+   * active EVENTS instead of the normal Spotlight slides. When zero active events
+   * remain, normal Spotlight rotation resumes (preserving its prior index).
    */
   const [rotateIndex, setRotateIndex] = useState(0);
 
@@ -92,35 +259,58 @@ export default function HouseDisplayPage() {
     [spotlightItems],
   );
 
-  const activeSpotlightKey = activeSpotlight.map((x) => x.id).join("|");
-  const runRotation = shouldRunSpotlightRotation(spotlightItems);
+  // Active happening events, derived from the SAME resolved agenda the schedule
+  // uses (one source of truth: recurring + one-time included, canceled/suppressed
+  // excluded by resolution).
+  const activeEvents = useActiveEvents(agendaItems, hopeNow.nowMin);
 
-  // Keep index valid when items activate/deactivate/reorder
+  // Phase 1 priority: active events take over Spotlight entirely.
+  const takeoverActive = activeEvents.length > 0;
+
+  // Active Spotlight slide pool: either active events (when any) or normal
+  // rotation pool (when none). A single index + single interval drives both.
+    const activeSlides: SpotlightSlide[] = useMemo(
+    () =>
+      takeoverActive
+        ? activeEvents.map(agendaItemToSlide)
+        : activeSpotlight.map((item) => ({ kind: "spotlight", id: item.id, item })),
+    [takeoverActive, activeEvents, activeSpotlight],
+  );
+
+  const activeSlidesKey = activeSlides.map((s) => s.id).join("|");
+  const runRotation = !takeoverActive && shouldRunSpotlightRotation(spotlightItems);
+
+  // Clamp the index to whichever pool is live so rotation stays in range.
+  const slideCount = takeoverActive ? activeEvents.length : activeSpotlight.length;
   useEffect(() => {
     setRotateIndex((i) =>
-      clampSpotlightRotateIndex(i, activeSpotlight.length),
+      clampSpotlightRotateIndex(i, slideCount),
     );
-  }, [activeSpotlight.length, activeSpotlightKey]);
+  }, [slideCount, activeSlidesKey]);
 
-  // 15s advance only when unpinned and 2+ active
+  // Single rotation interval: advances the live pool only when rotation is
+  // allowed (either >=2 normal Spotlight items unpinned, or >=2 active events).
   useEffect(() => {
-    if (!runRotation) {
+    if (slideCount <= 1) {
       return;
     }
     const id = window.setInterval(() => {
-      setRotateIndex((i) => {
-        const n = getActiveSpotlightItems(spotlightItems).length;
-        if (n <= 1) return 0;
-        return clampSpotlightRotateIndex(i + 1, n);
-      });
+      setRotateIndex((i) => clampSpotlightRotateIndex(i + 1, slideCount));
     }, SPOTLIGHT_ROTATE_MS);
     return () => window.clearInterval(id);
-  }, [spotlightItems, runRotation]);
+  }, [slideCount, SPOTLIGHT_ROTATE_MS]);
 
-  const spotlightItem = useMemo(
-    () => selectSpotlightItem(spotlightItems, rotateIndex),
-    [spotlightItems, rotateIndex],
-  );
+  // Resolve the currently-shown slide from the live pool + rotation index.
+    let spotlightSlide: SpotlightSlide | null = null;
+  if (takeoverActive) {
+    const ev = activeEvents[rotateIndex];
+    spotlightSlide = ev ? agendaItemToSlide(ev) : null;
+  } else {
+    const item = activeSpotlight[rotateIndex];
+    spotlightSlide = item
+      ? { kind: "spotlight", id: item.id, item }
+      : null;
+  }
 
   const nowMarker = useMemo(
     () => nowLineLayout(hopeNow.nowMin, timeline),
@@ -132,14 +322,14 @@ export default function HouseDisplayPage() {
   /** Outgoing drifts left; incoming starts slightly right (not full off-screen). */
   const SPOTLIGHT_SLIDE_PX = 30;
 
-  const [layerA, setLayerA] = useState<HouseDisplaySpotlightItem | null>(null);
-  const [layerB, setLayerB] = useState<HouseDisplaySpotlightItem | null>(null);
+    const [layerA, setLayerA] = useState<SpotlightSlide | null>(null);
+  const [layerB, setLayerB] = useState<SpotlightSlide | null>(null);
   const [frontIsA, setFrontIsA] = useState(true);
 
   // Refs so the id-change effect always sees latest front without stale closures
   const frontIsARef = useRef(true);
-  const layerARef = useRef<HouseDisplaySpotlightItem | null>(null);
-  const layerBRef = useRef<HouseDisplaySpotlightItem | null>(null);
+  const layerARef = useRef<SpotlightSlide | null>(null);
+  const layerBRef = useRef<SpotlightSlide | null>(null);
 
   useEffect(() => {
     frontIsARef.current = frontIsA;
@@ -157,8 +347,8 @@ export default function HouseDisplayPage() {
    * - same id: refresh that layer's content
    * - new id: put next on the BACK layer, then flip which layer is opacity 1
    */
-  useEffect(() => {
-    const next = spotlightItem;
+    useEffect(() => {
+    const next = spotlightSlide;
     const isA = frontIsARef.current;
     const front = isA ? layerARef.current : layerBRef.current;
 
@@ -188,17 +378,131 @@ export default function HouseDisplayPage() {
     let raf2 = 0;
     const raf1 = requestAnimationFrame(() => {
       raf2 = requestAnimationFrame(() => {
-        setFrontIsA((v) => !v);
+                setFrontIsA((v) => !v);
       });
     });
     return () => {
       cancelAnimationFrame(raf1);
       if (raf2) cancelAnimationFrame(raf2);
     };
-  }, [spotlightItem]);
+  }, [spotlightSlide]);
 
-  /** One card or flyer slide (shared by both fade layers). */
-  function renderSpotlightSlide(item: HouseDisplaySpotlightItem) {
+  /** Render a Spotlight slide: either a normal item (flyer/video/card) or an
+   * active happening event (text-only "HAPPENING NOW" card). */
+  function renderSpotlightSlide(slide: SpotlightSlide) {
+    // Phase 1: active happening event takeover.
+    if (slide.kind === "activeEvent") {
+      const ev = slide.event;
+      const logoSrc = activeEventLogoSrc(ev);
+      return (
+        <Box
+          sx={{
+            flex: 1,
+            minHeight: 0,
+            height: "100%",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            alignItems: "center",
+            px: { xs: 2, md: 3 },
+            py: { xs: 2, md: 3 },
+            gap: 1.5,
+            textAlign: "center",
+          }}
+        >
+          <Typography
+            sx={{
+              fontWeight: 700,
+              letterSpacing: 2,
+              textTransform: "uppercase",
+              fontSize: "clamp(1.1rem, 1.8vw, 1.6rem)",
+              lineHeight: 1.15,
+              m: 0,
+              color: "#4ade80",
+            }}
+          >
+            Happening now
+          </Typography>
+          {logoSrc ? (
+            /* Responsive contained logo region: fixed-height, width-capped,
+             * object-fit contain preserves each logo's natural aspect ratio
+             * (tall DBSA, square NA, wide Tech Quest / I Matter) without
+             * cropping or stretching, independent of the page background. */
+            <Box
+              sx={{
+                flex: "0 0 auto",
+                width: "100%",
+                maxWidth: "min(56vh, 520px)",
+                height: "clamp(110px, 26vh, 420px)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Box
+                component="img"
+                src={logoSrc}
+                alt={`${ev.title} logo`}
+                sx={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "contain",
+                  objectPosition: "center",
+                  display: "block",
+                }}
+              />
+            </Box>
+          ) : null}
+          <Typography
+            sx={{
+              fontWeight: 800,
+              fontSize: "clamp(1.4rem, 2.8vw, 2.75rem)",
+              lineHeight: 1.1,
+              m: 0,
+            }}
+          >
+            {ev.title}
+          </Typography>
+          <Typography
+            sx={{
+              fontWeight: 600,
+              opacity: 0.85,
+              fontSize: "clamp(1rem, 1.8vw, 1.6rem)",
+              lineHeight: 1.25,
+              m: 0,
+            }}
+          >
+            {formatTimeRange(ev.startMin, ev.endMin)}
+          </Typography>
+          {ev.location ? (
+            <Typography
+              sx={{
+                fontWeight: 600,
+                opacity: 0.8,
+                fontSize: "clamp(0.95rem, 1.5vw, 1.35rem)",
+                m: 0,
+              }}
+            >
+              {ev.location}
+              {ev.facilitator ? ` • ${ev.facilitator}` : ""}
+            </Typography>
+          ) : ev.facilitator ? (
+            <Typography
+              sx={{
+                fontWeight: 600,
+                opacity: 0.8,
+                fontSize: "clamp(0.95rem, 1.5vw, 1.35rem)",
+                m: 0,
+              }}
+            >
+              {ev.facilitator}
+            </Typography>
+          ) : null}
+        </Box>
+      );
+    }
+
+    const item = slide.item;
     if (item.kind === "flyer") {
       return (
         <Box
@@ -381,6 +685,8 @@ export default function HouseDisplayPage() {
         gap: { xs: 1, md: 1.5 },
       }}
     >
+      {/* Inject the one-time glow keyframes once (stable name used by style strings). */}
+      <style>{ONE_TIME_GLOW_CSS}</style>
       {/* ---- 1. Header ~10–12% ---- */}
       <Box
         sx={{
@@ -562,6 +868,21 @@ export default function HouseDisplayPage() {
                 );
 
                 const stateSx = blockSxForState(visualState);
+                const isOneTime = sourceTypeById.get(b.id) === "oneTime";
+
+                // Centered hierarchy: title primary; location/facilitator (with
+                // value labels only on full-width cards) on a centered secondary
+                // line. Deterministic duration rule: events long enough to hold
+                // the two-line stack (60 min and up) keep metadata.
+                const secondaryBlocks = agendaSecondaryBlocks(
+                  b.location,
+                  b.facilitator,
+                  b.widthPct <= 50, // narrowed by an overlap → compact form
+                );
+                const showSecondary =
+                  secondaryBlocks.length > 0 &&
+                  visualState !== "canceled" &&
+                  b.durationMin >= AGENDA_SECONDARY_MIN_DURATION_MIN;
 
                 return (
                   <Box
@@ -576,8 +897,8 @@ export default function HouseDisplayPage() {
                       minHeight: 36,
                       boxSizing: "border-box",
                       px: 1,
-                      pt: 0.5,
-                      pb: 0.25,
+                      pt: 0.25,
+                      pb: 0.1,
                       borderRadius: 1,
                       color: "#e0e1dd",
                       // Content stays top-anchored (tall blocks); one row: title left, CANCELED right
@@ -589,56 +910,90 @@ export default function HouseDisplayPage() {
                       ...stateSx,
                     }}
                   >
-                    <Box
-                      sx={{
-                        display: "flex",
-                        flexDirection: "row",
-                        alignItems: "center",
-                        justifyContent: "flex-start",
-                        gap: 1,
-                        width: "100%",
-                        minWidth: 0,
-                        // Single line — do not grow block height
-                        flex: "0 0 auto",
-                      }}
-                    >
-                      <Typography
-                        component="div"
+                    {isOneTime ? (
+                      <Box
                         sx={{
-                          fontWeight: visualState === "happening" ? 800 : 700,
-                          fontSize: "clamp(0.8rem, 1.35vw, 1.25rem)",
-                          lineHeight: 1.15,
-                          m: 0,
-                          // Shrink/ellipsis before the CANCELED badge when tight
-                          flex: "1 1 auto",
-                          minWidth: 0,
-                          whiteSpace: "nowrap",
+                          position: "absolute",
+                          inset: 0,
+                          pointerEvents: "none",
+                          borderRadius: 1,
                           overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          textAlign: "left",
-                          textDecoration:
-                            visualState === "canceled" ? "line-through" : "none",
-                          opacity: visualState === "canceled" ? 0.85 : 1,
+                          zIndex: 0,
                         }}
                       >
-                        {b.title}
-                      </Typography>
-                      {b.location ? (
-                        <Chip
-                          size="small"
-                          label={b.location}
-                          variant="outlined"
-                          sx={{ ml: 0.5, height: 20, fontSize: "0.7rem" }}
-                        />
-                      ) : null}
-                      {b.facilitator ? (
-                        <Chip
-                          size="small"
-                          label={`Facilitator: ${b.facilitator}`}
-                          variant="outlined"
-                          sx={{ ml: 0.5, height: 20, fontSize: "0.7rem" }}
-                        />
-                      ) : null}
+                        <svg
+                          width="100%"
+                          height="100%"
+                          viewBox="0 0 100 100"
+                          preserveAspectRatio="none"
+                          style={{ display: "block" }}
+                          aria-hidden="true"
+                        >
+                          {/* Faint static perimeter glow — card still looks special
+                              even when the brighter highlight has moved on. */}
+                          <rect
+                            x="1"
+                            y="1"
+                            width="98"
+                            height="98"
+                            rx="3"
+                            fill="none"
+                            stroke={ONE_TIME_GLOW_HALO_COLOR}
+                            strokeWidth={ONE_TIME_GLOW_HALO_STROKE}
+                            vectorEffect="non-scaling-stroke"
+                          />
+                          {reduceMotion ? (
+                            /* Reduced motion: static full illuminated rim (no travel). */
+                            <rect
+                              x="3"
+                              y="3"
+                              width="94"
+                              height="94"
+                              rx="2.5"
+                              fill="none"
+                              stroke={ONE_TIME_GLOW_COLOR}
+                              strokeWidth={ONE_TIME_GLOW_STROKE}
+                              strokeDasharray={`${ONE_TIME_GLOW_PERIMETER} 0`}
+                            />
+                          ) : (
+                            /* Traveling illuminated highlight around the perimeter. */
+                            <rect
+                              x="3"
+                              y="3"
+                              width="94"
+                              height="94"
+                              rx="2.5"
+                              fill="none"
+                              stroke={ONE_TIME_GLOW_COLOR}
+                              strokeWidth={ONE_TIME_GLOW_STROKE}
+                              strokeLinecap="round"
+                              strokeDasharray={`${ONE_TIME_GLOW_DASH} ${ONE_TIME_GLOW_PERIMETER - ONE_TIME_GLOW_DASH}`}
+                              style={{
+                                animation: `${ONE_TIME_GLOW_ANIM_NAME} ${ONE_TIME_GLOW_DURATION_MS}ms linear infinite`,
+                                willChange: "stroke-dashoffset",
+                              }}
+                            />
+                          )}
+                        </svg>
+                      </Box>
+                    ) : null}
+                    <Box
+                      sx={{
+                        position: "relative",
+                        zIndex: 1,
+                        width: "100%",
+                        height: "100%",
+                        minWidth: 0,
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        textAlign: "center",
+                        overflow: "hidden",
+                        boxSizing: "border-box",
+                        px: 0.5,
+                      }}
+                    >
                       {visualState === "canceled" && (
                         <Typography
                           component="div"
@@ -657,6 +1012,96 @@ export default function HouseDisplayPage() {
                           CANCELED
                         </Typography>
                       )}
+                      <Typography
+                        component="div"
+                        sx={{
+                          fontWeight: 800,
+                          // Size by viewport height so text tracks the vertical
+                          // card space (which governs two-line fit), not width.
+                          fontSize: "clamp(0.85rem, 1.6vh, 1.9rem)",
+                          lineHeight: 1.05,
+                          m: 0,
+                          maxWidth: "100%",
+                          minWidth: 0,
+                          // Wrap to up to 2 lines, then truncate — never overflow.
+                          display: "-webkit-box",
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: "vertical",
+                          overflow: "hidden",
+                          textAlign: "center",
+                          textDecoration:
+                            visualState === "canceled"
+                              ? "line-through"
+                              : "none",
+                          opacity: visualState === "canceled" ? 0.85 : 1,
+                        }}
+                      >
+                        {b.title}
+                      </Typography>
+                      {showSecondary ? (
+                        <Box
+                          component="div"
+                          sx={{
+                            flex: "0 0 auto",
+                            display: "flex",
+                            flexDirection: "row",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: "0.35em",
+                            // Size by viewport height to track vertical card space.
+                            fontSize: "clamp(0.65rem, 1.05vh, 1.3rem)",
+                            lineHeight: 1,
+                            mt: 0.1,
+                            maxWidth: "100%",
+                            minWidth: 0,
+                            // Single line, truncate when narrow — never overflow.
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                          }}
+                        >
+                          {secondaryBlocks.map((blk, i) => (
+                            <Fragment key={i}>
+                              {i > 0 ? (
+                                <Box
+                                  component="span"
+                                  sx={{ opacity: 0.5, flex: "0 0 auto" }}
+                                >
+                                  •
+                                </Box>
+                              ) : null}
+                              <Box
+                                component="span"
+                                sx={{
+                                  minWidth: 0,
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  color: "rgba(224,225,221,0.92)",
+                                }}
+                              >
+                                {blk.label ? (
+                                  <Box
+                                    component="span"
+                                    sx={{
+                                      fontWeight: 500,
+                                      opacity: 0.62,
+                                      mr: "0.25em",
+                                    }}
+                                  >
+                                    {blk.label}
+                                  </Box>
+                                ) : null}
+                                <Box
+                                  component="span"
+                                  sx={{ fontWeight: 600 }}
+                                >
+                                  {blk.value}
+                                </Box>
+                              </Box>
+                            </Fragment>
+                          ))}
+                        </Box>
+                      ) : null}
                     </Box>
                   </Box>
                 );
