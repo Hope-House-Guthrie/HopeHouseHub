@@ -57,9 +57,11 @@ import {
   loadScheduleSources,
   saveScheduleSources,
 } from "../../../features/house-display/schedulePersistence";
-// Bundled flyer URLs (Bun @assets). public/house-display/* is NOT served by dev-server.
+// Bundled flyer/video URLs (Bun @assets). public/house-display/* is NOT served by dev-server.
+// test-video.mp4 is local-only (gitignored) — DEV prototype asset, not production media.
 import kiddosDonationUrl from "@assets/house-display/kiddos-donation.png";
 import hopeChangesEverythingUrl from "@assets/house-display/hope-changes-everything.png";
+import testVideoUrl from "@assets/house-display/test-video.mp4";
 
 /** Occurrence payload from manage — dateYmd must be explicit (no clock in reducer). */
 export type HouseDisplayOccurrenceActionPayload = {
@@ -350,16 +352,16 @@ function buildContent(
         id: "s4",
         kind: "video",
         sortOrder: 3,
-        active: false,
+        active: true,
         pinMode: "none",
         title: "Test Video",
         subtitle: "",
         message: "",
         imageUrl: "",
         imageAlt: "",
-        videoUrl: "house-display/test-VideoColorSpace.mp4",
+        videoUrl: testVideoUrl,
         videoMimeType: "video/mp4",
-        videoSoundEnabled: false,
+        videoSoundEnabled: true,
       },
     ],
     // Still mock strip — not derived from agenda yet (known cleanup)

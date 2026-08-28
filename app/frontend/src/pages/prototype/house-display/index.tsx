@@ -345,23 +345,61 @@ export default function HouseDisplayPage() {
 
   // Clamp the index to whichever pool is live so rotation stays in range.
   const slideCount = takeoverActive ? activeEvents.length : activeSpotlight.length;
+
+  // Live values for video ended/error handlers (avoid stale closures; no render loop).
+  const slideCountRef = useRef(slideCount);
+  slideCountRef.current = slideCount;
+  const takeoverActiveRef = useRef(takeoverActive);
+  takeoverActiveRef.current = takeoverActive;
+
   useEffect(() => {
     setRotateIndex((i) =>
       clampSpotlightRotateIndex(i, slideCount),
     );
   }, [slideCount, activeSlidesKey]);
 
-  // Single rotation interval: advances the live pool only when rotation is
-  // allowed (either >=2 normal Spotlight items unpinned, or >=2 active events).
+  /**
+   * Rotation timer (Phase 3):
+   * - Active-event takeover + multi events: keep ~15s advance (unchanged).
+   * - Normal card/flyer: ~15s advance (unchanged).
+   * - Normal video: NO 15s advance — video owns dwell until ended/error.
+   * slideCount<=1: no timer (single item / single event stays put).
+   */
+  const normalCurrentKind =
+    !takeoverActive && activeSpotlight[rotateIndex]
+      ? activeSpotlight[rotateIndex].kind
+      : null;
+  const videoOwnsNormalDwell = normalCurrentKind === "video";
+
   useEffect(() => {
     if (slideCount <= 1) {
+      return;
+    }
+    // Successful normal video owns Spotlight for natural duration.
+    if (videoOwnsNormalDwell) {
       return;
     }
     const id = window.setInterval(() => {
       setRotateIndex((i) => clampSpotlightRotateIndex(i + 1, slideCount));
     }, SPOTLIGHT_ROTATE_MS);
     return () => window.clearInterval(id);
-  }, [slideCount, SPOTLIGHT_ROTATE_MS]);
+  }, [slideCount, SPOTLIGHT_ROTATE_MS, videoOwnsNormalDwell]);
+
+  /**
+   * Broken normal video with empty/missing URL must not strand the pool.
+   * Advance once; single-item broken pool stays (no tight loop).
+   */
+  useEffect(() => {
+    if (takeoverActive) return;
+    const item = activeSpotlight[rotateIndex];
+    if (!item || item.kind !== "video") return;
+    const url = typeof item.videoUrl === "string" ? item.videoUrl.trim() : "";
+    if (url) return;
+    if (activeSpotlight.length <= 1) return;
+    setRotateIndex((i) =>
+      clampSpotlightRotateIndex(i + 1, activeSpotlight.length),
+    );
+  }, [takeoverActive, rotateIndex, activeSpotlight]);
 
   // Resolve the currently-shown slide from the live pool + rotation index.
   // useMemo (identity-stable): the crossfade effect below depends on this
@@ -393,6 +431,12 @@ export default function HouseDisplayPage() {
   const frontIsARef = useRef(true);
   const layerARef = useRef<SpotlightSlide | null>(null);
   const layerBRef = useRef<SpotlightSlide | null>(null);
+  // Per-layer <video> nodes (Phase 2+3): pause hidden/back video; front play
+  // + fresh restart on new front entry; ended/error advance (Phase 3).
+  const videoARef = useRef<HTMLVideoElement | null>(null);
+  const videoBRef = useRef<HTMLVideoElement | null>(null);
+  /** Last normal video id that was started as front — avoids rewinding on same-id layer refresh. */
+  const lastFrontVideoIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     frontIsARef.current = frontIsA;
@@ -403,6 +447,91 @@ export default function HouseDisplayPage() {
   useEffect(() => {
     layerBRef.current = layerB;
   }, [layerB]);
+
+  /** Advance normal/event pool index by one (ended / error / skip). */
+  const advanceRotateIndex = () => {
+    setRotateIndex((i) =>
+      clampSpotlightRotateIndex(i + 1, slideCountRef.current),
+    );
+  };
+
+  /**
+   * Video lifecycle for dual layers (Phase 2 + Phase 3 play failure + sound).
+   * - Back/hidden layer: pause promptly (still may paint last frame during fade).
+   * - Front video: restart from 0 only when a *new* video id becomes front
+   *   (first show / return after takeover or other slides) — not on same-id
+   *   layer object refresh (would rewind every minute otherwise).
+   * - muted follows videoSoundEnabled; if audible play() is blocked (common
+   *   autoplay policy), fall back to muted play so the slide still owns dwell.
+   *   Only advance when play cannot start at all.
+   * No setState except via advanceRotateIndex on hard failure — not on every frame.
+   */
+  useEffect(() => {
+    const frontVideo = frontIsA ? videoARef.current : videoBRef.current;
+    const backVideo = frontIsA ? videoBRef.current : videoARef.current;
+    const frontSlide = frontIsA ? layerA : layerB;
+
+    if (backVideo) {
+      try {
+        backVideo.pause();
+      } catch {
+        // Ignore pause failures on detached/broken media.
+      }
+    }
+
+    const frontVideoId =
+      frontSlide &&
+      frontSlide.kind === "spotlight" &&
+      frontSlide.item.kind === "video"
+        ? frontSlide.id
+        : null;
+
+    if (!frontVideo || !frontVideoId || !frontSlide || frontSlide.kind !== "spotlight") {
+      lastFrontVideoIdRef.current = null;
+      return;
+    }
+
+    const item = frontSlide.item;
+    if (item.kind !== "video") {
+      lastFrontVideoIdRef.current = null;
+      return;
+    }
+
+    // Keep DOM muted flag in sync with item (React prop + imperative before play).
+    const wantSound = Boolean(item.videoSoundEnabled);
+    frontVideo.muted = !wantSound;
+
+    if (lastFrontVideoIdRef.current !== frontVideoId) {
+      lastFrontVideoIdRef.current = frontVideoId;
+      try {
+        frontVideo.currentTime = 0;
+      } catch {
+        // Some browsers throw if metadata not ready yet — play() still tried.
+      }
+    }
+
+    const startedId = frontVideoId;
+    void frontVideo.play().catch(() => {
+      // Autoplay with sound is often blocked without a user gesture.
+      // Fall back to muted playback so Spotlight is not skipped/stranded.
+      if (takeoverActiveRef.current) return;
+      if (lastFrontVideoIdRef.current !== startedId) return;
+
+      if (!frontVideo.muted) {
+        frontVideo.muted = true;
+        void frontVideo.play().catch(() => {
+          if (takeoverActiveRef.current) return;
+          if (lastFrontVideoIdRef.current !== startedId) return;
+          if (slideCountRef.current <= 1) return;
+          advanceRotateIndex();
+        });
+        return;
+      }
+
+      if (slideCountRef.current <= 1) return;
+      advanceRotateIndex();
+    });
+  }, [frontIsA, layerA, layerB]);
 
   /**
    * When selectSpotlightItem target changes:
@@ -451,8 +580,12 @@ export default function HouseDisplayPage() {
   }, [spotlightSlide]);
 
   /** Render a Spotlight slide: either a normal item (flyer/video/card) or an
-   * active happening event (text-only "HAPPENING NOW" card). */
-  function renderSpotlightSlide(slide: SpotlightSlide) {
+   * active happening event (text-only "HAPPENING NOW" card).
+   * layer marks which dual-layer slot owns a video ref (Phase 2 pause/play). */
+  function renderSpotlightSlide(
+    slide: SpotlightSlide,
+    layer: "a" | "b",
+  ) {
     // Phase 1: active happening event takeover.
     if (slide.kind === "activeEvent") {
       const ev = slide.event;
@@ -614,16 +747,34 @@ export default function HouseDisplayPage() {
       );
     }
 
-    /** Video Section */
+    /** Video Section — dwell owned by media (onEnded); 15s timer skipped while front. */
     if (item.kind === "video") {
+      const isFrontLayer = () =>
+        layer === "a" ? frontIsARef.current : !frontIsARef.current;
+
+      /** Natural end or hard media error → next Spotlight item (not during takeover). */
+      const finishOrSkipVideo = () => {
+        if (takeoverActiveRef.current) return;
+        if (!isFrontLayer()) return;
+        if (slideCountRef.current <= 1) return;
+        advanceRotateIndex();
+      };
+
       return (
         <Box
           component="video"
+          ref={(el: HTMLVideoElement | null) => {
+            if (layer === "a") videoARef.current = el;
+            else videoBRef.current = el;
+          }}
           src={item.videoUrl}
           autoPlay
           playsInline
           muted={!item.videoSoundEnabled}
           controls={false}
+          loop={false}
+          onEnded={finishOrSkipVideo}
+          onError={finishOrSkipVideo}
           sx={{
             width: "100%",
             height: "100%",
@@ -1224,7 +1375,7 @@ export default function HouseDisplayPage() {
                       pointerEvents: frontIsA ? "auto" : "none",
                     }}
                   >
-                    {renderSpotlightSlide(layerA)}
+                    {renderSpotlightSlide(layerA, "a")}
                   </Box>
                 ) : null}
                 {layerB ? (
@@ -1244,7 +1395,7 @@ export default function HouseDisplayPage() {
                       pointerEvents: frontIsA ? "none" : "auto",
                     }}
                   >
-                    {renderSpotlightSlide(layerB)}
+                    {renderSpotlightSlide(layerB, "b")}
                   </Box>
                 ) : null}
               </Box>
