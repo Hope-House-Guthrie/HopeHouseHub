@@ -9,7 +9,7 @@
 import techQuestLogoUrl from "@assets/house-display/logos/tech-quest.png";
 import iMatterLogoUrl from "@assets/house-display/logos/i-matter.png";
 import dbsaLogoUrl from "@assets/house-display/logos/dbsa.png";
-import naLogoUrl from "@assets/house-display/logos/na.jpeg";
+import naLogoUrl from "@assets/house-display/logos/na.png";
 import gameNightLogoUrl from "@assets/house-display/logos/game-night.png";
 
 /** Known program logo keys (schedule logoKey values). */

@@ -58,7 +58,10 @@ import type {
   HouseDisplayContent,
   HouseDisplayState,
 } from "../../../features/house-display/types";
-import { timelineWindowForWeekday } from "../../../features/house-display/timeline";
+import {
+  SEED_CURFEW_CONFIG,
+  timelineWindowForDate,
+} from "../../../features/house-display/curfew";
 import { getHopeHouseNow } from "../../../features/house-display/time";
 // Relative paths: Bun hot sometimes fails @/ resolve on newly added feature files
 import {
@@ -235,8 +238,12 @@ function syncAgendaFromSchedule(
   dateYmd: string,
 ): void {
   const weekday = weekdayFromDateYmd(dateYmd);
-  // Board hours track Hope House weekday open/close (Roll Call uses same open).
-  state.content.timeline = timelineWindowForWeekday(weekday);
+  // Board hours: weekday open + effective curfew end (seed weekly until Manage/persist).
+  state.content.timeline = timelineWindowForDate({
+    dateYmd,
+    weekday,
+    config: SEED_CURFEW_CONFIG,
+  });
   state.content.agendaItems = resolveAgendaForDate({
     dateYmd,
     weekday,
@@ -390,7 +397,11 @@ function buildContent(
       dateText: "Sun, Aug 23",
       weatherText: "82° Clear",
     },
-    timeline: timelineWindowForWeekday(weekday),
+    timeline: timelineWindowForDate({
+      dateYmd: ymd,
+      weekday,
+      config: SEED_CURFEW_CONFIG,
+    }),
     agendaItems: resolveAgendaForDate({
       dateYmd: ymd,
       weekday,

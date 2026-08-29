@@ -4,6 +4,7 @@
  *
  * DONE: resolveAgendaForDate, cancel/suppress/override paths,
  * stable seriesId:dateYmd ids, keep overlaps, sort by startMin.
+ * Synthetic Roll Call + derived closing stages (system sourceType).
  * No React/Redux.
  *
  * Recurring exception precedence (first match wins):
@@ -27,6 +28,11 @@ import type {
 import {
   buildRollCallAgendaItem,
 } from "./timeline";
+import {
+  buildClosingAgendaItems,
+  SEED_CURFEW_CONFIG,
+  type HouseDisplayCurfewConfig,
+} from "./curfew";
 
 /** Stable TV/manage id for one series occurrence on one Chicago day. */
 export function recurringOccurrenceId(
@@ -64,15 +70,18 @@ function findException(
 /**
  * Resolve all sources for one Hope House calendar day → TV agenda items.
  * Caller supplies dateYmd (usually HopeHouseNow.dateKey) and optional weekday
- * (defaults from dateYmd). sourceType added for explicit source identity.
+ * (defaults from dateYmd). Includes synthetic Roll Call + closing stages.
+ * Optional curfewConfig (default seed weekly) until Manage/persist (Ph4+).
  */
 export function resolveAgendaForDate(args: {
   dateYmd: string;
   weekday?: HouseDisplayWeekday;
   sources: HouseDisplayScheduleSources;
+  curfewConfig?: HouseDisplayCurfewConfig;
 }): HouseDisplayAgendaItem[] {
   const { dateYmd, sources } = args;
   const weekday = args.weekday ?? weekdayFromDateYmd(dateYmd);
+  const curfewConfig = args.curfewConfig ?? SEED_CURFEW_CONFIG;
   const out: HouseDisplayAgendaItem[] = [];
 
   // Board open always starts with Roll Call (not a staff series row).
@@ -149,6 +158,15 @@ export function resolveAgendaForDate(args: {
       logoKey: item.logoKey ?? null,
     });
   }
+
+  // Derived closing stages (not stored schedule rows)
+  out.push(
+    ...buildClosingAgendaItems({
+      dateYmd,
+      weekday,
+      config: curfewConfig,
+    }),
+  );
 
   out.sort((a, b) => {
     if (a.startMin !== b.startMin) return a.startMin - b.startMin;

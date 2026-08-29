@@ -12,9 +12,15 @@ import type {
 } from "./types";
 import type { HouseDisplayWeekday } from "./scheduleTypes";
 
+/** Closing stages use timed markers on TV — not duration bars in layoutAgendaItems. */
+function isClosingStageForLayout(item: HouseDisplayAgendaItem): boolean {
+  return item.sourceType === "system" && item.systemKind === "closingStage";
+}
+
 /**
  * Default fallback window (Mon–Thu shape): 8:00 AM – 10:00 PM.
- * Prefer timelineWindowForWeekday(weekday) for live TV / resolve.
+ * Prefer timelineWindowForDate({ dateYmd, config }) for live TV / resolve
+ * (end = effective curfew). This helper still supplies weekday open + legacy end.
  */
 export const DEFAULT_TIMELINE_WINDOW: HouseDisplayTimelineWindow = {
   windowStartMin: 8 * 60,
@@ -22,12 +28,14 @@ export const DEFAULT_TIMELINE_WINDOW: HouseDisplayTimelineWindow = {
 };
 
 /**
- * Hope House wall-board hours by Chicago weekday (0=Sun … 6=Sat).
+ * Hope House wall-board open hours by Chicago weekday (0=Sun … 6=Sat),
+ * plus legacy close ends (match seed weekly curfew).
  *
  * Start: Mon–Fri 8:00 AM; Sat–Sun 10:00 AM
- * End:   Sun–Thu 10:00 PM; Fri–Sat 11:00 PM
+ * End (legacy/seed-aligned): Sun–Thu 10:00 PM; Fri–Sat 11:00 PM
  *
- * → Mon–Thu 8–10p | Fri 8–11p | Sat 10a–11p | Sun 10a–10p
+ * For override-aware board end (e.g. midnight 1440), use
+ * timelineWindowForDate from curfew.ts instead of this helper's end.
  */
 export function timelineWindowForWeekday(
   weekday: HouseDisplayWeekday | number,
@@ -49,7 +57,8 @@ export const ROLL_CALL_DURATION_MIN = 10;
  * Synthetic Roll Call occurrence for one Chicago day.
  * Starts at the displayed day open (same as timelineWindowForWeekday start).
  * Not a staff-managed series — generated for the board each resolve.
- * Callers should pass weekday (resolveAgenda always does).
+ * sourceType "system" so TV does not apply one-time glow / takeover.
+ * Timing unchanged (open + ROLL_CALL_DURATION_MIN).
  */
 export function buildRollCallAgendaItem(
   dateYmd: string,
@@ -63,7 +72,8 @@ export function buildRollCallAgendaItem(
     startMin,
     endMin: startMin + ROLL_CALL_DURATION_MIN,
     canceled: false,
-    sourceType: "oneTime",
+    sourceType: "system",
+    systemKind: "rollCall",
     location: undefined,
     facilitator: undefined,
     logoKey: null,
@@ -287,6 +297,7 @@ export function assignColumns(
 /**
  * Layout one event inside the window.
  * Clips to window; zero/negative duration after clip → null (skip).
+ * Closing stages are not laid out here (see layoutClosingStageMarkers).
  */
 export function layoutAgendaItem(
   item: HouseDisplayAgendaItem,
@@ -294,6 +305,7 @@ export function layoutAgendaItem(
   columnIndex: number = 0,
   columnSpan: number = 1,
 ): TimelineBlockLayout | null {
+  if (isClosingStageForLayout(item)) return null;
   const start = clamp(
     item.startMin,
     window.windowStartMin,
@@ -333,6 +345,7 @@ export function layoutAgendaItem(
 /**
  * Layout all agenda items with column-based overlap resolution.
  * Events that overlap get placed in different columns and share width.
+ * Closing stages are omitted (paint as timed markers via layoutClosingStageMarkers).
  */
 export function layoutAgendaItems(
   items: HouseDisplayAgendaItem[],
@@ -342,6 +355,7 @@ export function layoutAgendaItems(
   const basicLayouts: TimelineBlockLayout[] = [];
 
   for (const item of items) {
+    if (isClosingStageForLayout(item)) continue;
     const start = clamp(item.startMin, window.windowStartMin, window.windowEndMin);
     const end = clamp(item.endMin, window.windowStartMin, window.windowEndMin);
     if (end <= start) continue;
@@ -475,4 +489,46 @@ export function hourMarks(
     });
   }
   return marks;
+}
+/** Timed closing-stage marker on the board (not a duration bar). */
+export interface TimelineClosingMarker {
+  id: string;
+  startMin: number;
+  /** Real clock label for the stage start (e.g. 10:45 PM). */
+  timeLabel: string;
+  /** Short staff-facing title. */
+  title: string;
+  topPct: number;
+  closingStageId?: "t15" | "t10" | "t5" | "closed" | "finalBreak";
+}
+
+/**
+ * Layout closing stages as hairline markers at real startMin positions.
+ * Keeps derived times accurate; avoids unreadable 5-minute proportional bars.
+ * Stages outside the window are omitted.
+ */
+export function layoutClosingStageMarkers(
+  items: HouseDisplayAgendaItem[],
+  window: HouseDisplayTimelineWindow,
+): TimelineClosingMarker[] {
+  const out: TimelineClosingMarker[] = [];
+  for (const item of items) {
+    if (!isClosingStageForLayout(item)) continue;
+    if (
+      item.startMin < window.windowStartMin ||
+      item.startMin > window.windowEndMin
+    ) {
+      continue;
+    }
+    out.push({
+      id: item.id,
+      startMin: item.startMin,
+      timeLabel: formatTimeLabel(item.startMin),
+      title: item.title,
+      topPct: minToPercent(item.startMin, window),
+      closingStageId: item.closingStageId,
+    });
+  }
+  out.sort((a, b) => a.startMin - b.startMin || a.id.localeCompare(b.id));
+  return out;
 }

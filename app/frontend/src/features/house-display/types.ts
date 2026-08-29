@@ -49,9 +49,15 @@ export type HouseDisplayEventVisualState =
 
 /**
  * Resolved arrival for one agenda block (derived from schedule sources).
- * sourceType distinguishes recurring class vs one-time event.
+ * sourceType: recurring class, staff one-time, or synthetic system (Roll Call / closing).
  */
-export type HouseDisplayAgendaSourceType = "recurring" | "oneTime";
+export type HouseDisplayAgendaSourceType = "recurring" | "oneTime" | "system";
+
+/**
+ * Subtype when sourceType === "system".
+ * Used so TV can skip one-time glow and active-event Spotlight takeover.
+ */
+export type HouseDisplayAgendaSystemKind = "rollCall" | "closingStage";
 
 export interface HouseDisplayAgendaItem {
   id: string;
@@ -65,8 +71,17 @@ export interface HouseDisplayAgendaItem {
    * Normal occurrences use false.
    */
   canceled: boolean;
-  /** Explicit source identity (recurring series or one-time event). */
+  /** Explicit source identity (recurring | one-time | system). */
   sourceType: HouseDisplayAgendaSourceType;
+  /**
+   * When sourceType is "system": rollCall or closingStage.
+   * Undefined for recurring/oneTime.
+   */
+  systemKind?: HouseDisplayAgendaSystemKind;
+  /**
+   * Closing stage id when systemKind === "closingStage".
+   */
+  closingStageId?: "t15" | "t10" | "t5" | "closed" | "finalBreak";
   /** Optional location where the event takes place */
   location?: string;
   /** Optional facilitator name for this event */
@@ -75,6 +90,7 @@ export interface HouseDisplayAgendaItem {
    * Optional program/logo association key for Spotlight takeover.
    * Propagated from the schedule source (recurring series or one-time event).
    * Absent/null = no logo; active Spotlight falls back to text-only card.
+   * System items leave this null.
    */
   logoKey?: string | null;
 }

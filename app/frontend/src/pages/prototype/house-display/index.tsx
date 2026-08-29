@@ -16,6 +16,12 @@
 * - Overlap column layout for simultaneous events
 * - Daily Affirmation lower band: selectAffirmationText (pin → enabled rotate)
 *   + legacy affirmationText fallback when enabled pool empty; hopeNow tick
+* - Curfew Ph0–2: pure config/stages/phase; window end includes Final Break hour;
+*   derived closing agenda (system); Roll Call system (no one-time glow);
+*   timeline paints only current closing stage as hairline (real times)
+* - Curfew Ph3 (revised): system Spotlight takeover (Roll Call + closing phases +
+*   Final Break + House Closed) with image registry + placeholder fallback;
+*   priority system > class/event > normal rotation; no full-width status banner
 *
 * NOT YET:
 * - Weather API (header still uses seed weatherText)
@@ -25,6 +31,7 @@
 * - Half-hour ticks / themes
 * - Schedule day rollover from backend
 * - Affirmation live cross-tab rehydrate (refresh after Manage changes)
+* - Curfew Manage UI / DEV persist / final system Spotlight artwork
 */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
@@ -39,9 +46,9 @@ import type { HouseDisplaySpotlightItem } from "../../../features/house-display/
 import {
   hourMarks,
   layoutAgendaItems,
+  layoutClosingStageMarkers,
   nowLineLayout,
   resolveEventVisualState,
-  timelineWindowForWeekday,
 } from "@/features/house-display/timeline";
 // Relative path: new helper file (HMR sometimes fails @/ resolve until full restart)
 import {
@@ -52,13 +59,25 @@ import {
   SPOTLIGHT_ROTATE_MS,
 } from "../../../features/house-display/spotlight";
 import { selectAffirmationText } from "../../../features/house-display/affirmations";
-import { weekdayFromDateYmd } from "../../../features/house-display/resolveAgenda";
+import {
+  SEED_CURFEW_CONFIG,
+  timelineWindowForDate,
+  isSpotlightTakeoverAgendaItem,
+  isOneTimeGlowAgendaItem,
+  resolveClosingPhase,
+  type HouseDisplayClosingPhase,
+  type HouseDisplayClosingStageId,
+} from "../../../features/house-display/curfew";
+import {
+  resolveSystemSpotlightState,
+  type SystemSpotlightState,
+} from "../../../features/house-display/systemSpotlight";
 import { useHopeHouseNow } from "../../../features/house-display/useHopeHouseNow";
 // Program logos for active-event Spotlight (bundled @assets, same as flyers).
 import techQuestLogoUrl from "@assets/house-display/logos/tech-quest.png";
 import iMatterLogoUrl from "@assets/house-display/logos/i-matter.png";
 import dbsaLogoUrl from "@assets/house-display/logos/dbsa.png";
-import naLogoUrl from "@assets/house-display/logos/na.jpeg";
+import naLogoUrl from "@assets/house-display/logos/na.png";
 import gameNightLogoUrl from "@assets/house-display/logos/game-night.png";
 
 /* ---- One-time event perimeter glow (visual prototype) ----
@@ -152,6 +171,7 @@ function formatTimeRange(startMin: number, endMin: number): string {
  * truth — recurring + one-time events both flow through, and cancellations/
  * suppressions are already excluded from the resolved agenda.
  *
+ * System rows (Roll Call, closing stages) never enter takeover.
  * Time-boundary rule matches the schedule exactly: startMin <= nowMin < endMin.
  */
 function useActiveEvents(
@@ -161,7 +181,10 @@ function useActiveEvents(
   return useMemo(
     () =>
       agendaItems.filter(
-        (it) => it.startMin <= nowMin && nowMin < it.endMin,
+        (it) =>
+          isSpotlightTakeoverAgendaItem(it) &&
+          it.startMin <= nowMin &&
+          nowMin < it.endMin,
       ),
     [agendaItems, nowMin],
   );
@@ -170,7 +193,8 @@ function useActiveEvents(
 /** A normalized slide for the Spotlight region. */
 type SpotlightSlide =
   | { kind: "spotlight"; id: string; item: HouseDisplaySpotlightItem }
-  | { kind: "activeEvent"; id: string; event: HouseDisplayAgendaItem };
+  | { kind: "activeEvent"; id: string; event: HouseDisplayAgendaItem }
+  | { kind: "system"; id: string; system: SystemSpotlightState };
 
 /* ---- Active-event Spotlight logos (Phase 2) ----
  * Explicit logoKey → bundled asset map. Keys are assigned on the schedule
@@ -290,11 +314,16 @@ export default function HouseDisplayPage() {
   ]);
 
   /**
-   * Live day window from Chicago weekday (not stale Redux seed 7–9p).
-   * Mon–Thu 8a–10p · Fri 8a–11p · Sat 10a–11p · Sun 10a–10p
+   * Live day window: weekday open + effective curfew end for Chicago dateKey.
+   * Seed weekly = Sun–Thu 10pm / Fri–Sat 11pm; date override (e.g. 1440) later via config.
+   * Not stale Redux content.timeline alone.
    */
   const timeline = useMemo(
-    () => timelineWindowForWeekday(weekdayFromDateYmd(hopeNow.dateKey)),
+    () =>
+      timelineWindowForDate({
+        dateYmd: hopeNow.dateKey,
+        config: SEED_CURFEW_CONFIG,
+      }),
     [hopeNow.dateKey],
   );
 
@@ -307,6 +336,59 @@ export default function HouseDisplayPage() {
     () => layoutAgendaItems(agendaItems, timeline),
     [agendaItems, timeline]
   );
+
+  /**
+   * All derived closing markers (real times). TV only paints the *current* stage.
+   * Before T-15 → nothing. During sequence → one hairline + one label.
+   */
+  const closingMarkers = useMemo(
+    () => layoutClosingStageMarkers(agendaItems, timeline),
+    [agendaItems, timeline],
+  );
+
+  const closingPhase: HouseDisplayClosingPhase = useMemo(
+    () =>
+      resolveClosingPhase({
+        dateYmd: hopeNow.dateKey,
+        nowMin: hopeNow.nowMin,
+        config: SEED_CURFEW_CONFIG,
+      }),
+    [hopeNow.dateKey, hopeNow.nowMin],
+  );
+
+  /** Map phase → stage id for the single active closing visual. */
+  const activeClosingStageId: HouseDisplayClosingStageId | null =
+    closingPhase === "closing_t15"
+      ? "t15"
+      : closingPhase === "closing_t10"
+        ? "t10"
+        : closingPhase === "closing_t5"
+          ? "t5"
+          : closingPhase === "final_break"
+            ? "finalBreak"
+            : closingPhase === "house_closed"
+              ? "closed"
+              : null;
+
+  const activeClosingMarker = useMemo(() => {
+    if (activeClosingStageId == null) return null;
+    return (
+      closingMarkers.find((m) => m.closingStageId === activeClosingStageId) ??
+      null
+    );
+  }, [closingMarkers, activeClosingStageId]);
+
+  /** System Spotlight owner (Roll Call / closing / Final Break / House Closed). */
+  const systemSpotlight = useMemo(
+    () =>
+      resolveSystemSpotlightState({
+        dateYmd: hopeNow.dateKey,
+        nowMin: hopeNow.nowMin,
+        config: SEED_CURFEW_CONFIG,
+      }),
+    [hopeNow.dateKey, hopeNow.nowMin],
+  );
+
   const nextAgendaItems = useMemo(
     () =>
       agendaItems
@@ -327,9 +409,18 @@ export default function HouseDisplayPage() {
     return map;
   }, [agendaItems]);
 
-  /** id → source identity ("recurring" | "oneTime") from resolved agenda. */
+  /** id → resolved agenda item (glow / system checks). */
+  const agendaItemById = useMemo(() => {
+    const map = new Map<string, HouseDisplayAgendaItem>();
+    for (const item of agendaItems) {
+      map.set(item.id, item);
+    }
+    return map;
+  }, [agendaItems]);
+
+  /** id → source identity from resolved agenda. */
   const sourceTypeById = useMemo(() => {
-    const map = new Map<string, "recurring" | "oneTime">();
+    const map = new Map<string, HouseDisplayAgendaItem["sourceType"]>();
     for (const item of agendaItems) {
       map.set(item.id, item.sourceType);
     }
@@ -337,18 +428,12 @@ export default function HouseDisplayPage() {
   }, [agendaItems]);
 
     /**
-   * Spotlight rotation = TV presentation only (not Redux).
-   * - pin owns region via selectSpotlightItem; timer off while pinned
-   * - no timer for 0 or 1 active item
-   * - clamp index when the active list changes
-   * - clearInterval on cleanup so index does not advance while pinned
-   * - fade is separate dual-layer state below
-   *
-   * Phase 1 overlay: when the resolved agenda has >=1 currently-happening event
-   * (startMin <= nowMin < endMin, excluding canceled/suppressed since the agenda
-   * already omits those), the Spotlight region temporarily rotates between the
-   * active EVENTS instead of the normal Spotlight slides. When zero active events
-   * remain, normal Spotlight rotation resumes (preserving its prior index).
+   * Spotlight pool priority (TV only):
+   * 1) hard system (Roll Call lead-in+, closing / Final Break / House Closed)
+   * 2) staff class / one-time happening
+   * 3) fallback system (Good Morning — only if no active class)
+   * 4) normal Spotlight rotation
+   * Good Morning never blocks an active class; closing/Roll Call still do.
    */
   const [rotateIndex, setRotateIndex] = useState(0);
 
@@ -357,29 +442,62 @@ export default function HouseDisplayPage() {
     [spotlightItems],
   );
 
-  // Active happening events, derived from the SAME resolved agenda the schedule
-  // uses (one source of truth: recurring + one-time included, canceled/suppressed
-  // excluded by resolution).
   const activeEvents = useActiveEvents(agendaItems, hopeNow.nowMin);
 
-  // Phase 1 priority: active events take over Spotlight entirely.
-  const takeoverActive = activeEvents.length > 0;
+  const hardSystemTakeover =
+    systemSpotlight != null && systemSpotlight.priority === "hard";
+  const fallbackSystem =
+    systemSpotlight != null && systemSpotlight.priority === "fallback"
+      ? systemSpotlight
+      : null;
+  const eventTakeover = !hardSystemTakeover && activeEvents.length > 0;
+  const fallbackSystemTakeover =
+    !hardSystemTakeover && !eventTakeover && fallbackSystem != null;
+  const systemTakeover = hardSystemTakeover || fallbackSystemTakeover;
+  const takeoverActive = systemTakeover || eventTakeover;
 
-  // Active Spotlight slide pool: either active events (when any) or normal
-  // rotation pool (when none). A single index + single interval drives both.
-    const activeSlides: SpotlightSlide[] = useMemo(
-    () =>
-      takeoverActive
-        ? activeEvents.map(agendaItemToSlide)
-        : activeSpotlight.map((item) => ({ kind: "spotlight", id: item.id, item })),
-    [takeoverActive, activeEvents, activeSpotlight],
-  );
+  const activeSlides: SpotlightSlide[] = useMemo(() => {
+    if (hardSystemTakeover && systemSpotlight) {
+      return [
+        {
+          kind: "system",
+          id: systemSpotlight.id,
+          system: systemSpotlight,
+        },
+      ];
+    }
+    if (eventTakeover) {
+      return activeEvents.map(agendaItemToSlide);
+    }
+    if (fallbackSystemTakeover && fallbackSystem) {
+      return [
+        {
+          kind: "system",
+          id: fallbackSystem.id,
+          system: fallbackSystem,
+        },
+      ];
+    }
+    return activeSpotlight.map((item) => ({
+      kind: "spotlight" as const,
+      id: item.id,
+      item,
+    }));
+  }, [
+    hardSystemTakeover,
+    systemSpotlight,
+    eventTakeover,
+    activeEvents,
+    fallbackSystemTakeover,
+    fallbackSystem,
+    activeSpotlight,
+  ]);
 
   const activeSlidesKey = activeSlides.map((s) => s.id).join("|");
-  const runRotation = !takeoverActive && shouldRunSpotlightRotation(spotlightItems);
+  const runRotation =
+    !takeoverActive && shouldRunSpotlightRotation(spotlightItems);
 
-  // Clamp the index to whichever pool is live so rotation stays in range.
-  const slideCount = takeoverActive ? activeEvents.length : activeSpotlight.length;
+  const slideCount = activeSlides.length;
 
   // Live values for video ended/error handlers (avoid stale closures; no render loop).
   const slideCountRef = useRef(slideCount);
@@ -440,13 +558,9 @@ export default function HouseDisplayPage() {
   // useMemo (identity-stable): the crossfade effect below depends on this
   // object, so it must not be a fresh object on every render.
   const spotlightSlide = useMemo<SpotlightSlide | null>(() => {
-    if (takeoverActive) {
-      const ev = activeEvents[rotateIndex];
-      return ev ? agendaItemToSlide(ev) : null;
-    }
-    const item = activeSpotlight[rotateIndex];
-    return item ? { kind: "spotlight", id: item.id, item } : null;
-  }, [takeoverActive, activeEvents, activeSpotlight, rotateIndex]);
+    if (activeSlides.length === 0) return null;
+    return activeSlides[clampSpotlightRotateIndex(rotateIndex, activeSlides.length)] ?? null;
+  }, [activeSlides, rotateIndex]);
 
   const nowMarker = useMemo(
     () => nowLineLayout(hopeNow.nowMin, timeline),
@@ -614,13 +728,134 @@ export default function HouseDisplayPage() {
     };
   }, [spotlightSlide]);
 
-  /** Render a Spotlight slide: either a normal item (flyer/video/card) or an
-   * active happening event (text-only "HAPPENING NOW" card).
+  /** Render a Spotlight slide: normal item, active event, or system house state.
    * layer marks which dual-layer slot owns a video ref (Phase 2 pause/play). */
   function renderSpotlightSlide(
     slide: SpotlightSlide,
     layer: "a" | "b",
   ) {
+    // System house state (Roll Call / closing / Final Break / House Closed)
+    if (slide.kind === "system") {
+      const sys = slide.system;
+      const hasImage =
+        typeof sys.imageUrl === "string" && sys.imageUrl.trim().length > 0;
+      return (
+        <Box
+          role="status"
+          aria-live="polite"
+          sx={{
+            flex: 1,
+            minHeight: 0,
+            height: "100%",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            alignItems: "center",
+            px: { xs: 2, md: 3 },
+            py: { xs: 2, md: 3 },
+            gap: 1.5,
+            textAlign: "center",
+            bgcolor:
+              sys.kind === "house_closed"
+                ? "rgba(127, 29, 29, 0.35)"
+                : sys.kind === "final_break"
+                  ? "rgba(30, 64, 175, 0.28)"
+                  : sys.kind === "rollCall"
+                    ? "rgba(6, 78, 59, 0.28)"
+                    : "rgba(120, 53, 15, 0.28)",
+          }}
+        >
+          <Typography
+            sx={{
+              fontWeight: 700,
+              letterSpacing: 2,
+              textTransform: "uppercase",
+              fontSize: "clamp(0.95rem, 1.5vw, 1.35rem)",
+              lineHeight: 1.15,
+              m: 0,
+              opacity: 0.85,
+            }}
+          >
+            House status
+          </Typography>
+          {hasImage ? (
+            <Box
+              sx={{
+                flex: "0 0 auto",
+                width: "100%",
+                maxWidth: "min(56vh, 520px)",
+                height: "clamp(110px, 28vh, 420px)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Box
+                component="img"
+                src={sys.imageUrl!}
+                alt={sys.title}
+                sx={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "contain",
+                  objectPosition: "center",
+                  display: "block",
+                }}
+              />
+            </Box>
+          ) : (
+            <Box
+              aria-hidden
+              sx={{
+                width: "min(70%, 280px)",
+                height: "clamp(72px, 12vh, 120px)",
+                borderRadius: 2,
+                border: "2px dashed rgba(224,225,221,0.45)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                opacity: 0.75,
+              }}
+            >
+              <Typography
+                sx={{
+                  fontSize: "clamp(0.7rem, 1.1vw, 0.95rem)",
+                  fontWeight: 600,
+                  letterSpacing: 1,
+                  textTransform: "uppercase",
+                  opacity: 0.7,
+                }}
+              >
+                Graphic soon
+              </Typography>
+            </Box>
+          )}
+          <Typography
+            sx={{
+              fontWeight: 800,
+              fontSize: "clamp(1.35rem, 2.8vw, 2.6rem)",
+              lineHeight: 1.12,
+              m: 0,
+            }}
+          >
+            {sys.title}
+          </Typography>
+          {sys.subtitle ? (
+            <Typography
+              sx={{
+                fontWeight: 600,
+                opacity: 0.85,
+                fontSize: "clamp(1rem, 1.7vw, 1.45rem)",
+                m: 0,
+              }}
+            >
+              {sys.subtitle}
+            </Typography>
+          ) : null}
+        </Box>
+      );
+    }
+
     // Phase 1: active happening event takeover.
     if (slide.kind === "activeEvent") {
       const ev = slide.event;
@@ -731,6 +966,10 @@ export default function HouseDisplayPage() {
           ) : null}
         </Box>
       );
+    }
+
+    if (slide.kind !== "spotlight") {
+      return null;
     }
 
     const item = slide.item;
@@ -973,7 +1212,7 @@ export default function HouseDisplayPage() {
         </Box>
       </Box>
 
-      {/* ---- 2. Day agenda timeline ~50–55% height; ~60% width + empty right reserve ---- */}
+      {/* ---- 2. Day agenda timeline ~50–55% height; schedule + Spotlight ---- */}
       <Box
         sx={{
           flex: "1 1 52%",
@@ -1088,6 +1327,23 @@ export default function HouseDisplayPage() {
                 />
               ))}
 
+              {/* Closing: current-stage hairline on board only (banner is shell chrome above). */}
+              {activeClosingMarker != null ? (
+                <Box
+                  key={`closing-line-${activeClosingMarker.id}`}
+                  aria-hidden
+                  sx={{
+                    position: "absolute",
+                    left: 0,
+                    right: 0,
+                    top: `${activeClosingMarker.topPct}%`,
+                    borderTop: "2px dashed rgba(251, 191, 36, 0.65)",
+                    zIndex: 2,
+                    pointerEvents: "none",
+                  }}
+                />
+              ) : null}
+
               {nowMarker != null ? (
                 <Box
                   aria-hidden
@@ -1117,7 +1373,10 @@ export default function HouseDisplayPage() {
                 );
 
                 const stateSx = blockSxForState(visualState);
-                const isOneTime = sourceTypeById.get(b.id) === "oneTime";
+                const agendaRow = agendaItemById.get(b.id);
+                const isOneTimeGlow = agendaRow
+                  ? isOneTimeGlowAgendaItem(agendaRow)
+                  : sourceTypeById.get(b.id) === "oneTime";
 
                 // Centered single line for room-scale TV; progressive simplify on narrow columns.
                 const blockLine =
@@ -1162,7 +1421,7 @@ export default function HouseDisplayPage() {
                       ...stateSx,
                     }}
                   >
-                    {isOneTime ? (
+                    {isOneTimeGlow ? (
                       <Box
                         sx={{
                           position: "absolute",
