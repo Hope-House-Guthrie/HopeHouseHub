@@ -31,18 +31,29 @@
  * - addSpotlightFlyer (UI id + imageUrl; append sortOrder end; no persist;
  *   no base64/localStorage media — session Redux + bundled/@assets or object URL)
  *
+ * DONE (Daily Affirmations — FE prototype complete):
+ * - content.affirmations[] + pinnedAffirmationId + affirmationRotateMs
+ * - Reducers: add / edit / remove / pin / unpin / setAffirmationRotateMs
+ * - edit enabled:false on pinned id clears pin; enable does not re-pin
+ * - DEV hydrate/persist via schedulePersistence (same LS key; additive)
+ * - persistScheduleSources always writes announcements + affirmation bundle
+ * - affirmationText kept as TV empty-pool fallback string
+ * - No live cross-tab sync; backend should own truth later
+ *
  * NOT YET:
  * - override exception UI, delete definition, ended-list conflict UI
  * - Spotlight Add Video / Edit / Delete / sound / pin / persist
+ * - Affirmation storage/visibility rehydrate for open TV tabs
  * - Backend API / thunks
  * - Midnight re-resolve without refresh
  *
  * Who uses this:
- *   - manage.tsx  → Today cancel/restore; Add/Edit/End/Reinstate Recurring; One-Time; Spotlight
- *   - index.tsx   → TV selects content only
+ *   - manage.tsx  → Today cancel/restore; Add/Edit/End/Reinstate Recurring; One-Time; Spotlight; Affirmations
+ *   - index.tsx   → TV selects content only (affirmations via selectAffirmationText)
  */
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import type {
+  HouseDisplayAffirmation,
   HouseDisplayAnnouncement,
   HouseDisplayContent,
   HouseDisplayState,
@@ -50,7 +61,10 @@ import type {
 import { timelineWindowForWeekday } from "../../../features/house-display/timeline";
 import { getHopeHouseNow } from "../../../features/house-display/time";
 // Relative paths: Bun hot sometimes fails @/ resolve on newly added feature files
-import { resolveAgendaForDate, weekdayFromDateYmd } from "../../../features/house-display/resolveAgenda";
+import {
+  resolveAgendaForDate,
+  weekdayFromDateYmd,
+} from "../../../features/house-display/resolveAgenda";
 import { INITIAL_SCHEDULE_SOURCES } from "../../../features/house-display/scheduleSeed";
 import type {
   HouseDisplayOneTimeEvent,
@@ -59,9 +73,11 @@ import type {
   HouseDisplayWeekday,
 } from "../../../features/house-display/scheduleTypes";
 import {
+  loadAffirmationPersist,
   loadAnnouncements,
   loadScheduleSources,
   saveScheduleSources,
+  type HouseDisplayAffirmationPersist,
 } from "../../../features/house-display/schedulePersistence";
 // Bundled flyer/video URLs (Bun @assets). public/house-display/* is NOT served by dev-server.
 // test-video.mp4 is local-only (gitignored) — DEV prototype asset, not production media.
@@ -233,11 +249,17 @@ function syncAgendaFromSchedule(
 }
 
 /**
- * DEV/prototype: persist sources only after schedule mutators.
+ * DEV/prototype: persist sources + announcements + affirmation bundle.
  * Backend will replace this later — not a general app persistence layer.
+ * Always pass announcements + affirmations together so whole-key rewrite
+ * does not drop either optional field.
  */
 function persistScheduleSources(state: HouseDisplayState): void {
-  // One DEV write path: schedule sources + current announcement lines.
+  const affirmationPersist: HouseDisplayAffirmationPersist = {
+    affirmations: state.content.affirmations,
+    pinnedAffirmationId: state.content.pinnedAffirmationId,
+    affirmationRotateMs: state.content.affirmationRotateMs,
+  };
   saveScheduleSources(
     {
       recurring: state.schedule.recurring,
@@ -245,6 +267,7 @@ function persistScheduleSources(state: HouseDisplayState): void {
       exceptions: state.schedule.exceptions,
     },
     state.content.announcements,
+    affirmationPersist,
   );
 }
 
@@ -305,19 +328,61 @@ const SEED_ANNOUNCEMENTS: HouseDisplayAnnouncement[] = [
   },
 ];
 
+/** Seed Daily Affirmation library when DEV storage has none (ids a1–a3). */
+const SEED_AFFIRMATIONS: HouseDisplayAffirmation[] = [
+  {
+    id: "a1",
+    text: "Progress, not perfection - show up for yourself and the house today.",
+    enabled: true,
+  },
+  {
+    id: "a2",
+    text: "Love yourself enough to put yourself first.",
+    enabled: true,
+  },
+  {
+    id: "a3",
+    text: "People do better when they know better.",
+    enabled: true,
+  },
+];
+
+/** Default staff rotate interval (1 hour) when storage has none/invalid. */
+const SEED_AFFIRMATION_ROTATE_MS = 60 * 60 * 1000;
+
 /**
  * Build TV content tree. agendaItems = resolve(Chicago dateKey, sources).
- * Spotlight / lower band still static seed for now.
+ * Spotlight still seed for now.
  * getHopeHouseNow OK here for first paint only — not inside Cancel/Restore.
- * announcements: stored lines when present, else the seed pair above.
+ * announcements / affirmationPersist: stored when present, else seeds.
  */
 function buildContent(
   schedule: HouseDisplayScheduleSources,
   dateYmd?: string,
   announcements: HouseDisplayAnnouncement[] = SEED_ANNOUNCEMENTS,
+  affirmationPersist?: HouseDisplayAffirmationPersist | null,
 ): HouseDisplayContent {
   const ymd = dateYmd ?? getHopeHouseNow().dateKey;
   const weekday = weekdayFromDateYmd(ymd);
+
+  const affirmations = affirmationPersist?.affirmations ?? SEED_AFFIRMATIONS;
+  let pinnedAffirmationId =
+    affirmationPersist?.pinnedAffirmationId ?? null;
+  // Drop stale pin ids that are not in the loaded library
+  if (
+    pinnedAffirmationId != null &&
+    !affirmations.some((a) => a.id === pinnedAffirmationId)
+  ) {
+    pinnedAffirmationId = null;
+  }
+  const affirmationRotateMs =
+    affirmationPersist != null &&
+    typeof affirmationPersist.affirmationRotateMs === "number" &&
+    Number.isFinite(affirmationPersist.affirmationRotateMs) &&
+    affirmationPersist.affirmationRotateMs > 0
+      ? affirmationPersist.affirmationRotateMs
+      : SEED_AFFIRMATION_ROTATE_MS;
+
   return {
     header: {
       identityLabel: "Hope House Guthrie",
@@ -390,8 +455,15 @@ function buildContent(
       { id: "u2", timeLabel: "6:00 PM", title: "Main NA" },
       { id: "u3", timeLabel: "7:30 PM", title: "Quiet Hours prep" },
     ],
+
+    // Legacy single-string fallback for TV until library empty edge cases
     affirmationText:
       "Progress, not perfection - show up for yourself and the house today.",
+
+    affirmations,
+    pinnedAffirmationId,
+    affirmationRotateMs,
+
     announcements,
     birthday: {
       name: "Alex M.",
@@ -402,12 +474,13 @@ function buildContent(
 
 // Hydrate schedule SOURCES only. Invalid/missing localStorage → seed.
 // agendaItems always come from resolve (never read from storage).
-// Announcements hydrate from the same DEV key; missing/invalid → seed pair.
+// Announcements + affirmations hydrate from the same DEV key; missing → seed.
 const persistedSchedule = loadScheduleSources();
 const initialSchedule = cloneScheduleSources(
   persistedSchedule ?? INITIAL_SCHEDULE_SOURCES,
 );
 const persistedAnnouncements = loadAnnouncements();
+const persistedAffirmations = loadAffirmationPersist();
 
 const initialState: HouseDisplayState = {
   schedule: initialSchedule,
@@ -415,6 +488,7 @@ const initialState: HouseDisplayState = {
     initialSchedule,
     undefined,
     persistedAnnouncements ?? SEED_ANNOUNCEMENTS,
+    persistedAffirmations,
   ),
 };
 
@@ -462,6 +536,149 @@ export const houseDisplaySlice = createSlice({
       state.content.announcements = state.content.announcements.filter(
         (a) => a.id !== id,
       );
+      persistScheduleSources(state);
+    },
+
+    /**
+     * Add one Daily Affirmation to the library.
+     * UI generates id BEFORE dispatch - no clock/random here.
+     * Trimmed text required; duplicate id is a no-op.
+     * Does not change pin or rotateMs. DEV persist via shared path.
+     */
+    addAffirmation: (state, action: PayloadAction<HouseDisplayAffirmation>) => {
+      const rawId = action.payload.id;
+      const rawText = action.payload.text;
+      const id = typeof rawId === "string" ? rawId.trim() : "";
+      const text = typeof rawText === "string" ? rawText.trim() : "";
+      if (!id || !text) return;
+
+      const duplicate = state.content.affirmations.some((a) => a.id === id);
+      if (duplicate) return;
+
+      const enabled =
+        typeof action.payload.enabled === "boolean"
+          ? action.payload.enabled
+          : true;
+
+      state.content.affirmations.push({ id, text, enabled });
+      persistScheduleSources(state);
+    },
+
+    /**
+     * Edit one Daily Affirmation by id (text and/or enabled).
+     * Unknown id = no-op. Empty trimmed text = no-op (keeps old row).
+     * Disabling the currently pinned id clears the pin (row stays in library).
+     * Enabling does not re-pin. DEV persist via shared path.
+     */
+    editAffirmation: (
+      state,
+      action: PayloadAction<{
+        id: string;
+        text?: string;
+        enabled?: boolean;
+      }>,
+    ) => {
+      const rawId = action.payload.id;
+      const id = typeof rawId === "string" ? rawId.trim() : "";
+      if (!id) return;
+
+      const item = state.content.affirmations.find((a) => a.id === id);
+      if (!item) return;
+
+      let changed = false;
+
+      if (typeof action.payload.text === "string") {
+        const text = action.payload.text.trim();
+        if (!text) return;
+        if (item.text !== text) {
+          item.text = text;
+          changed = true;
+        }
+      }
+
+      if (typeof action.payload.enabled === "boolean") {
+        if (item.enabled !== action.payload.enabled) {
+          item.enabled = action.payload.enabled;
+          changed = true;
+          // Disabled pin must not keep owning TV — clear pin, keep row
+          if (
+            action.payload.enabled === false &&
+            state.content.pinnedAffirmationId === id
+          ) {
+            state.content.pinnedAffirmationId = null;
+          }
+        }
+      }
+
+      if (changed) {
+        persistScheduleSources(state);
+      }
+    },
+
+    /**
+     * Remove one Daily Affirmation by id. Idempotent - missing id is a no-op.
+     * If the removed id was pinned, clear the pin so TV returns to rotation.
+     * Does not change rotateMs. DEV persist via shared path.
+     */
+    removeAffirmation: (state, action: PayloadAction<{ id: string }>) => {
+      const rawId = action.payload.id;
+      const id = typeof rawId === "string" ? rawId.trim() : "";
+      if (!id) return;
+
+      const before = state.content.affirmations.length;
+      state.content.affirmations = state.content.affirmations.filter(
+        (a) => a.id !== id,
+      );
+      if (state.content.affirmations.length === before) return;
+
+      if (state.content.pinnedAffirmationId === id) {
+        state.content.pinnedAffirmationId = null;
+      }
+      persistScheduleSources(state);
+    },
+
+    /**
+     * Pin one Daily Affirmation by id (at most one pin).
+     * Must exist, be enabled, and have non-empty text — else no-op.
+     * Replaces any previous pin. Stays pinned until unpin (no 12h expiry).
+     * DEV persist via shared path.
+     */
+    pinAffirmation: (state, action: PayloadAction<{ id: string }>) => {
+      const rawId = action.payload.id;
+      const id = typeof rawId === "string" ? rawId.trim() : "";
+      if (!id) return;
+
+      const item = state.content.affirmations.find((a) => a.id === id);
+      if (!item) return;
+      if (!item.enabled) return;
+      if (!item.text.trim()) return;
+
+      if (state.content.pinnedAffirmationId === id) return;
+
+      state.content.pinnedAffirmationId = id;
+      persistScheduleSources(state);
+    },
+
+    /**
+     * Clear the pinned Daily Affirmation (resume auto-rotation).
+     * Idempotent if already null. DEV persist via shared path.
+     */
+    unpinAffirmation: (state) => {
+      if (state.content.pinnedAffirmationId == null) return;
+      state.content.pinnedAffirmationId = null;
+      persistScheduleSources(state);
+    },
+
+    /**
+     * Staff-set auto-rotate interval for Daily Affirmations (ms).
+     * Must be a finite number > 0. Invalid values = no-op.
+     * Does not change pin or the library list. DEV persist via shared path.
+     */
+    setAffirmationRotateMs: (state, action: PayloadAction<{ ms: number }>) => {
+      const ms = action.payload.ms;
+      if (typeof ms !== "number" || !Number.isFinite(ms) || ms <= 0) return;
+      if (state.content.affirmationRotateMs === ms) return;
+      state.content.affirmationRotateMs = ms;
       persistScheduleSources(state);
     },
 
@@ -1032,6 +1249,12 @@ export const {
   setContent,
   addAnnouncement,
   removeAnnouncement,
+  addAffirmation,
+  editAffirmation,
+  removeAffirmation,
+  pinAffirmation,
+  unpinAffirmation,
+  setAffirmationRotateMs,
   setSpotlightItemActive,
   moveSpotlightItem,
   addSpotlightFlyer,

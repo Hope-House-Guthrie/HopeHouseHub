@@ -14,6 +14,8 @@
 * - Spotlight auto-rotation every 15s (local index; pin pauses)
 * - Spotlight soft slide + crossfade ~750ms (dual local layers; ±30px; TV only)
 * - Overlap column layout for simultaneous events
+* - Daily Affirmation lower band: selectAffirmationText (pin → enabled rotate)
+*   + legacy affirmationText fallback when enabled pool empty; hopeNow tick
 *
 * NOT YET:
 * - Weather API (header still uses seed weatherText)
@@ -22,6 +24,7 @@
 * - Fallback right-rail when Spotlight empty
 * - Half-hour ticks / themes
 * - Schedule day rollover from backend
+* - Affirmation live cross-tab rehydrate (refresh after Manage changes)
 */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
@@ -48,6 +51,7 @@ import {
   shouldRunSpotlightRotation,
   SPOTLIGHT_ROTATE_MS,
 } from "../../../features/house-display/spotlight";
+import { selectAffirmationText } from "../../../features/house-display/affirmations";
 import { weekdayFromDateYmd } from "../../../features/house-display/resolveAgenda";
 import { useHopeHouseNow } from "../../../features/house-display/useHopeHouseNow";
 // Program logos for active-event Spotlight (bundled @assets, same as flyers).
@@ -250,12 +254,40 @@ export default function HouseDisplayPage() {
     spotlightItems,
     upcomingItems,
     affirmationText,
+    affirmations,
+    pinnedAffirmationId,
+    affirmationRotateMs,
     announcements,
     birthday,
   } = content;
 
   /** One snapshot -> header clock/date, event states, NOW line. */
   const hopeNow = useHopeHouseNow();
+
+  /**
+   * Live Daily Affirmation: pin wins; else rotate enabled by staff interval.
+   * Recomputes on hopeNow minute tick so long intervals still advance.
+   * Falls back to legacy affirmationText if library yields null.
+   */
+  const liveAffirmationText = useMemo(() => {
+    const selected = selectAffirmationText({
+      affirmations: affirmations ?? [],
+      pinnedAffirmationId: pinnedAffirmationId ?? null,
+      affirmationRotateMs:
+        typeof affirmationRotateMs === "number" && affirmationRotateMs > 0
+          ? affirmationRotateMs
+          : 60 * 60 * 1000,
+      nowMs: hopeNow.instant.getTime(),
+    });
+    if (selected != null && selected.trim()) return selected;
+    return affirmationText?.trim() ? affirmationText : "";
+  }, [
+    affirmations,
+    pinnedAffirmationId,
+    affirmationRotateMs,
+    hopeNow.instant,
+    affirmationText,
+  ]);
 
   /**
    * Live day window from Chicago weekday (not stale Redux seed 7–9p).
@@ -1430,7 +1462,7 @@ export default function HouseDisplayPage() {
               lineHeight: 1.3,
             }}
           >
-            {affirmationText}
+            {liveAffirmationText}
           </Typography>
         </Box>
 

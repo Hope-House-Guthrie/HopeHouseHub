@@ -68,12 +68,24 @@
  * - No base64; no localStorage media; no spotlight persist; no TV renderer change
  * - Full reload drops added flyers (seed rebuild)
  *
+ * DONE (Daily Affirmations — FE prototype complete):
+ * - Card after Spotlight Content, before Announcements
+ * - Add / Edit / Remove / Enable / Disable / Pin / Unpin / rotate-interval Select
+ * - Slice: addAffirmation, editAffirmation, removeAffirmation, pinAffirmation,
+ *   unpinAffirmation, setAffirmationRotateMs + SEED_AFFIRMATIONS hydrate
+ * - Pin wins on TV; disable of pinned id clears pin (row stays); enable does not re-pin
+ * - DEV persist on same LS key as schedule/announcements (library + pin + rotateMs)
+ * - Separate Full Display tab picks up changes after refresh (no live cross-tab sync)
+ * - Legacy content.affirmationText = TV fallback when enabled pool empty
+ * - Production backend should replace localStorage as source of truth later
+ *
  * NEXT (Spotlight Content): Add Video / Edit / Delete / pin / sound / persist — parked
  * (Schedule Stage D/E may still appear elsewhere; this track is Spotlight Content.)
  *
  * NOT YET:
  * - manage One-Time conflict polish leftovers if any
  * - override exception UI, delete definition, ended-list conflict UI
+ * - Affirmation live cross-tab / storage event rehydrate (refresh TV after Manage)
  * - Backend API / thunks
  * - Midnight re-resolve without refresh
  *
@@ -81,7 +93,13 @@
  * - TV: pages/prototype/house-display/index.tsx → /house-display
  * - Manage (this file): → /prototype/house-display
  */
-import { useMemo, useRef, useState, type ChangeEvent, type FormEvent } from "react";
+import {
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+} from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   Box,
@@ -115,6 +133,7 @@ import {
 } from "../../../features/house-display/scheduleFormat";
 import {
   formatMinToTimeInput,
+  newAffirmationId,
   newAnnouncementId,
   newRecurringClassId,
   newOneTimeEventId,
@@ -140,19 +159,25 @@ import { formatTimeLabel } from "../../../features/house-display/timeline";
 import { getHopeHouseNow } from "../../../features/house-display/time";
 import {
   addAnnouncement,
+  addAffirmation,
   addOneTimeEvent,
   addRecurringClass,
   addSpotlightFlyer,
   cancelOccurrence,
+  editAffirmation,
   editOneTimeEvent,
   editRecurringClass,
   endRecurringClass,
   moveSpotlightItem,
+  pinAffirmation,
   reinstateRecurringClass,
+  removeAffirmation,
   removeAnnouncement,
   restoreOccurrence,
+  setAffirmationRotateMs,
   setSpotlightItemActive,
   suppressRecurringOccurrence,
+  unpinAffirmation,
   unsuppressRecurringOccurrence,
 } from "../../../store/slices/prototype/houseDisplay";
 import {
@@ -205,6 +230,15 @@ export default function HouseDisplayManagePage() {
   const announcements = useSelector(
     (state: RootState) => state.houseDisplay.content.announcements,
   );
+  const affirmations = useSelector(
+    (state: RootState) => state.houseDisplay.content.affirmations,
+  );
+  const pinnedAffirmationId = useSelector(
+    (state: RootState) => state.houseDisplay.content.pinnedAffirmationId,
+  );
+  const affirmationRotateMs = useSelector(
+    (state: RootState) => state.houseDisplay.content.affirmationRotateMs,
+  );
   const spotlightItems = useSelector(
     (state: RootState) => state.houseDisplay.content.spotlightItems,
   );
@@ -250,6 +284,15 @@ export default function HouseDisplayManagePage() {
   // --- Announcements state ---
   const [newAnnouncementText, setNewAnnouncementText] = useState("");
   const [addAnnouncementError, setAddAnnouncementError] = useState("");
+
+  // --- Affirmations state (list + add/edit/pin/enable + rotate interval) ---
+  const [newAffirmationText, setNewAffirmationText] = useState("");
+  const [addAffirmationError, setAddAffirmationError] = useState("");
+  const [editingAffirmationId, setEditingAffirmationId] = useState<string | null>(
+    null,
+  );
+  const [editingAffirmationText, setEditingAffirmationText] = useState("");
+  const [editAffirmationError, setEditAffirmationError] = useState("");
 
   // --- Add Flyer dialog (Spotlight Content Phase 4) ---
   const [addFlyerOpen, setAddFlyerOpen] = useState(false);
@@ -441,6 +484,86 @@ export default function HouseDisplayManagePage() {
 
   const handleRemoveAnnouncement = (announcementId: string) => {
     dispatch(removeAnnouncement({ id: announcementId }));
+  };
+
+  // --- Affirmation handlers (add/edit/remove/pin/enable/rotate) ---
+  const handleAddAffirmationSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    const text = newAffirmationText.trim();
+    if (!text) {
+      setAddAffirmationError("Affirmation text is required.");
+      return;
+    }
+    dispatch(
+      addAffirmation({
+        id: newAffirmationId(),
+        text,
+        enabled: true,
+      }),
+    );
+    setNewAffirmationText("");
+    setAddAffirmationError("");
+  };
+
+  const handleRemoveAffirmation = (affirmationId: string) => {
+    dispatch(removeAffirmation({ id: affirmationId }));
+  };
+
+  const handlePinAffirmation = (affirmationId: string) => {
+    dispatch(pinAffirmation({ id: affirmationId }));
+  };
+
+  const handleUnpinAffirmation = () => {
+    dispatch(unpinAffirmation());
+  };
+
+  /**
+   * Soft on/off for rotation pool via editAffirmation({ enabled }).
+   * Disable keeps the row; reducer clears pin if this id was pinned.
+   * Enable does not re-pin.
+   */
+  const handleSetAffirmationEnabled = (
+    affirmationId: string,
+    enabled: boolean,
+  ) => {
+    dispatch(
+      editAffirmation({
+        id: affirmationId,
+        enabled,
+      }),
+    );
+  };
+
+  const handleAffirmationRotateMsChange = (ms: number) => {
+    dispatch(setAffirmationRotateMs({ ms }));
+  };
+
+  const handleStartEditAffirmation = (id: string, text: string) => {
+    setEditingAffirmationId(id);
+    setEditingAffirmationText(text);
+    setEditAffirmationError("");
+  };
+
+  const handleCancelEditAffirmation = () => {
+    setEditingAffirmationId(null);
+    setEditingAffirmationText("");
+    setEditAffirmationError("");
+  };
+
+  const handleSaveEditAffirmation = () => {
+    if (!editingAffirmationId) return;
+    const text = editingAffirmationText.trim();
+    if (!text) {
+      setEditAffirmationError("Affirmation text is required.");
+      return;
+    }
+    dispatch(
+      editAffirmation({
+        id: editingAffirmationId,
+        text,
+      }),
+    );
+    handleCancelEditAffirmation();
   };
 
   /** Drop pending file object URL without touching Redux (cancel / re-pick). */
@@ -2109,6 +2232,261 @@ export default function HouseDisplayManagePage() {
           </DialogActions>
         </Box>
       </Dialog>
+
+      {/* Daily Affirmations — manage library (TV lower band) */}
+      <Card sx={{ maxWidth: 720 }}>
+        <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <Box>
+            <Typography variant="h6">Daily Affirmations</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              Library for the TV lower-band Daily affirmation. Pin holds one
+              line until Unpin. Otherwise Full Display rotates enabled lines by
+              the interval below. Disable keeps a row out of rotation without
+              deleting it. Changes save in this browser (DEV); refresh the Full
+              Display tab to see them (no live cross-tab sync yet).
+            </Typography>
+          </Box>
+
+          <FormControl sx={{ maxWidth: 320 }} size="small">
+            <InputLabel id="affirmation-rotate-ms-label">
+              Auto-rotate interval
+            </InputLabel>
+            <Select
+              labelId="affirmation-rotate-ms-label"
+              label="Auto-rotate interval"
+              value={affirmationRotateMs}
+              onChange={(e) => {
+                const ms = Number(e.target.value);
+                if (!Number.isFinite(ms) || ms <= 0) return;
+                handleAffirmationRotateMsChange(ms);
+              }}
+              inputProps={{ "aria-label": "Auto-rotate interval" }}
+            >
+              <MenuItem value={15 * 60 * 1000}>15 minutes</MenuItem>
+              <MenuItem value={30 * 60 * 1000}>30 minutes</MenuItem>
+              <MenuItem value={60 * 60 * 1000}>1 hour</MenuItem>
+              <MenuItem value={2 * 60 * 60 * 1000}>2 hours</MenuItem>
+              <MenuItem value={6 * 60 * 60 * 1000}>6 hours</MenuItem>
+              <MenuItem value={12 * 60 * 60 * 1000}>12 hours</MenuItem>
+            </Select>
+          </FormControl>
+
+          <Divider />
+
+          <Box
+            component="form"
+            onSubmit={handleAddAffirmationSubmit}
+            sx={{ display: "flex", flexDirection: "column", gap: 1 }}
+          >
+            <Box
+              sx={{
+                display: "flex",
+                flexWrap: "wrap",
+                alignItems: "flex-start",
+                gap: 1,
+              }}
+            >
+              <TextField
+                label="New affirmation"
+                value={newAffirmationText}
+                onChange={(e) => {
+                  setNewAffirmationText(e.target.value);
+                  if (addAffirmationError) {
+                    setAddAffirmationError("");
+                  }
+                }}
+                fullWidth
+                slotProps={{ input: { "aria-label": "New affirmation" } }}
+                sx={{ flex: "1 1 240px", minWidth: 0 }}
+              />
+              <Button
+                type="submit"
+                variant="contained"
+                sx={{ flex: "0 0 auto" }}
+              >
+                Add Affirmation
+              </Button>
+            </Box>
+            {addAffirmationError ? (
+              <Typography variant="body2" color="error">
+                {addAffirmationError}
+              </Typography>
+            ) : null}
+          </Box>
+
+          {affirmations.length === 0 ? (
+            <Typography variant="body2" color="text.secondary">
+              No affirmations in the library yet.
+            </Typography>
+          ) : (
+            <Stack divider={<Divider flexItem />} spacing={0}>
+              {affirmations.map((item) => (
+                <Box
+                  key={item.id}
+                  sx={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 1.5,
+                    py: 1.5,
+                  }}
+                >
+                  <Box sx={{ minWidth: 0, flex: "1 1 200px" }}>
+                    {editingAffirmationId === item.id ? (
+                      <Box
+                        sx={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 1,
+                        }}
+                      >
+                        <TextField
+                          label="Edit affirmation"
+                          value={editingAffirmationText}
+                          onChange={(e) => {
+                            setEditingAffirmationText(e.target.value);
+                            if (editAffirmationError) {
+                              setEditAffirmationError("");
+                            }
+                          }}
+                          fullWidth
+                          multiline
+                          minRows={2}
+                          slotProps={{
+                            input: { "aria-label": "Edit affirmation" },
+                          }}
+                        />
+                        {editAffirmationError ? (
+                          <Typography variant="body2" color="error">
+                            {editAffirmationError}
+                          </Typography>
+                        ) : null}
+                      </Box>
+                    ) : (
+                      <>
+                        <Typography
+                          variant="body1"
+                          sx={{ fontWeight: 500, minWidth: 0 }}
+                        >
+                          {item.text}
+                        </Typography>
+                        <Box
+                          sx={{
+                            display: "flex",
+                            flexWrap: "wrap",
+                            gap: 0.75,
+                            mt: 0.75,
+                          }}
+                        >
+                          <Chip
+                            size="small"
+                            label={item.enabled ? "Enabled" : "Disabled"}
+                            color={item.enabled ? "success" : "default"}
+                            variant="outlined"
+                          />
+                          {pinnedAffirmationId === item.id ? (
+                            <Chip
+                              size="small"
+                              label="Pinned"
+                              color="primary"
+                              variant="filled"
+                            />
+                          ) : null}
+                        </Box>
+                      </>
+                    )}
+                  </Box>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: 1,
+                      flex: "0 0 auto",
+                    }}
+                  >
+                    {editingAffirmationId === item.id ? (
+                      <>
+                        <Button
+                          type="button"
+                          size="small"
+                          variant="contained"
+                          onClick={handleSaveEditAffirmation}
+                        >
+                          Save
+                        </Button>
+                        <Button
+                          type="button"
+                          size="small"
+                          variant="text"
+                          onClick={handleCancelEditAffirmation}
+                        >
+                          Cancel
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button
+                          type="button"
+                          size="small"
+                          variant="text"
+                          onClick={() =>
+                            handleStartEditAffirmation(item.id, item.text)
+                          }
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          type="button"
+                          size="small"
+                          variant="outlined"
+                          onClick={() =>
+                            handleSetAffirmationEnabled(
+                              item.id,
+                              !item.enabled,
+                            )
+                          }
+                        >
+                          {item.enabled ? "Disable" : "Enable"}
+                        </Button>
+                        {pinnedAffirmationId === item.id ? (
+                          <Button
+                            type="button"
+                            size="small"
+                            variant="outlined"
+                            onClick={handleUnpinAffirmation}
+                          >
+                            Unpin
+                          </Button>
+                        ) : (
+                          <Button
+                            type="button"
+                            size="small"
+                            variant="outlined"
+                            disabled={!item.enabled}
+                            onClick={() => handlePinAffirmation(item.id)}
+                          >
+                            Pin
+                          </Button>
+                        )}
+                        <Button
+                          type="button"
+                          size="small"
+                          variant="text"
+                          color="error"
+                          onClick={() => handleRemoveAffirmation(item.id)}
+                        >
+                          Remove
+                        </Button>
+                      </>
+                    )}
+                  </Box>
+                </Box>
+              ))}
+            </Stack>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Announcements */}
       <Card sx={{ maxWidth: 720 }}>

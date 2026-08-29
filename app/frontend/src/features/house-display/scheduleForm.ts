@@ -137,6 +137,15 @@ export function newAnnouncementId(): string {
 }
 
 /**
+ * Staff-created Daily Affirmation id for Manage + TV library.
+ * Prefix aff- vs class- / once- / ann- / flyer- / seed a1...
+ * UI only - never call inside reducers.
+ */
+export function newAffirmationId(): string {
+  return `aff-${crypto.randomUUID()}`;
+}
+
+/**
  * Staff-created Spotlight flyer id (Manage + Add Flyer).
  * Prefix flyer- vs class- / once- / ann- / seed s1…
  * UI only — never call inside reducers.

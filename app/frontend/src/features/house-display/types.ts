@@ -92,6 +92,14 @@ export interface HouseDisplayAnnouncement {
   text: string;
 }
 
+/** One Daily Affirmation line for the TV lower band. */
+export interface HouseDisplayAffirmation {
+  id: string;
+  text: string;
+  /** false = saved but not in the auto-rotation pool. */
+  enabled: boolean;
+}
+
 /** Birthday corner (calculations/effects later). */
 export interface HouseDisplayBirthday {
   name: string;
@@ -161,6 +169,21 @@ export interface HouseDisplayContent {
   spotlightItems: HouseDisplaySpotlightItem[];
   upcomingItems: HouseDisplayUpcomingItem[];
   affirmationText: string;
+  /**
+   * Staff-managed Daily Affirmation library (Manage + TV).
+   * TV paints via selectAffirmationText; affirmationText is empty-pool fallback.
+   */
+  affirmations: HouseDisplayAffirmation[];
+  /**
+   * Id of the single pinned affirmation, or null = auto-rotate enabled pool.
+   * At most one pin; pin wins when id exists, is enabled, and has text.
+   */
+  pinnedAffirmationId: string | null;
+  /**
+   * How often the TV advances automatic affirmations (ms).
+   * Staff-set in Manage; seed default 1h in the slice.
+   */
+  affirmationRotateMs: number;
   announcements: HouseDisplayAnnouncement[];
   birthday: HouseDisplayBirthday;
 }
