@@ -26,13 +26,19 @@
  * - exception kind "suppress" (Replace/Hide this date ≠ cancel)
  * - suppressRecurringOccurrence / unsuppressRecurringOccurrence
  *
+ * DONE (Spotlight Content Phases 1–4 manage mutators):
+ * - setSpotlightItemActive / moveSpotlightItem (no spotlight persist)
+ * - addSpotlightFlyer (UI id + imageUrl; append sortOrder end; no persist;
+ *   no base64/localStorage media — session Redux + bundled/@assets or object URL)
+ *
  * NOT YET:
  * - override exception UI, delete definition, ended-list conflict UI
+ * - Spotlight Add Video / Edit / Delete / sound / pin / persist
  * - Backend API / thunks
  * - Midnight re-resolve without refresh
  *
  * Who uses this:
- *   - manage.tsx  → Today cancel/restore; Add/Edit/End/Reinstate Recurring; One-Time add/edit
+ *   - manage.tsx  → Today cancel/restore; Add/Edit/End/Reinstate Recurring; One-Time; Spotlight
  *   - index.tsx   → TV selects content only
  */
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
@@ -41,10 +47,10 @@ import type {
   HouseDisplayContent,
   HouseDisplayState,
 } from "../../../features/house-display/types";
-import { DEFAULT_TIMELINE_WINDOW } from "../../../features/house-display/timeline";
+import { timelineWindowForWeekday } from "../../../features/house-display/timeline";
 import { getHopeHouseNow } from "../../../features/house-display/time";
 // Relative paths: Bun hot sometimes fails @/ resolve on newly added feature files
-import { resolveAgendaForDate } from "../../../features/house-display/resolveAgenda";
+import { resolveAgendaForDate, weekdayFromDateYmd } from "../../../features/house-display/resolveAgenda";
 import { INITIAL_SCHEDULE_SOURCES } from "../../../features/house-display/scheduleSeed";
 import type {
   HouseDisplayOneTimeEvent,
@@ -94,6 +100,11 @@ export type EditRecurringClassPayload = {
   location?: string;
   /** Optional facilitator name (clear by passing empty string) */
   facilitator?: string;
+  /**
+   * Class Image / program logo for Spotlight takeover.
+   * undefined = keep existing; null = clear; string = replace (catalog key).
+   */
+  logoKey?: string | null;
 };
 
 /**
@@ -207,8 +218,12 @@ function syncAgendaFromSchedule(
   state: HouseDisplayState,
   dateYmd: string,
 ): void {
+  const weekday = weekdayFromDateYmd(dateYmd);
+  // Board hours track Hope House weekday open/close (Roll Call uses same open).
+  state.content.timeline = timelineWindowForWeekday(weekday);
   state.content.agendaItems = resolveAgendaForDate({
     dateYmd,
+    weekday,
     sources: {
       recurring: state.schedule.recurring,
       oneTime: state.schedule.oneTime,
@@ -302,6 +317,7 @@ function buildContent(
   announcements: HouseDisplayAnnouncement[] = SEED_ANNOUNCEMENTS,
 ): HouseDisplayContent {
   const ymd = dateYmd ?? getHopeHouseNow().dateKey;
+  const weekday = weekdayFromDateYmd(ymd);
   return {
     header: {
       identityLabel: "Hope House Guthrie",
@@ -309,8 +325,12 @@ function buildContent(
       dateText: "Sun, Aug 23",
       weatherText: "82° Clear",
     },
-    timeline: { ...DEFAULT_TIMELINE_WINDOW },
-    agendaItems: resolveAgendaForDate({ dateYmd: ymd, sources: schedule }),
+    timeline: timelineWindowForWeekday(weekday),
+    agendaItems: resolveAgendaForDate({
+      dateYmd: ymd,
+      weekday,
+      sources: schedule,
+    }),
     spotlightItems: [
       {
         id: "s1",
@@ -446,6 +466,134 @@ export const houseDisplaySlice = createSlice({
     },
 
     /**
+     * Set one Spotlight item active/inactive by id (Manage Enable/Disable).
+     * TV pool uses active only (getActiveSpotlightItems). Unknown id = no-op.
+     * Idempotent. Does not touch sortOrder, media fields, schedule, or storage.
+     * Backend/API will replace this client mock later.
+     */
+    setSpotlightItemActive: (
+      state,
+      action: PayloadAction<{ id: string; active: boolean }>,
+    ) => {
+      const rawId = action.payload.id;
+      const id = typeof rawId === "string" ? rawId.trim() : "";
+      if (!id) return;
+
+      const item = state.content.spotlightItems.find((s) => s.id === id);
+      if (!item) return;
+
+      item.active = action.payload.active;
+    },
+
+    /**
+     * Move one Spotlight item one position up/down in Manage order.
+     * Order = full list sorted by sortOrder then id (active + inactive).
+     * Swaps with neighbor, then renumbers sortOrder 0..n-1 (heals dups/gaps).
+     * First+up / last+down / unknown id = no-op. No persist. No media/active/pin changes.
+     * Backend/API will replace this client mock later.
+     */
+    moveSpotlightItem: (
+      state,
+      action: PayloadAction<{ id: string; direction: "up" | "down" }>,
+    ) => {
+      const rawId = action.payload.id;
+      const id = typeof rawId === "string" ? rawId.trim() : "";
+      if (!id) return;
+
+      const direction = action.payload.direction;
+      if (direction !== "up" && direction !== "down") return;
+
+      const ordered = state.content.spotlightItems.slice().sort((a, b) => {
+        if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
+        return a.id.localeCompare(b.id);
+      });
+
+      const index = ordered.findIndex((s) => s.id === id);
+      if (index < 0) return;
+
+      const swapWith = direction === "up" ? index - 1 : index + 1;
+      if (swapWith < 0 || swapWith >= ordered.length) return;
+
+      const tmp = ordered[index]!;
+      ordered[index] = ordered[swapWith]!;
+      ordered[swapWith] = tmp;
+
+      ordered.forEach((item, i) => {
+        item.sortOrder = i;
+      });
+    },
+
+    /**
+     * Add one staff-created Spotlight flyer (Manage + Add Flyer).
+     * UI generates id via newSpotlightFlyerId() BEFORE dispatch — no clock/random here.
+     * Appends at end of order (max sortOrder + 1). Forces kind flyer + pinMode none.
+     * Empty subtitle/message/video fields. Duplicate/blank id or blank imageUrl = no-op.
+     * Does NOT persist (spotlight not on schedule localStorage). No base64 storage.
+     * Backend/API + real media URLs will replace this client mock later.
+     */
+    addSpotlightFlyer: (
+      state,
+      action: PayloadAction<{
+        id: string;
+        title: string;
+        imageUrl: string;
+        imageAlt?: string;
+        active?: boolean;
+      }>,
+    ) => {
+      const rawId = action.payload.id;
+      const id = typeof rawId === "string" ? rawId.trim() : "";
+      if (!id) return;
+
+      const title =
+        typeof action.payload.title === "string"
+          ? action.payload.title.trim()
+          : "";
+      if (!title) return;
+
+      const imageUrl =
+        typeof action.payload.imageUrl === "string"
+          ? action.payload.imageUrl.trim()
+          : "";
+      if (!imageUrl) return;
+
+      const duplicate = state.content.spotlightItems.some((s) => s.id === id);
+      if (duplicate) return;
+
+      const imageAltRaw = action.payload.imageAlt;
+      const imageAlt =
+        typeof imageAltRaw === "string" && imageAltRaw.trim()
+          ? imageAltRaw.trim()
+          : title;
+
+      const active =
+        typeof action.payload.active === "boolean"
+          ? action.payload.active
+          : true;
+
+      let maxOrder = -1;
+      for (const item of state.content.spotlightItems) {
+        if (item.sortOrder > maxOrder) maxOrder = item.sortOrder;
+      }
+
+      state.content.spotlightItems.push({
+        id,
+        kind: "flyer",
+        sortOrder: maxOrder + 1,
+        active,
+        pinMode: "none",
+        title,
+        subtitle: "",
+        message: "",
+        imageUrl,
+        imageAlt,
+        videoUrl: "",
+        videoMimeType: "",
+        videoSoundEnabled: false,
+      });
+    },
+
+    /**
      * Cancel one occurrence for an explicit Chicago dateYmd.
      * Recurring → exception kind cancel (series unchanged).
      * One-time → row.canceled = true.
@@ -558,6 +706,13 @@ export const houseDisplaySlice = createSlice({
         active: true,
         location: event.location,
         facilitator: event.facilitator,
+        // Catalog logoKey from Manage Class Image (optional).
+        logoKey:
+          typeof event.logoKey === "string" && event.logoKey.trim()
+            ? event.logoKey.trim()
+            : event.logoKey === null
+              ? null
+              : undefined,
       });
 
       syncAgendaFromSchedule(state, dateYmd);
@@ -581,6 +736,7 @@ export const houseDisplaySlice = createSlice({
         dateYmd,
         location,
         facilitator,
+        logoKey: logoKeyPayload,
       } = action.payload;
       if (!dateYmd) return;
 
@@ -604,6 +760,14 @@ export const houseDisplaySlice = createSlice({
       // For facilitator: undefined means keep existing, "" means clear
       const newFacilitator =
         typeof facilitator === "string" ? facilitator : existing.facilitator;
+      // logoKey: undefined = keep; null = clear; non-empty string = replace
+      let nextLogoKey = existing.logoKey;
+      if (logoKeyPayload === null) {
+        nextLogoKey = null;
+      } else if (typeof logoKeyPayload === "string") {
+        const trimmed = logoKeyPayload.trim();
+        nextLogoKey = trimmed ? trimmed : null;
+      }
       state.schedule.recurring[index] = {
         id: existing.id,
         active: existing.active,
@@ -613,7 +777,7 @@ export const houseDisplaySlice = createSlice({
         daysOfWeek: normalizedDays,
         location: location ?? existing.location,
         facilitator: newFacilitator,
-        logoKey: existing.logoKey,
+        logoKey: nextLogoKey,
       };
 
       syncAgendaFromSchedule(state, dateYmd);
@@ -868,6 +1032,9 @@ export const {
   setContent,
   addAnnouncement,
   removeAnnouncement,
+  setSpotlightItemActive,
+  moveSpotlightItem,
+  addSpotlightFlyer,
   cancelOccurrence,
   restoreOccurrence,
   addRecurringClass,

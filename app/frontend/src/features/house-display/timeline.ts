@@ -2,6 +2,7 @@
  * House Display timeline math (pure, no React).
  * Proportional day-planner: event top/height as % of visible window.
  * NOW line geometry: nowLineLayout (hide outside window; no clamp lie).
+ * Day window follows Hope House weekday hours (not a fixed 7am–9pm board).
  */
 
 import type {
@@ -9,12 +10,65 @@ import type {
   HouseDisplayEventVisualState,
   HouseDisplayTimelineWindow,
 } from "./types";
+import type { HouseDisplayWeekday } from "./scheduleTypes";
 
-/** Default Hope House wall board: 7:00 AM – 9:00 PM (14h). */
+/**
+ * Default fallback window (Mon–Thu shape): 8:00 AM – 10:00 PM.
+ * Prefer timelineWindowForWeekday(weekday) for live TV / resolve.
+ */
 export const DEFAULT_TIMELINE_WINDOW: HouseDisplayTimelineWindow = {
-  windowStartMin: 7 * 60,
-  windowEndMin: 21 * 60,
+  windowStartMin: 8 * 60,
+  windowEndMin: 22 * 60,
 };
+
+/**
+ * Hope House wall-board hours by Chicago weekday (0=Sun … 6=Sat).
+ *
+ * Start: Mon–Fri 8:00 AM; Sat–Sun 10:00 AM
+ * End:   Sun–Thu 10:00 PM; Fri–Sat 11:00 PM
+ *
+ * → Mon–Thu 8–10p | Fri 8–11p | Sat 10a–11p | Sun 10a–10p
+ */
+export function timelineWindowForWeekday(
+  weekday: HouseDisplayWeekday | number,
+): HouseDisplayTimelineWindow {
+  const d = Number(weekday);
+  const isWeekendStart = d === 0 || d === 6; // Sun, Sat
+  const isLateClose = d === 5 || d === 6; // Fri, Sat
+
+  return {
+    windowStartMin: isWeekendStart ? 10 * 60 : 8 * 60,
+    windowEndMin: isLateClose ? 23 * 60 : 22 * 60,
+  };
+}
+
+/** Roll Call length on the TV board (minutes). Opening marker only — not a long class. */
+export const ROLL_CALL_DURATION_MIN = 10;
+
+/**
+ * Synthetic Roll Call occurrence for one Chicago day.
+ * Starts at the displayed day open (same as timelineWindowForWeekday start).
+ * Not a staff-managed series — generated for the board each resolve.
+ * Callers should pass weekday (resolveAgenda always does).
+ */
+export function buildRollCallAgendaItem(
+  dateYmd: string,
+  weekday: HouseDisplayWeekday | number = 0,
+): HouseDisplayAgendaItem {
+  const window = timelineWindowForWeekday(weekday);
+  const startMin = window.windowStartMin;
+  return {
+    id: `roll-call:${dateYmd}`,
+    title: "Roll Call",
+    startMin,
+    endMin: startMin + ROLL_CALL_DURATION_MIN,
+    canceled: false,
+    sourceType: "oneTime",
+    location: undefined,
+    facilitator: undefined,
+    logoKey: null,
+  };
+}
 
 /** Clamp a number into [lo, hi]. */
 export function clamp(n: number, lo: number, hi: number): number {
@@ -74,7 +128,7 @@ export function minToPercent(
 /**
  * Proportional NOW marker on the day track.
  * Returns null when now is outside the visible window — do NOT clamp
- * to 0%/100% (that would fake 7:00 AM or 9:00 PM).
+ * to 0%/100% (that would fake window open/close).
  * Inclusive start, exclusive end: [windowStartMin, windowEndMin).
  */
 export function nowLineLayout(

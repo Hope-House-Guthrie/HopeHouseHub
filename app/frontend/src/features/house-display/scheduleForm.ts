@@ -136,6 +136,58 @@ export function newAnnouncementId(): string {
   return `ann-${crypto.randomUUID()}`;
 }
 
+/**
+ * Staff-created Spotlight flyer id (Manage + Add Flyer).
+ * Prefix flyer- vs class- / once- / ann- / seed s1…
+ * UI only — never call inside reducers.
+ */
+export function newSpotlightFlyerId(): string {
+  return `flyer-${crypto.randomUUID()}`;
+}
+
+/** Raw fields from Add Flyer dialog (prototype media only). */
+export type ValidateAddSpotlightFlyerFormInput = {
+  title: string;
+  /** Bundled @assets URL, https URL, or session object URL — not base64. */
+  imageUrl: string;
+};
+
+export type ValidateAddSpotlightFlyerFormResult =
+  | { ok: false; error: string }
+  | { ok: true; title: string; imageUrl: string };
+
+/**
+ * Add Flyer validation — pure; no React/Redux.
+ * Requires non-empty title + imageUrl. Does not set id/active/sortOrder.
+ */
+export function validateAddSpotlightFlyerForm(
+  input: ValidateAddSpotlightFlyerFormInput,
+): ValidateAddSpotlightFlyerFormResult {
+  const title = typeof input.title === "string" ? input.title.trim() : "";
+  if (!title) {
+    return { ok: false, error: "Flyer name is required." };
+  }
+
+  const imageUrl =
+    typeof input.imageUrl === "string" ? input.imageUrl.trim() : "";
+  if (!imageUrl) {
+    return {
+      ok: false,
+      error: "Choose a sample flyer or an image file.",
+    };
+  }
+
+  // Reject accidental data: URLs — prototype must not stash image bytes in Redux.
+  if (/^data:/i.test(imageUrl)) {
+    return {
+      ok: false,
+      error: "Image data URLs are not allowed in this prototype.",
+    };
+  }
+
+  return { ok: true, title, imageUrl };
+}
+
 /** Raw fields from Add/Edit One-Time dialog (date + HTML times). */
 export type ValidateOneTimeEventFormInput = {
   title: string;

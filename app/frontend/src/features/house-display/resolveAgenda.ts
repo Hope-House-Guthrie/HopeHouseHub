@@ -24,6 +24,9 @@ import type {
   HouseDisplayScheduleSources,
   HouseDisplayWeekday,
 } from "./scheduleTypes";
+import {
+  buildRollCallAgendaItem,
+} from "./timeline";
 
 /** Stable TV/manage id for one series occurrence on one Chicago day. */
 export function recurringOccurrenceId(
@@ -71,6 +74,10 @@ export function resolveAgendaForDate(args: {
   const { dateYmd, sources } = args;
   const weekday = args.weekday ?? weekdayFromDateYmd(dateYmd);
   const out: HouseDisplayAgendaItem[] = [];
+
+  // Board open always starts with Roll Call (not a staff series row).
+  // Start time = timeline window open for this weekday (8am weekdays / 10am weekend).
+  out.push(buildRollCallAgendaItem(dateYmd, weekday));
 
   for (const series of sources.recurring) {
     if (!series.active) continue;

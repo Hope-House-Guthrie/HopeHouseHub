@@ -10,7 +10,7 @@
 * - Agenda items = resolved TODAY from schedule sources (not hand-seeded a1–a5)
 * - House Spotlight right ~40%: card | flyer; pin priority; contain flyer
 * - Live America/Chicago clock/date via useHopeHouseNow (minute + visibility)
-* - NOW line on schedule (hidden outside 7am–9pm); label in time gutter
+* - NOW line on schedule (hidden outside day window); label in time gutter
 * - Spotlight auto-rotation every 15s (local index; pin pauses)
 * - Spotlight soft slide + crossfade ~750ms (dual local layers; ±30px; TV only)
 * - Overlap column layout for simultaneous events
@@ -23,7 +23,7 @@
 * - Half-hour ticks / themes
 * - Schedule day rollover from backend
 */
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import { Box, keyframes, Typography, useMediaQuery } from "@mui/material";
 import type { RootState } from "@/store";
@@ -38,6 +38,7 @@ import {
   layoutAgendaItems,
   nowLineLayout,
   resolveEventVisualState,
+  timelineWindowForWeekday,
 } from "@/features/house-display/timeline";
 // Relative path: new helper file (HMR sometimes fails @/ resolve until full restart)
 import {
@@ -47,6 +48,7 @@ import {
   shouldRunSpotlightRotation,
   SPOTLIGHT_ROTATE_MS,
 } from "../../../features/house-display/spotlight";
+import { weekdayFromDateYmd } from "../../../features/house-display/resolveAgenda";
 import { useHopeHouseNow } from "../../../features/house-display/useHopeHouseNow";
 // Program logos for active-event Spotlight (bundled @assets, same as flyers).
 import techQuestLogoUrl from "@assets/house-display/logos/tech-quest.png";
@@ -89,48 +91,41 @@ const ONE_TIME_GLOW_CSS = `@keyframes ${ONE_TIME_GLOW_ANIM_NAME} {
   to   { stroke-dashoffset: -${ONE_TIME_GLOW_PERIMETER}; }
 }`;
 
-/* ---- Agenda card content (centered hierarchy) ----
- * Title is primary; location/facilitator form a compact centered secondary
- * line below it. A simple deterministic duration rule decides whether the
- * secondary line is shown: any event long enough to comfortably hold the
- * two-line stack keeps its metadata, and only genuinely short cards drop to
- * title-only. No pixel measurement.
+/* ---- Agenda card content (centered single line) ----
+ * Full-width: "Class Name | Location | Facilitator" (omit empty parts).
+ * Narrow overlap (~half): "Class Name | Location"
+ * Very narrow (~third+): Class Name only
+ * No "Location:" / "Facilitator:" labels. Canceled chrome stays separate.
  */
-/** Minimum event duration (minutes) to show the secondary line. 60-min events
- *  must keep metadata; only genuinely short cards hide it. */
-const AGENDA_SECONDARY_MIN_DURATION_MIN = 55;
-
-/** One field block in the secondary metadata line. */
-type AgendaSecondaryBlock = {
-  /** Full-width label, e.g. "Location:" (omitted on narrow cards). */
-  label?: string;
-  /** The actual value, e.g. "The Living Room". */
-  value: string;
-};
+/** widthPct at or below this → drop facilitator from the pipe line. */
+const AGENDA_NARROW_WIDTH_PCT = 50;
+/** widthPct at or below this → title only. */
+const AGENDA_VERY_NARROW_WIDTH_PCT = 34;
 
 /**
- * Build the metadata blocks for the second line.
- * Narrow/overlap cards use the compact form (no "Location:"/"Facilitator:"
- * labels); full-width cards show the labeled form. Only fields with values
- * are included — no empty labels or separators.
+ * Single centered schedule-block line for room-scale TV reading.
+ * Parts join with " | " — never includes Location:/Facilitator: labels.
  */
-function agendaSecondaryBlocks(
+function formatAgendaBlockLine(
+  title: string,
   location: string | undefined,
   facilitator: string | undefined,
-  narrow: boolean,
-): AgendaSecondaryBlock[] {
-  const blocks: AgendaSecondaryBlock[] = [];
-  if (location) {
-    blocks.push(narrow ? { value: location } : { label: "Location:", value: location });
+  widthPct: number,
+): string {
+  const name = title.trim() || "(Untitled)";
+  const loc = location?.trim() ?? "";
+  const fac = facilitator?.trim() ?? "";
+
+  if (widthPct <= AGENDA_VERY_NARROW_WIDTH_PCT) {
+    return name;
   }
-  if (facilitator) {
-    blocks.push(
-      narrow
-        ? { value: facilitator }
-        : { label: "Facilitator:", value: facilitator },
-    );
+
+  const parts: string[] = [name];
+  if (loc) parts.push(loc);
+  if (widthPct > AGENDA_NARROW_WIDTH_PCT && fac) {
+    parts.push(fac);
   }
-    return blocks;
+  return parts.join(" | ");
 }
 
 /**
@@ -251,7 +246,6 @@ export default function HouseDisplayPage() {
   const content = useSelector((state: RootState) => state.houseDisplay.content);
   const {
     header,
-    timeline,
     agendaItems,
     spotlightItems,
     upcomingItems,
@@ -262,6 +256,15 @@ export default function HouseDisplayPage() {
 
   /** One snapshot -> header clock/date, event states, NOW line. */
   const hopeNow = useHopeHouseNow();
+
+  /**
+   * Live day window from Chicago weekday (not stale Redux seed 7–9p).
+   * Mon–Thu 8a–10p · Fri 8a–11p · Sat 10a–11p · Sun 10a–10p
+   */
+  const timeline = useMemo(
+    () => timelineWindowForWeekday(weekdayFromDateYmd(hopeNow.dateKey)),
+    [hopeNow.dateKey],
+  );
 
   const hasBirthdayToday = Boolean(birthday?.name?.trim());
 
@@ -1084,19 +1087,16 @@ export default function HouseDisplayPage() {
                 const stateSx = blockSxForState(visualState);
                 const isOneTime = sourceTypeById.get(b.id) === "oneTime";
 
-                // Centered hierarchy: title primary; location/facilitator (with
-                // value labels only on full-width cards) on a centered secondary
-                // line. Deterministic duration rule: events long enough to hold
-                // the two-line stack (60 min and up) keep metadata.
-                const secondaryBlocks = agendaSecondaryBlocks(
-                  b.location,
-                  b.facilitator,
-                  b.widthPct <= 50, // narrowed by an overlap → compact form
-                );
-                const showSecondary =
-                  secondaryBlocks.length > 0 &&
-                  visualState !== "canceled" &&
-                  b.durationMin >= AGENDA_SECONDARY_MIN_DURATION_MIN;
+                // Centered single line for room-scale TV; progressive simplify on narrow columns.
+                const blockLine =
+                  visualState === "canceled"
+                    ? b.title
+                    : formatAgendaBlockLine(
+                        b.title,
+                        b.location,
+                        b.facilitator,
+                        b.widthPct,
+                      );
 
                 return (
                   <Box
@@ -1107,15 +1107,21 @@ export default function HouseDisplayPage() {
                       width: `${b.widthPct}%`,
                       top: `${b.topPct}%`,
                       height: `${b.heightPct}%`,
-                      // One title line must fit even on 30-min slots (track ~ half viewport)
-                      minHeight: 36,
+                      // Proportional height stays true to duration; floor only enough
+                      // for one readable line. Short markers (e.g. 10-min Roll Call)
+                      // stay small — do not pad to look like 30–60 min blocks.
+                      minHeight:
+                        b.durationMin <= 10
+                          ? 22
+                          : b.durationMin <= 20
+                            ? 28
+                            : 36,
                       boxSizing: "border-box",
                       px: 1,
                       pt: 0.25,
                       pb: 0.1,
                       borderRadius: 1,
                       color: "#e0e1dd",
-                      // Content stays top-anchored (tall blocks); one row: title left, CANCELED right
                       display: "flex",
                       flexDirection: "column",
                       justifyContent: "flex-start",
@@ -1230,18 +1236,15 @@ export default function HouseDisplayPage() {
                         component="div"
                         sx={{
                           fontWeight: 800,
-                          // Size by viewport height so text tracks the vertical
-                          // card space (which governs two-line fit), not width.
                           fontSize: "clamp(0.85rem, 1.6vh, 1.9rem)",
-                          lineHeight: 1.05,
+                          lineHeight: 1.15,
                           m: 0,
                           maxWidth: "100%",
                           minWidth: 0,
-                          // Wrap to up to 2 lines, then truncate — never overflow.
-                          display: "-webkit-box",
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: "vertical",
+                          // Prefer one centered line for room reading; clamp if overflow.
+                          whiteSpace: "nowrap",
                           overflow: "hidden",
+                          textOverflow: "ellipsis",
                           textAlign: "center",
                           textDecoration:
                             visualState === "canceled"
@@ -1250,72 +1253,8 @@ export default function HouseDisplayPage() {
                           opacity: visualState === "canceled" ? 0.85 : 1,
                         }}
                       >
-                        {b.title}
+                        {blockLine}
                       </Typography>
-                      {showSecondary ? (
-                        <Box
-                          component="div"
-                          sx={{
-                            flex: "0 0 auto",
-                            display: "flex",
-                            flexDirection: "row",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            gap: "0.35em",
-                            // Size by viewport height to track vertical card space.
-                            fontSize: "clamp(0.65rem, 1.05vh, 1.3rem)",
-                            lineHeight: 1,
-                            mt: 0.1,
-                            maxWidth: "100%",
-                            minWidth: 0,
-                            // Single line, truncate when narrow — never overflow.
-                            whiteSpace: "nowrap",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                          }}
-                        >
-                          {secondaryBlocks.map((blk, i) => (
-                            <Fragment key={i}>
-                              {i > 0 ? (
-                                <Box
-                                  component="span"
-                                  sx={{ opacity: 0.5, flex: "0 0 auto" }}
-                                >
-                                  •
-                                </Box>
-                              ) : null}
-                              <Box
-                                component="span"
-                                sx={{
-                                  minWidth: 0,
-                                  overflow: "hidden",
-                                  textOverflow: "ellipsis",
-                                  color: "rgba(224,225,221,0.92)",
-                                }}
-                              >
-                                {blk.label ? (
-                                  <Box
-                                    component="span"
-                                    sx={{
-                                      fontWeight: 500,
-                                      opacity: 0.62,
-                                      mr: "0.25em",
-                                    }}
-                                  >
-                                    {blk.label}
-                                  </Box>
-                                ) : null}
-                                <Box
-                                  component="span"
-                                  sx={{ fontWeight: 600 }}
-                                >
-                                  {blk.value}
-                                </Box>
-                              </Box>
-                            </Fragment>
-                          ))}
-                        </Box>
-                      ) : null}
                     </Box>
                   </Box>
                 );

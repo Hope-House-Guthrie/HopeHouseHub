@@ -46,10 +46,33 @@
  * - exception kind "suppress" (Replace/Hide this date ≠ cancel)
  * - suppressRecurringOccurrence / unsuppressRecurringOccurrence
  *
- * NEXT: Stage D Conflict UI for Add/Edit Class
+ * DONE (Spotlight Content Phase 1 — read-only UI):
+ * - Spotlight Content card on /prototype/house-display (above Announcements)
+ * - Selects content.spotlightItems; display sort by sortOrder then id
+ * - Lists all items (active + inactive): title, kind, active, video sound chips
+ * - Prototype actions: Add Flyer (Phase 4); Add Video / Edit still disabled
+ *
+ * DONE (Spotlight Content Phase 2 — Enable/Disable):
+ * - setSpotlightItemActive({ id, active }) in houseDisplay slice (no spotlight persist yet)
+ * - Manage Enable/Disable dispatches it; Active chip updates from Redux
+ * - TV pool already filters active (getActiveSpotlightItems); no index.tsx change
+ * - Full page reload resets spotlight to seed (expected until later persist/API)
+ *
+ * DONE (Spotlight Content Phase 3 — Move Up/Down, browser-tested):
+ * - moveSpotlightItem({ id, direction }) full-list sortOrder swap + renumber 0..n-1
+ * - Manage map index disables first Up / last Down; no persist; no index.tsx
+ *
+ * DONE (Spotlight Content Phase 4 — Add Flyer):
+ * - addSpotlightFlyer in slice (UI id; append max sortOrder+1; kind flyer; pin none)
+ * - Dialog: title, sample @assets catalog and/or session file→object URL, Active
+ * - No base64; no localStorage media; no spotlight persist; no TV renderer change
+ * - Full reload drops added flyers (seed rebuild)
+ *
+ * NEXT (Spotlight Content): Add Video / Edit / Delete / pin / sound / persist — parked
+ * (Schedule Stage D/E may still appear elsewhere; this track is Spotlight Content.)
  *
  * NOT YET:
- * - manage One-Time UI / conflict UI (Stage C)
+ * - manage One-Time conflict polish leftovers if any
  * - override exception UI, delete definition, ended-list conflict UI
  * - Backend API / thunks
  * - Midnight re-resolve without refresh
@@ -58,7 +81,7 @@
  * - TV: pages/prototype/house-display/index.tsx → /house-display
  * - Manage (this file): → /prototype/house-display
  */
-import { useMemo, useRef, useState, type FormEvent } from "react";
+import { useMemo, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   Box,
@@ -95,9 +118,17 @@ import {
   newAnnouncementId,
   newRecurringClassId,
   newOneTimeEventId,
+  newSpotlightFlyerId,
   validateRecurringClassForm,
   validateOneTimeEventForm,
+  validateAddSpotlightFlyerForm,
 } from "../../../features/house-display/scheduleForm";
+import { SPOTLIGHT_FLYER_PROTOTYPE_ASSETS } from "../../../features/house-display/spotlightFlyerPrototype";
+import {
+  findProgramLogoOption,
+  HOUSE_DISPLAY_PROGRAM_LOGO_OPTIONS,
+  isHouseDisplayProgramLogoKey,
+} from "../../../features/house-display/programLogos";
 import type {
   HouseDisplayOneTimeEvent,
   HouseDisplayRecurringEvent,
@@ -111,13 +142,16 @@ import {
   addAnnouncement,
   addOneTimeEvent,
   addRecurringClass,
+  addSpotlightFlyer,
   cancelOccurrence,
   editOneTimeEvent,
   editRecurringClass,
   endRecurringClass,
+  moveSpotlightItem,
   reinstateRecurringClass,
   removeAnnouncement,
   restoreOccurrence,
+  setSpotlightItemActive,
   suppressRecurringOccurrence,
   unsuppressRecurringOccurrence,
 } from "../../../store/slices/prototype/houseDisplay";
@@ -171,6 +205,9 @@ export default function HouseDisplayManagePage() {
   const announcements = useSelector(
     (state: RootState) => state.houseDisplay.content.announcements,
   );
+  const spotlightItems = useSelector(
+    (state: RootState) => state.houseDisplay.content.spotlightItems,
+  );
 
   // --- Add Class dialog ---
   const [addClassOpen, setAddClassOpen] = useState(false);
@@ -186,6 +223,11 @@ export default function HouseDisplayManagePage() {
   const [addError, setAddError] = useState("");
   const [addLocation, setAddLocation] = useState<string>("Living Room");
   const [addFacilitator, setAddFacilitator] = useState<string>("");
+  /**
+   * Class Image catalog key for Spotlight takeover.
+   * "" = None (no logo). Values match programLogos / TV ACTIVE_EVENT_LOGOS.
+   */
+  const [addLogoKey, setAddLogoKey] = useState<string>("");
 
   // Track if end time was manually set (to avoid overwriting on start change)
   const addClassEndTimeManuallySet = useRef(false);
@@ -208,6 +250,20 @@ export default function HouseDisplayManagePage() {
   // --- Announcements state ---
   const [newAnnouncementText, setNewAnnouncementText] = useState("");
   const [addAnnouncementError, setAddAnnouncementError] = useState("");
+
+  // --- Add Flyer dialog (Spotlight Content Phase 4) ---
+  const [addFlyerOpen, setAddFlyerOpen] = useState(false);
+  const [addFlyerTitle, setAddFlyerTitle] = useState("");
+  /** Catalog key from SPOTLIGHT_FLYER_PROTOTYPE_ASSETS, or "". */
+  const [addFlyerSampleKey, setAddFlyerSampleKey] = useState("");
+  /** Session-only object URL from file pick; "" when unused. Not base64. */
+  const [addFlyerObjectUrl, setAddFlyerObjectUrl] = useState("");
+  const [addFlyerFileName, setAddFlyerFileName] = useState("");
+  const [addFlyerActive, setAddFlyerActive] = useState(true);
+  const [addFlyerError, setAddFlyerError] = useState("");
+  const addFlyerFileInputRef = useRef<HTMLInputElement | null>(null);
+  /** Track object URL for revoke on replace/cancel (not after successful save). */
+  const addFlyerObjectUrlRef = useRef("");
 
   // --- Conflict Dialog state ---
   const [pendingClassData, setPendingClassData] = useState<
@@ -250,6 +306,7 @@ export default function HouseDisplayManagePage() {
     setAddError("");
     setAddLocation("Living Room");
     setAddFacilitator("");
+    setAddLogoKey("");
     addClassEndTimeManuallySet.current = false;
   };
 
@@ -384,6 +441,124 @@ export default function HouseDisplayManagePage() {
 
   const handleRemoveAnnouncement = (announcementId: string) => {
     dispatch(removeAnnouncement({ id: announcementId }));
+  };
+
+  /** Drop pending file object URL without touching Redux (cancel / re-pick). */
+  const revokePendingFlyerObjectUrl = () => {
+    const url = addFlyerObjectUrlRef.current;
+    if (url) {
+      URL.revokeObjectURL(url);
+      addFlyerObjectUrlRef.current = "";
+    }
+    setAddFlyerObjectUrl("");
+    setAddFlyerFileName("");
+    if (addFlyerFileInputRef.current) {
+      addFlyerFileInputRef.current.value = "";
+    }
+  };
+
+  const resetAddFlyerForm = () => {
+    setAddFlyerTitle("");
+    setAddFlyerSampleKey("");
+    setAddFlyerActive(true);
+    setAddFlyerError("");
+    revokePendingFlyerObjectUrl();
+  };
+
+  const handleOpenAddFlyer = () => {
+    resetAddFlyerForm();
+    setAddFlyerOpen(true);
+  };
+
+  const handleCloseAddFlyer = () => {
+    setAddFlyerOpen(false);
+    resetAddFlyerForm();
+  };
+
+  const handleAddFlyerSampleChange = (key: string) => {
+    setAddFlyerSampleKey(key);
+    setAddFlyerError("");
+    // Sample takes priority over a prior file pick for clarity.
+    if (key) {
+      revokePendingFlyerObjectUrl();
+      const asset = SPOTLIGHT_FLYER_PROTOTYPE_ASSETS.find((a) => a.key === key);
+      if (asset && !addFlyerTitle.trim()) {
+        setAddFlyerTitle(asset.defaultTitle);
+      }
+    }
+  };
+
+  const handleAddFlyerFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] ?? null;
+    setAddFlyerError("");
+    if (!file) {
+      revokePendingFlyerObjectUrl();
+      return;
+    }
+    if (!file.type.startsWith("image/")) {
+      revokePendingFlyerObjectUrl();
+      setAddFlyerError("Please choose an image file (PNG, JPG, etc.).");
+      return;
+    }
+    // New pick replaces prior object URL; sample cleared so file is the source.
+    revokePendingFlyerObjectUrl();
+    setAddFlyerSampleKey("");
+    const url = URL.createObjectURL(file);
+    addFlyerObjectUrlRef.current = url;
+    setAddFlyerObjectUrl(url);
+    setAddFlyerFileName(file.name);
+    if (!addFlyerTitle.trim()) {
+      const base = file.name.replace(/\.[^.]+$/, "").trim();
+      if (base) setAddFlyerTitle(base);
+    }
+  };
+
+  const handleAddFlyerSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    setAddFlyerError("");
+
+    const sample = SPOTLIGHT_FLYER_PROTOTYPE_ASSETS.find(
+      (a) => a.key === addFlyerSampleKey,
+    );
+    // File object URL wins if present; else bundled sample URL.
+    const imageUrl = addFlyerObjectUrl || sample?.imageUrl || "";
+    const imageAlt =
+      (sample && !addFlyerObjectUrl ? sample.imageAlt : "") ||
+      addFlyerTitle.trim() ||
+      addFlyerFileName ||
+      "Flyer";
+
+    const validated = validateAddSpotlightFlyerForm({
+      title: addFlyerTitle,
+      imageUrl,
+    });
+    if (!validated.ok) {
+      setAddFlyerError(validated.error);
+      return;
+    }
+
+    dispatch(
+      addSpotlightFlyer({
+        id: newSpotlightFlyerId(),
+        title: validated.title,
+        imageUrl: validated.imageUrl,
+        imageAlt,
+        active: addFlyerActive,
+      }),
+    );
+
+    // Keep object URL alive in Redux for this session — do not revoke on save.
+    addFlyerObjectUrlRef.current = "";
+    setAddFlyerObjectUrl("");
+    setAddFlyerFileName("");
+    if (addFlyerFileInputRef.current) {
+      addFlyerFileInputRef.current.value = "";
+    }
+    setAddFlyerOpen(false);
+    setAddFlyerTitle("");
+    setAddFlyerSampleKey("");
+    setAddFlyerActive(true);
+    setAddFlyerError("");
   };
 
   const handleAddOneTimeEventSubmit = (e: FormEvent) => {
@@ -614,6 +789,14 @@ export default function HouseDisplayManagePage() {
     setAddDays([...series.daysOfWeek].sort((a, b) => a - b));
     setAddLocation(series.location ?? "Living Room");
     setAddFacilitator(series.facilitator ?? "");
+    // Prefill Class Image from series logoKey when it is a known catalog key.
+    const existingKey =
+      typeof series.logoKey === "string" ? series.logoKey.trim() : "";
+    setAddLogoKey(
+      existingKey && isHouseDisplayProgramLogoKey(existingKey)
+        ? existingKey
+        : "",
+    );
     setAddError("");
     addClassEndTimeManuallySet.current = false;
     setAddClassOpen(true);
@@ -651,9 +834,7 @@ export default function HouseDisplayManagePage() {
         // longer part of the newly-selected set on this date, then (below) add
         // the newly-selected occurrences. No endRecurringClass is used.
         const newDateYmd = (event as any).dateYmd;
-        const selectedIds = new Set(
-          endingExistingClasses.map((e) => e.id),
-        );
+        const selectedIds = new Set(endingExistingClasses.map((e) => e.id));
         for (const ex of findSuppressionsForOneTime(sourceOneTimeEventId!)) {
           if (!(selectedIds.has(ex.seriesId) && ex.dateYmd === newDateYmd)) {
             dispatch(
@@ -707,6 +888,8 @@ export default function HouseDisplayManagePage() {
           dateYmd: hopeNow.dateKey,
           location: ev.location,
           facilitator: ev.facilitator,
+          // Form always sends explicit logoKey (string | null) for Class Image.
+          logoKey: ev.logoKey ?? null,
         }),
       );
     } else if (pendingSaveKind === "oneTimeAdd") {
@@ -749,7 +932,10 @@ export default function HouseDisplayManagePage() {
     setEndingExistingClasses([]);
     setPendingSaveKind("add");
     setConflictDialogOpen(false);
-    if (originalSaveKind === "oneTimeAdd" || originalSaveKind === "oneTimeEdit") {
+    if (
+      originalSaveKind === "oneTimeAdd" ||
+      originalSaveKind === "oneTimeEdit"
+    ) {
       handleCloseAddOneTimeEvent();
     } else if (originalSaveKind !== "reinstate") {
       handleCloseAddClass();
@@ -830,7 +1016,25 @@ export default function HouseDisplayManagePage() {
           facilitator: ot.facilitator ?? "",
         }),
       );
+    } else if (pendingSaveKind === "edit") {
+      // Keep Both on Edit Class must UPDATE the series — not addRecurringClass
+      // (duplicate id is a no-op and would drop logoKey / field changes).
+      const ev = event as HouseDisplayRecurringEvent;
+      dispatch(
+        editRecurringClass({
+          id: ev.id,
+          title: ev.title,
+          startMin: ev.startMin,
+          endMin: ev.endMin,
+          daysOfWeek: ev.daysOfWeek,
+          dateYmd: hopeNow.dateKey,
+          location: ev.location,
+          facilitator: ev.facilitator,
+          logoKey: ev.logoKey ?? null,
+        }),
+      );
     } else {
+      // pendingSaveKind === "add" (and any other non-edit recurring save)
       dispatch(
         addRecurringClass({
           event: event as HouseDisplayRecurringEvent,
@@ -873,6 +1077,9 @@ export default function HouseDisplayManagePage() {
     const { title, startMin, endMin, daysOfWeek } = validated;
     const submitDateYmd = hopeNow.dateKey;
 
+    // Class Image: "" in UI = None → null on series (clear / no logo).
+    const logoKeyForSave = addLogoKey.trim() ? addLogoKey.trim() : null;
+
     // Build pending event with proper id for add vs edit
     const isEdit = editingClassId !== null;
     const event: HouseDisplayRecurringEvent = {
@@ -884,6 +1091,7 @@ export default function HouseDisplayManagePage() {
       active: true,
       location: addLocation,
       facilitator: capitalizeTitle(addFacilitator),
+      logoKey: logoKeyForSave,
     };
 
     // Build candidate for conflict detection
@@ -918,6 +1126,7 @@ export default function HouseDisplayManagePage() {
             dateYmd: submitDateYmd,
             location: addLocation,
             facilitator: addFacilitator ? capitalizeTitle(addFacilitator) : "",
+            logoKey: logoKeyForSave,
           }),
         );
       } else {
@@ -968,6 +1177,14 @@ export default function HouseDisplayManagePage() {
         return a.title.localeCompare(b.title);
       });
   }, [oneTime]);
+
+  // Display-only: all Spotlight items (active + inactive), TV sort order -> never mutate Redux
+  const spotlightItemsForManage = useMemo(() => {
+    return spotlightItems.slice().sort((a, b) => {
+      if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
+      return a.id.localeCompare(b.id);
+    });
+  }, [spotlightItems]);
 
   // Hope House calendar day for labels + Cancel/Restore payloads (not browser TZ alone)
   const hopeNow = getHopeHouseNow();
@@ -1112,6 +1329,11 @@ export default function HouseDisplayManagePage() {
                   series.startMin,
                   series.endMin,
                 );
+                // Friendly Class Image label only — never raw logoKey in the list.
+                const classImageOption = findProgramLogoOption(series.logoKey);
+                const classImageLabel = classImageOption
+                  ? classImageOption.label
+                  : "None";
                 return (
                   <Box
                     key={series.id}
@@ -1163,6 +1385,12 @@ export default function HouseDisplayManagePage() {
                             variant="outlined"
                           />
                         ) : null}
+                        <Chip
+                          size="small"
+                          label={`Class Image: ${classImageLabel}`}
+                          variant="outlined"
+                          color={classImageOption ? "secondary" : "default"}
+                        />
                         <Button
                           type="button"
                           size="small"
@@ -1196,114 +1424,163 @@ export default function HouseDisplayManagePage() {
             Add Class
           </Button>
 
-      {/* Add/Edit Class dialog */}
-      <Dialog open={addClassOpen} onClose={handleCloseAddClass}>
-        <Box component="form" onSubmit={handleAddClassSubmit}>
-          <DialogTitle>
-            {classFormMode === "edit" ? "Edit Class" : "Add Class"}
-          </DialogTitle>
-          <DialogContent>
-            <Stack spacing={2} sx={{ mt: 1 }}>
-              <TextField
-                label="Class Name"
-                value={addTitle}
-                onChange={(e) => setAddTitle(e.target.value)}
-                required
-                fullWidth
-                slotProps={{ input: { "aria-label": "Class name" } }}
-              />
-              <TextField
-                label="Start Time"
-                type="time"
-                value={addStartTime}
-                onChange={(e) => {
-                  const newStart = e.target.value;
-                  setAddStartTime(newStart);
-                  // Auto-default End Time to 1 hour after Start, if not manually set
-                  if (!addClassEndTimeManuallySet.current && newStart) {
-                    setAddEndTime(addOneHourToTime(newStart));
-                  }
-                }}
-                required
-                fullWidth
-                slotProps={{
-                  inputLabel: { shrink: true },
-                  htmlInput: { step: 60 },
-                }}
-              />
-              <TextField
-                label="End Time"
-                type="time"
-                value={addEndTime}
-                onChange={(e) => {
-                  setAddEndTime(e.target.value ?? "");
-                  addClassEndTimeManuallySet.current = true;
-                }}
-                required
-                fullWidth
-                slotProps={{
-                  inputLabel: { shrink: true },
-                  htmlInput: { step: 60 },
-                }}
-              />
-              <FormGroup>
-                <Typography variant="subtitle2">Repeats On</Typography>
-                {ADD_CLASS_WEEKDAY_OPTIONS.map((opt) => (
-                  <FormControlLabel
-                    key={opt.value}
-                    control={
-                      <Checkbox
-                        checked={addDays.includes(opt.value)}
-                        onChange={() => toggleAddDay(opt.value)}
-                        slotProps={{
-                          input: { "aria-label": opt.label },
+          {/* Add/Edit Class dialog */}
+          <Dialog open={addClassOpen} onClose={handleCloseAddClass}>
+            <Box component="form" onSubmit={handleAddClassSubmit}>
+              <DialogTitle>
+                {classFormMode === "edit" ? "Edit Class" : "Add Class"}
+              </DialogTitle>
+              <DialogContent>
+                <Stack spacing={2} sx={{ mt: 1 }}>
+                  <TextField
+                    label="Class Name"
+                    value={addTitle}
+                    onChange={(e) => setAddTitle(e.target.value)}
+                    required
+                    fullWidth
+                    slotProps={{ input: { "aria-label": "Class name" } }}
+                  />
+                  <TextField
+                    label="Start Time"
+                    type="time"
+                    value={addStartTime}
+                    onChange={(e) => {
+                      const newStart = e.target.value;
+                      setAddStartTime(newStart);
+                      // Auto-default End Time to 1 hour after Start, if not manually set
+                      if (!addClassEndTimeManuallySet.current && newStart) {
+                        setAddEndTime(addOneHourToTime(newStart));
+                      }
+                    }}
+                    required
+                    fullWidth
+                    slotProps={{
+                      inputLabel: { shrink: true },
+                      htmlInput: { step: 60 },
+                    }}
+                  />
+                  <TextField
+                    label="End Time"
+                    type="time"
+                    value={addEndTime}
+                    onChange={(e) => {
+                      setAddEndTime(e.target.value ?? "");
+                      addClassEndTimeManuallySet.current = true;
+                    }}
+                    required
+                    fullWidth
+                    slotProps={{
+                      inputLabel: { shrink: true },
+                      htmlInput: { step: 60 },
+                    }}
+                  />
+                  <FormGroup>
+                    <Typography variant="subtitle2">Repeats On</Typography>
+                    {ADD_CLASS_WEEKDAY_OPTIONS.map((opt) => (
+                      <FormControlLabel
+                        key={opt.value}
+                        control={
+                          <Checkbox
+                            checked={addDays.includes(opt.value)}
+                            onChange={() => toggleAddDay(opt.value)}
+                            slotProps={{
+                              input: { "aria-label": opt.label },
+                            }}
+                          />
+                        }
+                        label={opt.label}
+                      />
+                    ))}
+                  </FormGroup>
+                  <FormControl fullWidth>
+                    <InputLabel>Location</InputLabel>
+                    <Select
+                      value={addLocation}
+                      label="Location"
+                      onChange={(e) => setAddLocation(e.target.value as string)}
+                    >
+                      <MenuItem value="">No specific location</MenuItem>
+                      <MenuItem value="Living Room">Living Room</MenuItem>
+                      <MenuItem value="Large Dining Room">
+                        Large Dining Room
+                      </MenuItem>
+                      <MenuItem value="Back House">Back House</MenuItem>
+                      <MenuItem value="Computer Lab">Computer Lab</MenuItem>
+                    </Select>
+                  </FormControl>
+                  <TextField
+                    label="Facilitator"
+                    value={addFacilitator}
+                    onChange={(e) => setAddFacilitator(e.target.value)}
+                    fullWidth
+                    slotProps={{ input: { "aria-label": "Facilitator name" } }}
+                  />
+                  <FormControl fullWidth>
+                    <InputLabel id="add-class-image-label">
+                      Class Image
+                    </InputLabel>
+                    <Select
+                      labelId="add-class-image-label"
+                      label="Class Image"
+                      value={addLogoKey}
+                      onChange={(e) => setAddLogoKey(String(e.target.value))}
+                      inputProps={{ "aria-label": "Class image" }}
+                    >
+                      <MenuItem value="">
+                        <em>None</em>
+                      </MenuItem>
+                      {HOUSE_DISPLAY_PROGRAM_LOGO_OPTIONS.map((opt) => (
+                        <MenuItem key={opt.key} value={opt.key}>
+                          {opt.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  {findProgramLogoOption(addLogoKey) ? (
+                    <Box
+                      sx={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 0.75,
+                      }}
+                    >
+                      <Typography variant="body2" color="text.secondary">
+                        Preview (shown on Full Display only while the class is
+                        happening — not on the schedule timeline)
+                      </Typography>
+                      <Box
+                        component="img"
+                        src={findProgramLogoOption(addLogoKey)!.imageUrl}
+                        alt={`${findProgramLogoOption(addLogoKey)!.label} class image`}
+                        sx={{
+                          maxWidth: 200,
+                          maxHeight: 120,
+                          objectFit: "contain",
+                          objectPosition: "center",
+                          borderRadius: 1,
+                          bgcolor: "grey.100",
+                          alignSelf: "flex-start",
                         }}
                       />
-                    }
-                    label={opt.label}
-                  />
-                ))}
-              </FormGroup>
-              <FormControl fullWidth>
-                <InputLabel>Location</InputLabel>
-                <Select
-                  value={addLocation}
-                  label="Location"
-                  onChange={(e) => setAddLocation(e.target.value as string)}
-                >
-                  <MenuItem value="">No specific location</MenuItem>
-                  <MenuItem value="Living Room">Living Room</MenuItem>
-                  <MenuItem value="Large Dining Room">
-                    Large Dining Room
-                  </MenuItem>
-                  <MenuItem value="Back House">Back House</MenuItem>
-                  <MenuItem value="Computer Lab">Computer Lab</MenuItem>
-                </Select>
-              </FormControl>
-              <TextField
-                label="Facilitator"
-                value={addFacilitator}
-                onChange={(e) => setAddFacilitator(e.target.value)}
-                fullWidth
-                slotProps={{ input: { "aria-label": "Facilitator name" } }}
-              />
-              {addError ? (
-                <Typography variant="body2" color="error">
-                  {addError}
-                </Typography>
-              ) : null}
-            </Stack>
-          </DialogContent>
-          <DialogActions>
-            <Button type="button" onClick={handleCloseAddClass}>
-              Cancel
-            </Button>
-            <Button type="submit" variant="contained">
-              {classFormMode === "edit" ? "Save" : "Add"}
-            </Button>
-          </DialogActions>
-        </Box>
-      </Dialog>
+                    </Box>
+                  ) : null}
+                  {addError ? (
+                    <Typography variant="body2" color="error">
+                      {addError}
+                    </Typography>
+                  ) : null}
+                </Stack>
+              </DialogContent>
+              <DialogActions>
+                <Button type="button" onClick={handleCloseAddClass}>
+                  Cancel
+                </Button>
+                <Button type="submit" variant="contained">
+                  {classFormMode === "edit" ? "Save" : "Add"}
+                </Button>
+              </DialogActions>
+            </Box>
+          </Dialog>
 
           {/* Conflict Dialog */}
           <Dialog
@@ -1323,7 +1600,7 @@ export default function HouseDisplayManagePage() {
                 {pendingSaveKind === "reinstate"
                   ? "Reinstating this class conflicts with existing classes:"
                   : pendingSaveKind === "oneTimeAdd" ||
-                    pendingSaveKind === "oneTimeEdit"
+                      pendingSaveKind === "oneTimeEdit"
                     ? "This one-time event conflicts with recurring classes on its date. Keep Both keeps everything; Save & Replace Selected hides only the selected recurring occurrence(s) for that day."
                     : "The class you are adding/editing conflicts with existing classes:"}
               </Typography>
@@ -1542,14 +1819,305 @@ export default function HouseDisplayManagePage() {
         </CardContent>
       </Card>
 
+      {/* Spotlight Content - list + Enable/Move + Add Flyer (Ph1–4) */}
+      <Card sx={{ maxWidth: 720 }}>
+        <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <Box>
+            <Typography variant="h6">Spotlight Content</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              Flyers and videos shown in the Spotlight area when no scheduled
+              event is currently taking over the display.
+            </Typography>
+          </Box>
+
+          <Box
+            sx={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 1,
+            }}
+          >
+            <Button
+              type="button"
+              variant="contained"
+              onClick={handleOpenAddFlyer}
+            >
+              + Add Flyer
+            </Button>
+            <Button type="button" variant="contained" disabled>
+              + Add Video
+            </Button>
+          </Box>
+
+          <Divider />
+
+          {spotlightItemsForManage.length === 0 ? (
+            <Typography variant="body2" color="text.secondary">
+              No Spotlight content is configured yet.
+            </Typography>
+          ) : (
+            <Stack divider={<Divider flexItem />} spacing={0}>
+              {spotlightItemsForManage.map((item, index) => {
+                const kindLabel =
+                  item.kind === "flyer"
+                    ? "Flyer"
+                    : item.kind === "video"
+                      ? "Video"
+                      : "Card";
+
+                const activeLabel = item.active ? "Active" : "Inactive";
+
+                const soundLabel =
+                  item.kind === "video"
+                    ? item.videoSoundEnabled
+                      ? "Sound On"
+                      : "Sound Off"
+                    : null;
+
+                return (
+                  <Box
+                    key={item.id}
+                    sx={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 1.5,
+                      py: 1.5,
+                    }}
+                  >
+                    <Box sx={{ minWidth: 0, flex: "1 1 200px" }}>
+                      <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                        {item.title || "(Untitled)"}
+                      </Typography>
+
+                      <Box
+                        sx={{
+                          display: "flex",
+                          flexWrap: "wrap",
+                          gap: 0.75,
+                          mt: 0.75,
+                        }}
+                      >
+                        <Chip size="small" label={kindLabel} />
+                        <Chip
+                          size="small"
+                          label={activeLabel}
+                          color={item.active ? "success" : "default"}
+                          variant={item.active ? "filled" : "outlined"}
+                        />
+                        {soundLabel ? (
+                          <Chip
+                            size="small"
+                            label={soundLabel}
+                            variant="outlined"
+                          />
+                        ) : null}
+                      </Box>
+                    </Box>
+
+                    <Box
+                      sx={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        gap: 0.5,
+                        flex: "0 0 auto",
+                      }}
+                    >
+                      <Button
+                        type="button"
+                        size="small"
+                        onClick={() => {
+                          dispatch(
+                            setSpotlightItemActive({
+                              id: item.id,
+                              active: !item.active,
+                            }),
+                          );
+                        }}
+                      >
+                        {item.active ? "Disable" : "Enable"}
+                      </Button>
+
+                      <Button type="button" size="small" disabled>
+                        Edit
+                      </Button>
+                      <Button
+                        type="button"
+                        size="small"
+                        disabled={index === 0}
+                        onClick={() => {
+                          dispatch(
+                            moveSpotlightItem({
+                              id: item.id,
+                              direction: "up",
+                            }),
+                          );
+                        }}
+                      >
+                        Move Up
+                      </Button>
+                      <Button
+                        type="button"
+                        size="small"
+                        disabled={index === spotlightItemsForManage.length - 1}
+                        onClick={() => {
+                          dispatch(
+                            moveSpotlightItem({
+                              id: item.id,
+                              direction: "down",
+                            }),
+                          );
+                        }}
+                      >
+                        Move Down
+                      </Button>
+                    </Box>
+                  </Box>
+                );
+              })}
+            </Stack>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Add Flyer dialog — Spotlight Content Phase 4 */}
+      <Dialog
+        open={addFlyerOpen}
+        onClose={handleCloseAddFlyer}
+        maxWidth="sm"
+        fullWidth
+      >
+        <Box component="form" onSubmit={handleAddFlyerSubmit}>
+          <DialogTitle>Add Flyer</DialogTitle>
+          <DialogContent>
+            <Stack spacing={2} sx={{ mt: 1 }}>
+              <Typography variant="body2" color="text.secondary">
+                Prototype only. Sample flyers use bundled Hope House images.
+                Choosing a file uses a temporary browser URL for this session —
+                full page reload clears added Spotlight items (no persist yet).
+                No image bytes are saved to localStorage.
+              </Typography>
+              <TextField
+                label="Flyer name"
+                value={addFlyerTitle}
+                onChange={(e) => {
+                  setAddFlyerTitle(e.target.value);
+                  if (addFlyerError) setAddFlyerError("");
+                }}
+                required
+                fullWidth
+                slotProps={{ input: { "aria-label": "Flyer name" } }}
+              />
+              <FormControl fullWidth>
+                <InputLabel id="add-flyer-sample-label">
+                  Sample flyer image
+                </InputLabel>
+                <Select
+                  labelId="add-flyer-sample-label"
+                  label="Sample flyer image"
+                  value={addFlyerSampleKey}
+                  onChange={(e) =>
+                    handleAddFlyerSampleChange(String(e.target.value))
+                  }
+                  inputProps={{ "aria-label": "Sample flyer image" }}
+                >
+                  <MenuItem value="">
+                    <em>None — use a file instead</em>
+                  </MenuItem>
+                  {SPOTLIGHT_FLYER_PROTOTYPE_ASSETS.map((asset) => (
+                    <MenuItem key={asset.key} value={asset.key}>
+                      {asset.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <Box>
+                <Button
+                  type="button"
+                  variant="outlined"
+                  component="label"
+                  sx={{ mr: 1 }}
+                >
+                  Choose image file
+                  <input
+                    ref={addFlyerFileInputRef}
+                    type="file"
+                    accept="image/*"
+                    hidden
+                    onChange={handleAddFlyerFileChange}
+                  />
+                </Button>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ display: "inline" }}
+                >
+                  {addFlyerFileName
+                    ? addFlyerFileName
+                    : "Optional session-only pick"}
+                </Typography>
+              </Box>
+              {(addFlyerObjectUrl ||
+                SPOTLIGHT_FLYER_PROTOTYPE_ASSETS.find(
+                  (a) => a.key === addFlyerSampleKey,
+                )?.imageUrl) && (
+                <Box
+                  component="img"
+                  src={
+                    addFlyerObjectUrl ||
+                    SPOTLIGHT_FLYER_PROTOTYPE_ASSETS.find(
+                      (a) => a.key === addFlyerSampleKey,
+                    )!.imageUrl
+                  }
+                  alt="Flyer preview"
+                  sx={{
+                    maxWidth: "100%",
+                    maxHeight: 200,
+                    objectFit: "contain",
+                    borderRadius: 1,
+                    bgcolor: "grey.100",
+                  }}
+                />
+              )}
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={addFlyerActive}
+                    onChange={(e) => setAddFlyerActive(e.target.checked)}
+                    slotProps={{
+                      input: { "aria-label": "Active on TV when saved" },
+                    }}
+                  />
+                }
+                label="Active on TV when saved"
+              />
+              {addFlyerError ? (
+                <Typography variant="body2" color="error">
+                  {addFlyerError}
+                </Typography>
+              ) : null}
+            </Stack>
+          </DialogContent>
+          <DialogActions>
+            <Button type="button" onClick={handleCloseAddFlyer}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="contained">
+              Add Flyer
+            </Button>
+          </DialogActions>
+        </Box>
+      </Dialog>
+
       {/* Announcements */}
       <Card sx={{ maxWidth: 720 }}>
         <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
           <Box>
             <Typography variant="h6">Announcements</Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-              Lines shown in the TV lower band. Refresh the Full Display to
-              see changes.
+              Lines shown in the TV lower band. Refresh the Full Display to see
+              changes.
             </Typography>
           </Box>
 
