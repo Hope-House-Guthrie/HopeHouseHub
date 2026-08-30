@@ -179,6 +179,7 @@ import {
   formatCurfewCloseLabel,
   isValidCurfewCloseMin,
   resolveEffectiveCurfewMin,
+  SEED_WEEKLY_CURFEW,
 } from "../../../features/house-display/curfew";
 import { timelineWindowForWeekday } from "../../../features/house-display/timeline";
 import { SPOTLIGHT_FLYER_PROTOTYPE_ASSETS } from "../../../features/house-display/spotlightFlyerPrototype";
@@ -633,12 +634,17 @@ export default function HouseDisplayManagePage() {
 
   const handleCurfewWeeklyEndOfDay = (weekday: number, checked: boolean) => {
     setCurfewWeeklyError("");
-    if (!checked) return;
     const resolveYmd = getHopeHouseNow().dateKey;
+    // Check → 1440. Uncheck → seed weekly default (Sun–Thu 22:00, Fri–Sat 23:00).
+    const closeMin = checked
+      ? CURFEW_END_OF_DAY_MIN
+      : SEED_WEEKLY_CURFEW.closeMinByWeekday[
+          weekday as HouseDisplayWeekday
+        ];
     dispatch(
       setCurfewWeeklyClose({
         weekday,
-        closeMin: CURFEW_END_OF_DAY_MIN,
+        closeMin,
         dateYmd: resolveYmd,
       }),
     );
