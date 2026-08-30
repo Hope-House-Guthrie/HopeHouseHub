@@ -40,6 +40,11 @@
  * - affirmationText kept as TV empty-pool fallback string
  * - No live cross-tab sync; backend should own truth later
  *
+ * DONE (Program / Class Graphics Manage — FE):
+ * - content.programLogoImageOverrides + setProgramLogoImageOverride
+ * - DEV hydrate/persist via schedulePersistence (stable URLs only; blob/data stripped)
+ * - Schedule logoKey association unchanged
+ *
  * NOT YET:
  * - override exception UI, delete definition, ended-list conflict UI
  * - Spotlight Add Video / Edit / Delete / sound / pin / persist
@@ -57,6 +62,11 @@ import type {
   SystemSpotlightImageOverrides,
 } from "../../../features/house-display/systemSpotlight";
 import { SYSTEM_SPOTLIGHT_MANAGE_SLOTS } from "../../../features/house-display/systemSpotlight";
+import type { ProgramLogoImageOverrides } from "../../../features/house-display/programLogos";
+import {
+  isHouseDisplayProgramLogoKey,
+  PROGRAM_LOGO_MANAGE_SLOTS,
+} from "../../../features/house-display/programLogos";
 import type {
   HouseDisplayAffirmation,
   HouseDisplayAnnouncement,
@@ -85,6 +95,7 @@ import {
   loadAnnouncements,
   loadScheduleSources,
   loadSystemSpotlightImageOverrides,
+  loadProgramLogoImageOverrides,
   saveScheduleSources,
   type HouseDisplayAffirmationPersist,
 } from "../../../features/house-display/schedulePersistence";
@@ -262,10 +273,11 @@ function syncAgendaFromSchedule(
 }
 
 /**
- * DEV/prototype: persist sources + announcements + affirmation bundle.
+ * DEV/prototype: persist sources + announcements + affirmation bundle +
+ * system Spotlight overrides + program logo overrides.
  * Backend will replace this later — not a general app persistence layer.
- * Always pass announcements + affirmations together so whole-key rewrite
- * does not drop either optional field.
+ * Always pass announcements + affirmations + both override maps together so
+ * whole-key rewrite does not drop optional fields.
  */
 function persistScheduleSources(state: HouseDisplayState): void {
   const affirmationPersist: HouseDisplayAffirmationPersist = {
@@ -282,6 +294,7 @@ function persistScheduleSources(state: HouseDisplayState): void {
     state.content.announcements,
     affirmationPersist,
     state.content.systemSpotlightImageOverrides,
+    state.content.programLogoImageOverrides,
   );
 }
 
@@ -376,6 +389,7 @@ function buildContent(
   announcements: HouseDisplayAnnouncement[] = SEED_ANNOUNCEMENTS,
   affirmationPersist?: HouseDisplayAffirmationPersist | null,
   systemSpotlightImageOverrides: SystemSpotlightImageOverrides = {},
+  programLogoImageOverrides: ProgramLogoImageOverrides = {},
 ): HouseDisplayContent {
   const ymd = dateYmd ?? getHopeHouseNow().dateKey;
   const weekday = weekdayFromDateYmd(ymd);
@@ -484,6 +498,7 @@ function buildContent(
 
     announcements,
     systemSpotlightImageOverrides,
+    programLogoImageOverrides,
     birthday: {
       name: "Alex M.",
       dateLabel: "Thu, Aug 27",
@@ -493,7 +508,7 @@ function buildContent(
 
 // Hydrate schedule SOURCES only. Invalid/missing localStorage → seed.
 // agendaItems always come from resolve (never read from storage).
-// Announcements + affirmations hydrate from the same DEV key; missing → seed.
+// Announcements + affirmations + image overrides hydrate from the same DEV key.
 const persistedSchedule = loadScheduleSources();
 const initialSchedule = cloneScheduleSources(
   persistedSchedule ?? INITIAL_SCHEDULE_SOURCES,
@@ -502,6 +517,7 @@ const persistedAnnouncements = loadAnnouncements();
 const persistedAffirmations = loadAffirmationPersist();
 const persistedSystemSpotlightImageOverrides =
   loadSystemSpotlightImageOverrides();
+const persistedProgramLogoImageOverrides = loadProgramLogoImageOverrides();
 
 const initialState: HouseDisplayState = {
   schedule: initialSchedule,
@@ -511,6 +527,7 @@ const initialState: HouseDisplayState = {
     persistedAnnouncements ?? SEED_ANNOUNCEMENTS,
     persistedAffirmations,
     persistedSystemSpotlightImageOverrides ?? {},
+    persistedProgramLogoImageOverrides ?? {},
   ),
 };
 
@@ -522,6 +539,14 @@ function isSystemSpotlightAssetKey(
   value: string,
 ): value is SystemSpotlightAssetKey {
   return SYSTEM_SPOTLIGHT_ASSET_KEY_SET.has(value);
+}
+
+const PROGRAM_LOGO_KEY_SET = new Set<string>(
+  PROGRAM_LOGO_MANAGE_SLOTS.map((s) => s.logoKey),
+);
+
+function isProgramLogoKey(value: string): boolean {
+  return PROGRAM_LOGO_KEY_SET.has(value) && isHouseDisplayProgramLogoKey(value);
 }
 
 export const houseDisplaySlice = createSlice({
@@ -1320,6 +1345,57 @@ export const houseDisplaySlice = createSlice({
       state.content.systemSpotlightImageOverrides[rawKey] = imageUrl;
       persistScheduleSources(state);
     },
+    /**
+     * Admin Manage: set or clear one program/class logo graphic override.
+     * imageUrl non-empty string -> store trimmed URL for that logoKey.
+     * imageUrl null or blank -> remove override (bundled default again).
+     * Rejects unknown logoKey and data: URLs.
+     * Schedule rows keep logoKey slugs only — art lives on this map.
+     * DEV LS may keep stable URLs via sanitize; blob: session-only.
+     */
+    setProgramLogoImageOverride: (
+      state,
+      action: PayloadAction<{
+        logoKey: string;
+        imageUrl: string | null;
+      }>,
+    ) => {
+      const rawKey =
+        typeof action.payload.logoKey === "string"
+          ? action.payload.logoKey.trim()
+          : "";
+      if (!rawKey || !isProgramLogoKey(rawKey)) return;
+
+      const rawUrl = action.payload.imageUrl;
+      if (
+        rawUrl == null ||
+        (typeof rawUrl === "string" && rawUrl.trim() === "")
+      ) {
+        if (!(rawKey in state.content.programLogoImageOverrides)) return;
+
+        const next = { ...state.content.programLogoImageOverrides };
+        delete next[rawKey as keyof typeof next];
+        state.content.programLogoImageOverrides = next;
+        persistScheduleSources(state);
+        return;
+      }
+
+      if (typeof rawUrl !== "string") return;
+
+      const imageUrl = rawUrl.trim();
+      if (!imageUrl) return;
+      if (imageUrl.startsWith("data:")) return;
+
+      const prev = state.content.programLogoImageOverrides[
+        rawKey as keyof typeof state.content.programLogoImageOverrides
+      ];
+      if (prev === imageUrl) return;
+
+      state.content.programLogoImageOverrides[
+        rawKey as keyof typeof state.content.programLogoImageOverrides
+      ] = imageUrl;
+      persistScheduleSources(state);
+    },
   },
 });
 
@@ -1347,5 +1423,6 @@ export const {
   suppressRecurringOccurrence,
   unsuppressRecurringOccurrence,
   setSystemSpotlightImageOverride,
+  setProgramLogoImageOverride,
 } = houseDisplaySlice.actions;
 export default houseDisplaySlice.reducer;

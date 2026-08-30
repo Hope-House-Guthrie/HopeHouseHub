@@ -1,41 +1,43 @@
 /**
-* STATUS — House Display TV (live time + NOW + Spotlight + resolved agenda)
-* Branch: feature/house-display
-*
-* DONE:
-* - Full viewport, no Hub chrome (/house-display)
-* - Region shell: header, agenda, upcoming, lower band
-* - Proportional day-planner timeline (startMin/endMin → top/height %)
-* - Title-only blocks; hour ticks; canceled + live event states
-* - Agenda items = resolved TODAY from schedule sources (not hand-seeded a1–a5)
-* - House Spotlight right ~40%: card | flyer; pin priority; contain flyer
-* - Live America/Chicago clock/date via useHopeHouseNow (minute + visibility)
-* - NOW line on schedule (hidden outside day window); label in time gutter
-* - Spotlight auto-rotation every 15s (local index; pin pauses)
-* - Spotlight soft slide + crossfade ~750ms (dual local layers; ±30px; TV only)
-* - Overlap column layout for simultaneous events
-* - Daily Affirmation lower band: selectAffirmationText (pin → enabled rotate)
-*   + legacy affirmationText fallback when enabled pool empty; hopeNow tick
-* - Curfew Ph0–2: pure config/stages/phase; window end includes Final Break hour;
-*   derived closing agenda (system); Roll Call system (no one-time glow);
-*   timeline paints only current closing stage as hairline (real times)
-* - Curfew Ph3 (revised): system Spotlight takeover (Roll Call + closing phases +
-*   Final Break + House Closed) with image registry + placeholder fallback;
-*   priority system > class/event > normal rotation; no full-width status banner
-* - System Spotlight Graphics: resolveSystemSpotlightState imageOverrides from
-*   content.systemSpotlightImageOverrides (Manage Replace/Restore; DEV LS may keep
-*   stable URLs only — blob:/data: session-only)
-*
-* NOT YET:
-* - Weather API (header still uses seed weatherText)
-* - UP NEXT strip still static mock (does not follow resolved agenda) — cleanup
-* - Spotlight manage forms / upload / backend (class/event Spotlight track)
-* - Fallback right-rail when Spotlight empty
-* - Half-hour ticks / themes
-* - Schedule day rollover from backend
-* - Affirmation / system graphics live cross-tab rehydrate (refresh after Manage)
-* - Curfew Manage UI / DEV persist (parked)
-*/
+ * STATUS — House Display TV (live time + NOW + Spotlight + resolved agenda)
+ * Branch: feature/house-display
+ *
+ * DONE:
+ * - Full viewport, no Hub chrome (/house-display)
+ * - Region shell: header, agenda, upcoming, lower band
+ * - Proportional day-planner timeline (startMin/endMin → top/height %)
+ * - Title-only blocks; hour ticks; canceled + live event states
+ * - Agenda items = resolved TODAY from schedule sources (not hand-seeded a1–a5)
+ * - House Spotlight right ~40%: card | flyer; pin priority; contain flyer
+ * - Live America/Chicago clock/date via useHopeHouseNow (minute + visibility)
+ * - NOW line on schedule (hidden outside day window); label in time gutter
+ * - Spotlight auto-rotation every 15s (local index; pin pauses)
+ * - Spotlight soft slide + crossfade ~750ms (dual local layers; ±30px; TV only)
+ * - Overlap column layout for simultaneous events
+ * - Daily Affirmation lower band: selectAffirmationText (pin → enabled rotate)
+ *   + legacy affirmationText fallback when enabled pool empty; hopeNow tick
+ * - Curfew Ph0–2: pure config/stages/phase; window end includes Final Break hour;
+ *   derived closing agenda (system); Roll Call system (no one-time glow);
+ *   timeline paints only current closing stage as hairline (real times)
+ * - Curfew Ph3 (revised): system Spotlight takeover (Roll Call + closing phases +
+ *   Final Break + House Closed) with image registry + placeholder fallback;
+ *   priority system > class/event > normal rotation; no full-width status banner
+ * - System Spotlight Graphics: resolveSystemSpotlightState imageOverrides from
+ *   content.systemSpotlightImageOverrides (Manage Replace/Restore; DEV LS may keep
+ *   stable URLs only — blob:/data: session-only)
+ * - Program / Class Graphics: active-event logos via getProgramLogoImageWithOverrides
+ *   + content.programLogoImageOverrides (catalog defaults; Admin Manage overrides)
+ *
+ * NOT YET:
+ * - Weather API (header still uses seed weatherText)
+ * - UP NEXT strip still static mock (does not follow resolved agenda) — cleanup
+ * - Spotlight manage forms / upload / backend (class/event Spotlight track)
+ * - Fallback right-rail when Spotlight empty
+ * - Half-hour ticks / themes
+ * - Schedule day rollover from backend
+ * - Affirmation / system / program graphics live cross-tab rehydrate (refresh after Manage)
+ * - Curfew Manage UI / DEV persist (parked)
+ */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import { Box, keyframes, Typography, useMediaQuery } from "@mui/material";
@@ -76,12 +78,8 @@ import {
   type SystemSpotlightState,
 } from "../../../features/house-display/systemSpotlight";
 import { useHopeHouseNow } from "../../../features/house-display/useHopeHouseNow";
-// Program logos for active-event Spotlight (bundled @assets, same as flyers).
-import techQuestLogoUrl from "@assets/house-display/logos/tech-quest.png";
-import iMatterLogoUrl from "@assets/house-display/logos/i-matter.png";
-import dbsaLogoUrl from "@assets/house-display/logos/dbsa.png";
-import naLogoUrl from "@assets/house-display/logos/na.png";
-import gameNightLogoUrl from "@assets/house-display/logos/game-night.png";
+// Program logos: catalog defaults + Admin overrides (content.programLogoImageOverrides).
+import { getProgramLogoImageWithOverrides } from "../../../features/house-display/programLogos";
 
 /* ---- One-time event perimeter glow (visual prototype) ----
  * Tunable knobs for browser testing. The glow is drawn with an SVG path
@@ -199,18 +197,13 @@ type SpotlightSlide =
   | { kind: "activeEvent"; id: string; event: HouseDisplayAgendaItem }
   | { kind: "system"; id: string; system: SystemSpotlightState };
 
-/* ---- Active-event Spotlight logos (Phase 2) ----
- * Explicit logoKey → bundled asset map. Keys are assigned on the schedule
- * source (never inferred from titles); shared programs reuse one key
- * (e.g. Men's/Women's/Main NA → "na"). Unknown/absent key = text-only card.
+/* ---- Active-event Spotlight logos ----
+ * logoKey → effective art via programLogos.getProgramLogoImageWithOverrides
+ * (bundled default + content.programLogoImageOverrides).
+ * Keys live on schedule sources (never title-inferred). Shared programs
+ * reuse one key (e.g. Men's/Women's/Main NA → "na").
+ * Unknown/absent key = text-only Happening Now.
  */
-const ACTIVE_EVENT_LOGOS: Record<string, string> = {
-  "tech-quest": techQuestLogoUrl,
-  "i-matter": iMatterLogoUrl,
-  "dbsa": dbsaLogoUrl,
-  "na": naLogoUrl,
-  "game-night": gameNightLogoUrl,
-};
 
 function formatMinutesAsTime(totalMinutes: number): string {
   const hours24 = Math.floor(totalMinutes / 60);
@@ -222,9 +215,12 @@ function formatMinutesAsTime(totalMinutes: number): string {
 }
 
 /** Resolve a logo asset URL for an agenda item, or undefined for text-only. */
-function activeEventLogoSrc(ev: HouseDisplayAgendaItem): string | undefined {
-  if (!ev.logoKey) return undefined;
-  return ACTIVE_EVENT_LOGOS[ev.logoKey];
+function activeEventLogoSrc(
+  ev: HouseDisplayAgendaItem,
+  overrides?: Parameters<typeof getProgramLogoImageWithOverrides>[1],
+): string | undefined {
+  const url = getProgramLogoImageWithOverrides(ev.logoKey, overrides);
+  return url == null ? undefined : url;
 }
 
 /** Format an agenda item into a Spotlight-style slide for active-event takeover. */
@@ -271,7 +267,7 @@ const birthdayConfetti = keyframes`
   100% {
     transform: translateY(70px) rotate(240deg);
     opacity: 0;
-  };`
+  };`;
 
 export default function HouseDisplayPage() {
   const content = useSelector((state: RootState) => state.houseDisplay.content);
@@ -337,7 +333,7 @@ export default function HouseDisplayPage() {
 
   const blocks = useMemo(
     () => layoutAgendaItems(agendaItems, timeline),
-    [agendaItems, timeline]
+    [agendaItems, timeline],
   );
 
   /**
@@ -390,19 +386,15 @@ export default function HouseDisplayPage() {
         config: SEED_CURFEW_CONFIG,
         imageOverrides: content.systemSpotlightImageOverrides,
       }),
-    [
-      hopeNow.dateKey,
-      hopeNow.nowMin,
-      content.systemSpotlightImageOverrides,
-    ],
+    [hopeNow.dateKey, hopeNow.nowMin, content.systemSpotlightImageOverrides],
   );
 
   const nextAgendaItems = useMemo(
     () =>
       agendaItems
-      .filter((item) => !item.canceled && item.startMin > hopeNow.nowMin)
-      .sort((a, b) => a.startMin - b.startMin)
-      .slice(0, 3),
+        .filter((item) => !item.canceled && item.startMin > hopeNow.nowMin)
+        .sort((a, b) => a.startMin - b.startMin)
+        .slice(0, 3),
     [agendaItems, hopeNow.nowMin],
   );
 
@@ -435,7 +427,7 @@ export default function HouseDisplayPage() {
     return map;
   }, [agendaItems]);
 
-    /**
+  /**
    * Spotlight pool priority (TV only):
    * 1) hard system (Roll Call lead-in+, closing / Final Break / House Closed)
    * 2) staff class / one-time happening
@@ -514,9 +506,7 @@ export default function HouseDisplayPage() {
   takeoverActiveRef.current = takeoverActive;
 
   useEffect(() => {
-    setRotateIndex((i) =>
-      clampSpotlightRotateIndex(i, slideCount),
-    );
+    setRotateIndex((i) => clampSpotlightRotateIndex(i, slideCount));
   }, [slideCount, activeSlidesKey]);
 
   /**
@@ -567,12 +557,16 @@ export default function HouseDisplayPage() {
   // object, so it must not be a fresh object on every render.
   const spotlightSlide = useMemo<SpotlightSlide | null>(() => {
     if (activeSlides.length === 0) return null;
-    return activeSlides[clampSpotlightRotateIndex(rotateIndex, activeSlides.length)] ?? null;
+    return (
+      activeSlides[
+        clampSpotlightRotateIndex(rotateIndex, activeSlides.length)
+      ] ?? null
+    );
   }, [activeSlides, rotateIndex]);
 
   const nowMarker = useMemo(
     () => nowLineLayout(hopeNow.nowMin, timeline),
-    [hopeNow.nowMin, timeline]
+    [hopeNow.nowMin, timeline],
   );
 
   /** Soft horizontal slide + crossfade — TV presentation only; not Redux. */
@@ -580,7 +574,7 @@ export default function HouseDisplayPage() {
   /** Outgoing drifts left; incoming starts slightly right (not full off-screen). */
   const SPOTLIGHT_SLIDE_PX = 30;
 
-    const [layerA, setLayerA] = useState<SpotlightSlide | null>(null);
+  const [layerA, setLayerA] = useState<SpotlightSlide | null>(null);
   const [layerB, setLayerB] = useState<SpotlightSlide | null>(null);
   const [frontIsA, setFrontIsA] = useState(true);
 
@@ -643,7 +637,12 @@ export default function HouseDisplayPage() {
         ? frontSlide.id
         : null;
 
-    if (!frontVideo || !frontVideoId || !frontSlide || frontSlide.kind !== "spotlight") {
+    if (
+      !frontVideo ||
+      !frontVideoId ||
+      !frontSlide ||
+      frontSlide.kind !== "spotlight"
+    ) {
       lastFrontVideoIdRef.current = null;
       return;
     }
@@ -696,7 +695,7 @@ export default function HouseDisplayPage() {
    * - same id: refresh that layer's content
    * - new id: put next on the BACK layer, then flip which layer is opacity 1
    */
-    useEffect(() => {
+  useEffect(() => {
     const next = spotlightSlide;
     const isA = frontIsARef.current;
     const front = isA ? layerARef.current : layerBRef.current;
@@ -727,7 +726,7 @@ export default function HouseDisplayPage() {
     let raf2 = 0;
     const raf1 = requestAnimationFrame(() => {
       raf2 = requestAnimationFrame(() => {
-                setFrontIsA((v) => !v);
+        setFrontIsA((v) => !v);
       });
     });
     return () => {
@@ -738,10 +737,7 @@ export default function HouseDisplayPage() {
 
   /** Render a Spotlight slide: normal item, active event, or system house state.
    * layer marks which dual-layer slot owns a video ref (Phase 2 pause/play). */
-  function renderSpotlightSlide(
-    slide: SpotlightSlide,
-    layer: "a" | "b",
-  ) {
+  function renderSpotlightSlide(slide: SpotlightSlide, layer: "a" | "b") {
     // System house state (Roll Call / closing / Final Break / House Closed)
     if (slide.kind === "system") {
       const sys = slide.system;
@@ -867,7 +863,10 @@ export default function HouseDisplayPage() {
     // Phase 1: active happening event takeover.
     if (slide.kind === "activeEvent") {
       const ev = slide.event;
-      const logoSrc = activeEventLogoSrc(ev);
+      const logoSrc = activeEventLogoSrc(
+        ev,
+        content.programLogoImageOverrides,
+      );
       return (
         <Box
           sx={{
@@ -1068,8 +1067,10 @@ export default function HouseDisplayPage() {
         />
       );
     }
-    
-    {/*  Otherwise Render Card */}
+
+    {
+      /*  Otherwise Render Card */
+    }
     return (
       <Box
         sx={{
@@ -1377,7 +1378,7 @@ export default function HouseDisplayPage() {
                     endMin: b.endMin,
                     canceled,
                   },
-                  hopeNow.nowMin
+                  hopeNow.nowMin,
                 );
 
                 const stateSx = blockSxForState(visualState);
@@ -1683,7 +1684,6 @@ export default function HouseDisplayPage() {
                 whiteSpace: "nowrap",
               }}
             >
-
               {formatMinutesAsTime(item.startMin)} - {item.title}
             </Typography>
           ))}
@@ -1770,82 +1770,83 @@ export default function HouseDisplayPage() {
             ))}
           </Box>
 
-            {hasBirthdayToday ? (
-          <Box sx={{
-            flex: "0 0 auto",
-            pt: 0.5,
-            position: "relative",
-            overflow: "hidden",
-            borderRadius: 2,
-            border: "1px solid rgba(255, 215, 0, 0.28)",
-            background:
-              "linear-gradient(135deg, rgba(255, 193, 7, 0.08), rgba(255, 105, 180, 0.06))",
-            }}
-          >
-            {!reduceMotion &&
-            [
-              { left: "8%", delay: "0s", duration: "3.4s" },
-              { left: "23%", delay: "1.1s", duration: "4.1s" },
-              { left: "42%", delay: "0.5s", duration: "3.7s" },
-              { left: "61%", delay: "1.7s", duration: "4.3s" },
-              { left: "78%", delay: "0.8s", duration: "3.5s" },
-              { left: "92%", delay: "2.1s", duration: "4s" },
-            ].map((piece, index) => (
-              <Box
-                key={piece.left}
+          {hasBirthdayToday ? (
+            <Box
+              sx={{
+                flex: "0 0 auto",
+                pt: 0.5,
+                position: "relative",
+                overflow: "hidden",
+                borderRadius: 2,
+                border: "1px solid rgba(255, 215, 0, 0.28)",
+                background:
+                  "linear-gradient(135deg, rgba(255, 193, 7, 0.08), rgba(255, 105, 180, 0.06))",
+              }}
+            >
+              {!reduceMotion &&
+                [
+                  { left: "8%", delay: "0s", duration: "3.4s" },
+                  { left: "23%", delay: "1.1s", duration: "4.1s" },
+                  { left: "42%", delay: "0.5s", duration: "3.7s" },
+                  { left: "61%", delay: "1.7s", duration: "4.3s" },
+                  { left: "78%", delay: "0.8s", duration: "3.5s" },
+                  { left: "92%", delay: "2.1s", duration: "4s" },
+                ].map((piece, index) => (
+                  <Box
+                    key={piece.left}
+                    sx={{
+                      position: "absolute",
+                      top: 0,
+                      left: piece.left,
+                      width: index % 2 === 0 ? 5 : 4,
+                      height: index % 2 === 0 ? 9 : 7,
+                      borderRadius: "2px",
+                      backgroundColor:
+                        index % 3 === 0
+                          ? "#FFD740"
+                          : index % 3 === 1
+                            ? "#FF8A65"
+                            : "#80CBC4",
+                      opacity: 0,
+                      pointerEvents: "none",
+                      animation: `${birthdayConfetti} ${piece.duration} linear ${piece.delay} infinite`,
+                    }}
+                  />
+                ))}
+              <Typography
                 sx={{
-                  position: "absolute",
-                  top: 0,
-                  left: piece.left,
-                  width: index % 2 === 0 ? 5 : 4,
-                  height: index % 2 === 0 ? 9 : 7,
-                  borderRadius: "2px",
-                  backgroundColor:
-                    index % 3 === 0
-                      ? "#FFD740"
-                      : index % 3 === 1
-                        ? "#FF8A65"
-                        : "#80CBC4",
-                  opacity: 0,
-                  pointerEvents: "none",
-                  animation: `${birthdayConfetti} ${piece.duration} linear ${piece.delay} infinite`,
+                  fontWeight: 700,
+                  opacity: 0.7,
+                  textTransform: "uppercase",
+                  mb: 0.5,
+                  fontSize: "clamp(0.7rem, 1.1vw, 0.95rem)",
+                  animation: reduceMotion
+                    ? "none"
+                    : `${birthdayShimmer} 2.4s ease-in-out infinite`,
                 }}
-              />
-            ))}
-            <Typography
-              sx={{
-                fontWeight: 700,
-                opacity: 0.7,
-                textTransform: "uppercase",
-                mb: 0.5,
-                fontSize: "clamp(0.7rem, 1.1vw, 0.95rem)",
-                animation: reduceMotion
-                  ? "none"
-                  : `${birthdayShimmer} 2.4s ease-in-out infinite`,
-              }}
-            >
-             🎂 Happy Birthday!
-            </Typography>
-            <Typography
-              sx={{
-                fontWeight: 700,
-                fontSize: "clamp(1rem, 1.8vw, 1.5rem)",
-                animation: reduceMotion
-                  ? "none"
-                  : `${birthdayNameGlow} 3.2s ease-in-out infinite`,
-              }}
-            >
-              {birthday.name}
-            </Typography>
-            <Typography
-              sx={{
-                opacity: 0.8,
-                fontSize: "clamp(0.85rem, 1.3vw, 1.15rem)",
-              }}
-            >
-              {birthday.dateLabel}
-            </Typography>
-          </Box>
+              >
+                🎂 Happy Birthday!
+              </Typography>
+              <Typography
+                sx={{
+                  fontWeight: 700,
+                  fontSize: "clamp(1rem, 1.8vw, 1.5rem)",
+                  animation: reduceMotion
+                    ? "none"
+                    : `${birthdayNameGlow} 3.2s ease-in-out infinite`,
+                }}
+              >
+                {birthday.name}
+              </Typography>
+              <Typography
+                sx={{
+                  opacity: 0.8,
+                  fontSize: "clamp(0.85rem, 1.3vw, 1.15rem)",
+                }}
+              >
+                {birthday.dateLabel}
+              </Typography>
+            </Box>
           ) : null}
         </Box>
       </Box>

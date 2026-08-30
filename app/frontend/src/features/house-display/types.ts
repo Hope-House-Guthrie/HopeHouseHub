@@ -14,6 +14,7 @@
 
 import type { HouseDisplayScheduleSources } from "./scheduleTypes";
 import type { SystemSpotlightImageOverrides } from "./systemSpotlight";
+import type { ProgramLogoImageOverrides } from "./programLogos";
 
 /** Static header placeholders until live clock/weather. */
 export interface HouseDisplayHeader {
@@ -209,6 +210,14 @@ export interface HouseDisplayContent {
    * session-only (not written to LS). Backend should own media later.
    */
   systemSpotlightImageOverrides: SystemSpotlightImageOverrides;
+  /**
+   * Admin Manage overrides for program/class logo art (logoKey -> image URL).
+   * Missing keys use bundled HOUSE_DISPLAY_PROGRAM_LOGO_IMAGES. Empty object =
+   * all defaults. Schedule still stores logoKey only — never image bytes/URLs
+   * on the class row. FE mock: stable URLs may hydrate from DEV localStorage
+   * later; blob: / data: stay session-only. Production media = backend.
+   */
+  programLogoImageOverrides: ProgramLogoImageOverrides;
   birthday: HouseDisplayBirthday;
 }
 

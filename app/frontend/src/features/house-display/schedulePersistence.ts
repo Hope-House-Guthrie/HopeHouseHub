@@ -5,12 +5,13 @@
  *
  * Persists recurring + oneTime + exceptions + announcement lines (optional)
  * + affirmation library/pin/rotateMs (optional, additive)
- * + system Spotlight image overrides (optional, additive).
+ * + system Spotlight image overrides (optional, additive)
+ * + program logo image overrides (optional, additive).
  * Never agendaItems / full content tree. Fail-safe load → null (caller uses seed).
  *
- * System Spotlight overrides: sanitize drops blank, data:, and blob: values so
- * only stable URLs (https / same-origin paths) may persist in DEV localStorage.
- * Backend replaces this later.
+ * Image overrides (system + program): sanitize drops blank, data:, and blob:
+ * values so only stable URLs (https / same-origin paths) may persist in DEV
+ * localStorage. Backend replaces this later.
  */
 import type { HouseDisplayScheduleSources } from "./scheduleTypes";
 import type {
@@ -22,6 +23,11 @@ import type {
   SystemSpotlightImageOverrides,
 } from "./systemSpotlight";
 import { SYSTEM_SPOTLIGHT_MANAGE_SLOTS } from "./systemSpotlight";
+import type {
+  HouseDisplayProgramLogoKey,
+  ProgramLogoImageOverrides,
+} from "./programLogos";
+import { PROGRAM_LOGO_MANAGE_SLOTS } from "./programLogos";
 
 /** Versioned key - bump suffix if the JSON shape changes incompatibly. */
 export const HOUSE_DISPLAY_SCHEDULE_STORAGE_KEY =
@@ -77,21 +83,22 @@ export function loadAnnouncements(): HouseDisplayAnnouncement[] | null {
 
 /**
  * Write schedule sources + optional announcement lines + optional affirmation
- * bundle + optional system Spotlight image overrides (not resolved agenda /
- * full content tree). Optional fields are additive so older payloads stay
- * valid - no storage key bump.
+ * bundle + optional system Spotlight image overrides + optional program logo
+ * image overrides (not resolved agenda / full content tree). Optional fields
+ * are additive so older payloads stay valid - no storage key bump.
  * Swallows errors so a full disk / private mode cannot crash the UI.
  *
  * IMPORTANT: this replaces the whole LS JSON. Callers that persist schedule
- * must pass current announcements, affirmation bundle, AND system Spotlight
- * overrides when those features are in use (slice persistScheduleSources does
- * that), or those keys drop.
+ * must pass current announcements, affirmation bundle, system Spotlight
+ * overrides, AND program logo overrides when those features are in use
+ * (slice persistScheduleSources does that), or those keys drop.
  */
 export function saveScheduleSources(
   sources: HouseDisplayScheduleSources,
   announcements?: HouseDisplayAnnouncement[],
   affirmationPersist?: HouseDisplayAffirmationPersist,
   systemSpotlightImageOverrides?: SystemSpotlightImageOverrides | null,
+  programLogoImageOverrides?: ProgramLogoImageOverrides | null,
 ): void {
   try {
     if (typeof localStorage === "undefined") return;
@@ -102,6 +109,7 @@ export function saveScheduleSources(
       pinnedAffirmationId?: string | null;
       affirmationRotateMs?: number;
       systemSpotlightImageOverrides?: SystemSpotlightImageOverrides;
+      programLogoImageOverrides?: ProgramLogoImageOverrides;
     } = {
       recurring: sources.recurring,
       oneTime: sources.oneTime,
@@ -118,6 +126,11 @@ export function saveScheduleSources(
     if (systemSpotlightImageOverrides) {
       payload.systemSpotlightImageOverrides =
         sanitizeSystemSpotlightImageOverrides(systemSpotlightImageOverrides);
+    }
+    if (programLogoImageOverrides) {
+      payload.programLogoImageOverrides = sanitizeProgramLogoImageOverrides(
+        programLogoImageOverrides,
+      );
     }
     localStorage.setItem(
       HOUSE_DISPLAY_SCHEDULE_STORAGE_KEY,
@@ -217,6 +230,61 @@ export function loadSystemSpotlightImageOverrides(): SystemSpotlightImageOverrid
 
     const cleaned = sanitizeSystemSpotlightImageOverrides(field);
     return cleaned;
+  } catch {
+    return null;
+  }
+}
+
+const PROGRAM_LOGO_KEY_SET = new Set<string>(
+  PROGRAM_LOGO_MANAGE_SLOTS.map((slot) => slot.logoKey),
+);
+
+/**
+ * Drop blank, data:, and blob: values. Only stable URLs go into DEV storage.
+ * File-picker object URLs stay in Redux for the session and are never written.
+ */
+export function sanitizeProgramLogoImageOverrides(
+  raw: unknown,
+): ProgramLogoImageOverrides {
+  if (raw == null || typeof raw !== "object") return {};
+
+  const out: ProgramLogoImageOverrides = {};
+
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (!PROGRAM_LOGO_KEY_SET.has(key)) continue;
+    if (typeof value !== "string") continue;
+
+    const url = value.trim();
+
+    if (!url) continue;
+    if (url.startsWith("data:") || url.startsWith("blob:")) continue;
+
+    out[key as HouseDisplayProgramLogoKey] = url;
+  }
+
+  return out;
+}
+
+/**
+ * Read program logo image overrides from the same DEV storage key.
+ * Returns null when absent (caller uses {}). Always re-sanitizes so blob:/data:
+ * never hydrate even if an older payload somehow stored them.
+ */
+export function loadProgramLogoImageOverrides(): ProgramLogoImageOverrides | null {
+  try {
+    if (typeof localStorage === "undefined") return null;
+
+    const raw = localStorage.getItem(HOUSE_DISPLAY_SCHEDULE_STORAGE_KEY);
+    if (raw == null || raw === "") return null;
+
+    const parsed: unknown = JSON.parse(raw);
+    if (parsed == null || typeof parsed !== "object") return null;
+
+    const field = (parsed as Record<string, unknown>).programLogoImageOverrides;
+
+    if (field == null) return null;
+
+    return sanitizeProgramLogoImageOverrides(field);
   } catch {
     return null;
   }

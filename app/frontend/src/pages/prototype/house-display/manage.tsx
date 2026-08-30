@@ -87,15 +87,23 @@
  * - DEV LS: stable override URLs may persist (same schedule key); blob: / data: not persisted
  * - Refresh Full Display after Manage for cross-tab (no live sync)
  *
+ * DONE (Program / Class Graphics Manage — FE):
+ * - Admin-only card after System Spotlight Graphics (hide if no ADMIN role)
+ * - PROGRAM_LOGO_MANAGE_SLOTS; thumbs via getProgramLogoImageWithOverrides
+ * - Replace / Restore; setProgramLogoImageOverride; shared logoKey updates all classes
+ * - Schedule stores logoKey only; Class Image preview uses effective art
+ * - DEV LS: stable program override URLs may persist; blob: / data: stripped
+ *
  * NEXT (Spotlight Content): Add Video / Edit / Delete / pin / sound / persist — parked
  * (Schedule Stage D/E may still appear elsewhere; this track is Spotlight Content.)
  *
  * NOT YET:
  * - manage One-Time conflict polish leftovers if any
  * - override exception UI, delete definition, ended-list conflict UI
- * - Affirmation / system graphics live cross-tab rehydrate (refresh TV after Manage)
+ * - One-time Class Image Select (parked)
+ * - Affirmation / system / program graphics live cross-tab rehydrate (refresh TV after Manage)
  * - Curfew Manage UI / DEV persist (parked)
- * - Backend API / thunks / durable media storage
+ * - Backend API / thunks / durable media storage / program catalog CRUD
  * - Midnight re-resolve without refresh
  *
  * PAIR:
@@ -156,6 +164,9 @@ import {
   findProgramLogoOption,
   HOUSE_DISPLAY_PROGRAM_LOGO_OPTIONS,
   isHouseDisplayProgramLogoKey,
+  PROGRAM_LOGO_MANAGE_SLOTS,
+  canManageProgramLogoGraphics,
+  getProgramLogoImageWithOverrides,
 } from "../../../features/house-display/programLogos";
 import {
   SYSTEM_SPOTLIGHT_MANAGE_SLOTS,
@@ -178,6 +189,7 @@ import {
   addRecurringClass,
   addSpotlightFlyer,
   setSystemSpotlightImageOverride,
+  setProgramLogoImageOverride,
   cancelOccurrence,
   editAffirmation,
   editOneTimeEvent,
@@ -261,12 +273,16 @@ export default function HouseDisplayManagePage() {
     (state: RootState) =>
       state.houseDisplay.content.systemSpotlightImageOverrides,
   );
-  /** Hub auth roles - System Spotlight Graphics manage is Admin-only (FE hide). */
+  const programLogoImageOverrides = useSelector(
+    (state: RootState) => state.houseDisplay.content.programLogoImageOverrides,
+  );
+  /** Hub auth roles - System Spotlight + Program Graphics manage are Admin-only (FE hide). */
   const authUserRoles = useSelector(
     (state: RootState) => state.auth.user?.roles ?? [],
   );
   const canManageSystemSpotlight =
     canManageSystemSpotlightGraphics(authUserRoles);
+  const canManageProgramLogos = canManageProgramLogoGraphics(authUserRoles);
 
   // --- Add Class dialog ---
   const [addClassOpen, setAddClassOpen] = useState(false);
@@ -284,7 +300,7 @@ export default function HouseDisplayManagePage() {
   const [addFacilitator, setAddFacilitator] = useState<string>("");
   /**
    * Class Image catalog key for Spotlight takeover.
-   * "" = None (no logo). Values match programLogos / TV ACTIVE_EVENT_LOGOS.
+   * "" = None (no logo). Values match programLogos logoKey catalog.
    */
   const [addLogoKey, setAddLogoKey] = useState<string>("");
 
@@ -341,6 +357,10 @@ export default function HouseDisplayManagePage() {
    * Do not revoke bundled @assets URLs.
    */
   const systemSpotlightBlobByKeyRef = useRef<Record<string, string>>({});
+  /** Shared file picker for Program / Class Graphics replace (Admin). */
+  const programLogoFileInputRef = useRef<HTMLInputElement | null>(null);
+  const programLogoReplaceKeyRef = useRef<string | null>(null);
+  const programLogoBlobByKeyRef = useRef<Record<string, string>>({});
   /** Track object URL for revoke on replace/cancel (not after successful save). */
   const addFlyerObjectUrlRef = useRef("");
 
@@ -715,6 +735,51 @@ export default function HouseDisplayManagePage() {
     dispatch(
       setSystemSpotlightImageOverride({
         assetKey,
+        imageUrl: null,
+      }),
+    );
+  };
+
+  const handleProgramLogoReplaceClick = (logoKey: string) => {
+    programLogoReplaceKeyRef.current = logoKey;
+    programLogoFileInputRef.current?.click();
+  };
+
+  const handleProgramLogoFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const logoKey = programLogoReplaceKeyRef.current;
+    const file = e.target.files?.[0] ?? null;
+    e.target.value = "";
+    programLogoReplaceKeyRef.current = null;
+
+    if (!logoKey || !file) return;
+    if (!file.type.startsWith("image/")) return;
+
+    const prevBlob = programLogoBlobByKeyRef.current[logoKey];
+    if (prevBlob) {
+      URL.revokeObjectURL(prevBlob);
+      delete programLogoBlobByKeyRef.current[logoKey];
+    }
+
+    const url = URL.createObjectURL(file);
+    programLogoBlobByKeyRef.current[logoKey] = url;
+
+    dispatch(
+      setProgramLogoImageOverride({
+        logoKey,
+        imageUrl: url,
+      }),
+    );
+  };
+
+  const handleProgramLogoRestoreDefault = (logoKey: string) => {
+    const prevBlob = programLogoBlobByKeyRef.current[logoKey];
+    if (prevBlob) {
+      URL.revokeObjectURL(prevBlob);
+      delete programLogoBlobByKeyRef.current[logoKey];
+    }
+    dispatch(
+      setProgramLogoImageOverride({
+        logoKey,
         imageUrl: null,
       }),
     );
@@ -1757,7 +1822,12 @@ export default function HouseDisplayManagePage() {
                       </Typography>
                       <Box
                         component="img"
-                        src={findProgramLogoOption(addLogoKey)!.imageUrl}
+                        src={
+                          getProgramLogoImageWithOverrides(
+                            addLogoKey,
+                            programLogoImageOverrides,
+                          ) ?? findProgramLogoOption(addLogoKey)!.imageUrl
+                        }
                         alt={`${findProgramLogoOption(addLogoKey)!.label} class image`}
                         sx={{
                           maxWidth: 200,
@@ -2783,6 +2853,139 @@ export default function HouseDisplayManagePage() {
                         disabled={!hasOverride}
                         onClick={() =>
                           handleSystemSpotlightRestoreDefault(slot.assetKey)
+                        }
+                      >
+                        Restore default
+                      </Button>
+                    </Box>
+                  </Box>
+                );
+              })}
+            </Stack>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {/* Program / Class Graphics — Admin-only (hide if no permission) */}
+      {canManageProgramLogos ? (
+        <Card sx={{ maxWidth: 720 }}>
+          <CardContent
+            sx={{ display: "flex", flexDirection: "column", gap: 2 }}
+          >
+            <input
+              ref={programLogoFileInputRef}
+              type="file"
+              accept="image/*"
+              hidden
+              aria-label="Replace program class graphic"
+              onChange={handleProgramLogoFileChange}
+            />
+            <Box>
+              <Typography variant="h6">Program / Class Graphics</Typography>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ mt: 0.5 }}
+              >
+                Program logos for Happening Now when a class or event uses that
+                Class Image key. Shared keys (for example NA) update every class
+                with that key. Admin only. File Replace uses a session blob: URL
+                (not written to DEV localStorage). Stable override URLs may
+                persist in DEV storage; data: is rejected. Schedule still stores
+                logoKey only. Refresh Full Display after changes (no live
+                cross-tab sync).
+              </Typography>
+            </Box>
+
+            <Divider />
+
+            <Stack divider={<Divider flexItem />} spacing={0}>
+              {PROGRAM_LOGO_MANAGE_SLOTS.map((slot) => {
+                const imageUrl = getProgramLogoImageWithOverrides(
+                  slot.logoKey,
+                  programLogoImageOverrides,
+                );
+                const hasImage =
+                  typeof imageUrl === "string" && imageUrl.trim().length > 0;
+                const hasOverride = Boolean(
+                  programLogoImageOverrides[slot.logoKey]?.trim(),
+                );
+                return (
+                  <Box
+                    key={slot.logoKey}
+                    sx={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      alignItems: "center",
+                      gap: 1.5,
+                      py: 1.5,
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        width: 96,
+                        height: 54,
+                        flex: "0 0 auto",
+                        borderRadius: 1,
+                        overflow: "hidden",
+                        bgcolor: "action.hover",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      {hasImage ? (
+                        <Box
+                          component="img"
+                          src={imageUrl}
+                          alt=""
+                          sx={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "contain",
+                            display: "block",
+                          }}
+                        />
+                      ) : (
+                        <Typography variant="caption" color="text.secondary">
+                          No art
+                        </Typography>
+                      )}
+                    </Box>
+                    <Box sx={{ minWidth: 0, flex: "1 1 160px" }}>
+                      <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                        {slot.label}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {slot.logoKey}
+                        {hasOverride ? " · custom" : " · default"}
+                      </Typography>
+                    </Box>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        gap: 1,
+                        flex: "0 0 auto",
+                      }}
+                    >
+                      <Button
+                        type="button"
+                        size="small"
+                        variant="outlined"
+                        onClick={() =>
+                          handleProgramLogoReplaceClick(slot.logoKey)
+                        }
+                      >
+                        Replace
+                      </Button>
+                      <Button
+                        type="button"
+                        size="small"
+                        variant="text"
+                        disabled={!hasOverride}
+                        onClick={() =>
+                          handleProgramLogoRestoreDefault(slot.logoKey)
                         }
                       >
                         Restore default
