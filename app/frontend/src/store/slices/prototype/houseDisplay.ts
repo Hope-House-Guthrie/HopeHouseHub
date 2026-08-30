@@ -40,18 +40,32 @@
  * - affirmationText kept as TV empty-pool fallback string
  * - No live cross-tab sync; backend should own truth later
  *
+ * DONE (System Spotlight Graphics Manage — FE):
+ * - content.systemSpotlightImageOverrides (assetKey → image URL; {} = bundled defaults)
+ * - setSystemSpotlightImageOverride (reject unknown key + data:; clear on null/blank)
+ * - buildContent / initialState hydrate via loadSystemSpotlightImageOverrides
+ * - persistScheduleSources writes sanitized overrides with schedule/announcements/affirmations
+ * - Stable URLs may persist in DEV LS; blob: / data: stripped (session-only in Redux)
+ * - TV resolve reads overrides from content (manage Replace / Restore)
+ *
  * NOT YET:
  * - override exception UI, delete definition, ended-list conflict UI
  * - Spotlight Add Video / Edit / Delete / sound / pin / persist
- * - Affirmation storage/visibility rehydrate for open TV tabs
- * - Backend API / thunks
+ * - Affirmation / system graphics live rehydrate for open TV tabs
+ * - Curfew Manage UI / DEV persist (parked)
+ * - Backend API / thunks / durable media storage
  * - Midnight re-resolve without refresh
  *
  * Who uses this:
- *   - manage.tsx  → Today cancel/restore; Add/Edit/End/Reinstate Recurring; One-Time; Spotlight; Affirmations
- *   - index.tsx   → TV selects content only (affirmations via selectAffirmationText)
+ *   - manage.tsx  → schedule, Spotlight, Affirmations, System Spotlight Graphics
+ *   - index.tsx   → TV selects content (affirmations + systemSpotlightImageOverrides)
  */
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
+import type {
+  SystemSpotlightAssetKey,
+  SystemSpotlightImageOverrides,
+} from "../../../features/house-display/systemSpotlight";
+import { SYSTEM_SPOTLIGHT_MANAGE_SLOTS } from "../../../features/house-display/systemSpotlight";
 import type {
   HouseDisplayAffirmation,
   HouseDisplayAnnouncement,
@@ -79,6 +93,7 @@ import {
   loadAffirmationPersist,
   loadAnnouncements,
   loadScheduleSources,
+  loadSystemSpotlightImageOverrides,
   saveScheduleSources,
   type HouseDisplayAffirmationPersist,
 } from "../../../features/house-display/schedulePersistence";
@@ -275,6 +290,7 @@ function persistScheduleSources(state: HouseDisplayState): void {
     },
     state.content.announcements,
     affirmationPersist,
+    state.content.systemSpotlightImageOverrides,
   );
 }
 
@@ -368,13 +384,13 @@ function buildContent(
   dateYmd?: string,
   announcements: HouseDisplayAnnouncement[] = SEED_ANNOUNCEMENTS,
   affirmationPersist?: HouseDisplayAffirmationPersist | null,
+  systemSpotlightImageOverrides: SystemSpotlightImageOverrides = {},
 ): HouseDisplayContent {
   const ymd = dateYmd ?? getHopeHouseNow().dateKey;
   const weekday = weekdayFromDateYmd(ymd);
 
   const affirmations = affirmationPersist?.affirmations ?? SEED_AFFIRMATIONS;
-  let pinnedAffirmationId =
-    affirmationPersist?.pinnedAffirmationId ?? null;
+  let pinnedAffirmationId = affirmationPersist?.pinnedAffirmationId ?? null;
   // Drop stale pin ids that are not in the loaded library
   if (
     pinnedAffirmationId != null &&
@@ -476,6 +492,7 @@ function buildContent(
     affirmationRotateMs,
 
     announcements,
+    systemSpotlightImageOverrides,
     birthday: {
       name: "Alex M.",
       dateLabel: "Thu, Aug 27",
@@ -492,6 +509,8 @@ const initialSchedule = cloneScheduleSources(
 );
 const persistedAnnouncements = loadAnnouncements();
 const persistedAffirmations = loadAffirmationPersist();
+const persistedSystemSpotlightImageOverrides =
+  loadSystemSpotlightImageOverrides();
 
 const initialState: HouseDisplayState = {
   schedule: initialSchedule,
@@ -500,8 +519,19 @@ const initialState: HouseDisplayState = {
     undefined,
     persistedAnnouncements ?? SEED_ANNOUNCEMENTS,
     persistedAffirmations,
+    persistedSystemSpotlightImageOverrides ?? {},
   ),
 };
+
+const SYSTEM_SPOTLIGHT_ASSET_KEY_SET = new Set<string>(
+  SYSTEM_SPOTLIGHT_MANAGE_SLOTS.map((s) => s.assetKey),
+);
+
+function isSystemSpotlightAssetKey(
+  value: string,
+): value is SystemSpotlightAssetKey {
+  return SYSTEM_SPOTLIGHT_ASSET_KEY_SET.has(value);
+}
 
 export const houseDisplaySlice = createSlice({
   name: "houseDisplay",
@@ -1253,6 +1283,51 @@ export const houseDisplaySlice = createSlice({
       syncAgendaFromSchedule(state, dateYmd);
       persistScheduleSources(state);
     },
+    /**
+     * Admin Manage: set or clear one system Spotlight graphic override.
+     * imageUrl non-empty string -> store trimmed URL for that assetKey.
+     * imageUrl null or blank -> remove override (bundled default again).
+     * Rejects unknown assetKey and data: URLs.
+     * Persists via schedulePersistence: stable URLs may remain in DEV
+     * localStorage; blob: / data: are stripped on write (session Redux only).
+     */
+    setSystemSpotlightImageOverride: (
+      state,
+      action: PayloadAction<{
+        assetKey: string;
+        imageUrl: string | null;
+      }>,
+    ) => {
+      const rawKey =
+        typeof action.payload.assetKey === "string"
+          ? action.payload.assetKey.trim()
+          : "";
+      if (!rawKey || !isSystemSpotlightAssetKey(rawKey)) return;
+
+      const rawUrl = action.payload.imageUrl;
+      if (
+        rawUrl == null ||
+        (typeof rawUrl === "string" && rawUrl.trim() === "")
+      ) {
+        if (!(rawKey in state.content.systemSpotlightImageOverrides)) return;
+        const next = { ...state.content.systemSpotlightImageOverrides };
+        delete next[rawKey];
+        state.content.systemSpotlightImageOverrides = next;
+        persistScheduleSources(state);
+        return;
+      }
+
+      if (typeof rawUrl !== "string") return;
+      const imageUrl = rawUrl.trim();
+      if (!imageUrl) return;
+      if (imageUrl.startsWith("data:")) return;
+
+      const prev = state.content.systemSpotlightImageOverrides[rawKey];
+      if (prev === imageUrl) return;
+
+      state.content.systemSpotlightImageOverrides[rawKey] = imageUrl;
+      persistScheduleSources(state);
+    },
   },
 });
 
@@ -1279,5 +1354,6 @@ export const {
   editOneTimeEvent,
   suppressRecurringOccurrence,
   unsuppressRecurringOccurrence,
+  setSystemSpotlightImageOverride,
 } = houseDisplaySlice.actions;
 export default houseDisplaySlice.reducer;

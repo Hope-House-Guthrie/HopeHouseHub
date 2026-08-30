@@ -4,15 +4,24 @@
  * Key: hhg-dev-house-display-schedule-v1
  *
  * Persists recurring + oneTime + exceptions + announcement lines (optional)
- * + affirmation library/pin/rotateMs (optional, additive).
- * Never agendaItems. Fail-safe load → null (caller uses seed). Backend
- * replaces this later.
+ * + affirmation library/pin/rotateMs (optional, additive)
+ * + system Spotlight image overrides (optional, additive).
+ * Never agendaItems / full content tree. Fail-safe load → null (caller uses seed).
+ *
+ * System Spotlight overrides: sanitize drops blank, data:, and blob: values so
+ * only stable URLs (https / same-origin paths) may persist in DEV localStorage.
+ * Backend replaces this later.
  */
 import type { HouseDisplayScheduleSources } from "./scheduleTypes";
 import type {
   HouseDisplayAffirmation,
   HouseDisplayAnnouncement,
 } from "./types";
+import type {
+  SystemSpotlightAssetKey,
+  SystemSpotlightImageOverrides,
+} from "./systemSpotlight";
+import { SYSTEM_SPOTLIGHT_MANAGE_SLOTS } from "./systemSpotlight";
 
 /** Versioned key - bump suffix if the JSON shape changes incompatibly. */
 export const HOUSE_DISPLAY_SCHEDULE_STORAGE_KEY =
@@ -68,18 +77,21 @@ export function loadAnnouncements(): HouseDisplayAnnouncement[] | null {
 
 /**
  * Write schedule sources + optional announcement lines + optional affirmation
- * bundle (not resolved agenda / full content tree). Optional fields are
- * additive so older payloads stay valid — no storage key bump.
+ * bundle + optional system Spotlight image overrides (not resolved agenda /
+ * full content tree). Optional fields are additive so older payloads stay
+ * valid - no storage key bump.
  * Swallows errors so a full disk / private mode cannot crash the UI.
  *
  * IMPORTANT: this replaces the whole LS JSON. Callers that persist schedule
- * must pass current announcements AND affirmation bundle when those features
- * are in use (slice persistScheduleSources does that), or those keys drop.
+ * must pass current announcements, affirmation bundle, AND system Spotlight
+ * overrides when those features are in use (slice persistScheduleSources does
+ * that), or those keys drop.
  */
 export function saveScheduleSources(
   sources: HouseDisplayScheduleSources,
   announcements?: HouseDisplayAnnouncement[],
   affirmationPersist?: HouseDisplayAffirmationPersist,
+  systemSpotlightImageOverrides?: SystemSpotlightImageOverrides | null,
 ): void {
   try {
     if (typeof localStorage === "undefined") return;
@@ -89,6 +101,7 @@ export function saveScheduleSources(
       affirmations?: HouseDisplayAffirmation[];
       pinnedAffirmationId?: string | null;
       affirmationRotateMs?: number;
+      systemSpotlightImageOverrides?: SystemSpotlightImageOverrides;
     } = {
       recurring: sources.recurring,
       oneTime: sources.oneTime,
@@ -101,6 +114,10 @@ export function saveScheduleSources(
       payload.affirmations = affirmationPersist.affirmations;
       payload.pinnedAffirmationId = affirmationPersist.pinnedAffirmationId;
       payload.affirmationRotateMs = affirmationPersist.affirmationRotateMs;
+    }
+    if (systemSpotlightImageOverrides) {
+      payload.systemSpotlightImageOverrides =
+        sanitizeSystemSpotlightImageOverrides(systemSpotlightImageOverrides);
     }
     localStorage.setItem(
       HOUSE_DISPLAY_SCHEDULE_STORAGE_KEY,
@@ -146,6 +163,63 @@ function isAnnouncementList(
       typeof (item as Record<string, unknown>).id === "string" &&
       typeof (item as Record<string, unknown>).text === "string",
   );
+}
+
+const SYSTEM_SPOTLIGHT_KEY_SET = new Set<string>(
+  SYSTEM_SPOTLIGHT_MANAGE_SLOTS.map((slot) => slot.assetKey),
+);
+
+/**
+ * Drop blank, data:, and blob: values. Only stable URLs go into DEV storage.
+ * File-picker object URLs stay in Redux for the session and are never written.
+ */
+export function sanitizeSystemSpotlightImageOverrides(
+  raw: unknown,
+): SystemSpotlightImageOverrides {
+  if (raw == null || typeof raw !== "object") return {};
+
+  const out: SystemSpotlightImageOverrides = {};
+
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (!SYSTEM_SPOTLIGHT_KEY_SET.has(key)) continue;
+    if (typeof value !== "string") continue;
+
+    const url = value.trim();
+
+    if (!url) continue;
+    if (url.startsWith("data:") || url.startsWith("blob:")) continue;
+
+    out[key as SystemSpotlightAssetKey] = url;
+  }
+
+  return out;
+}
+
+/**
+ * Read system Spotlight image overrides from the same DEV storage key.
+ * Returns null when absent (caller uses {}). Always re-sanitizes so blob:/data:
+ * never hydrate even if an older payload somehow stored them.
+ */
+export function loadSystemSpotlightImageOverrides(): SystemSpotlightImageOverrides | null {
+  try {
+    if (typeof localStorage === "undefined") return null;
+
+    const raw = localStorage.getItem(HOUSE_DISPLAY_SCHEDULE_STORAGE_KEY);
+    if (raw == null || raw === "") return null;
+
+    const parsed: unknown = JSON.parse(raw);
+    if (parsed == null || typeof parsed !== "object") return null;
+
+    const field = (parsed as Record<string, unknown>)
+      .systemSpotlightImageOverrides;
+
+    if (field == null) return null;
+
+    const cleaned = sanitizeSystemSpotlightImageOverrides(field);
+    return cleaned;
+  } catch {
+    return null;
+  }
 }
 
 /** DEV persist bundle for Daily Affirmations (same LS key; optional/additive). */

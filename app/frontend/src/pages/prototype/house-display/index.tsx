@@ -22,16 +22,19 @@
 * - Curfew Ph3 (revised): system Spotlight takeover (Roll Call + closing phases +
 *   Final Break + House Closed) with image registry + placeholder fallback;
 *   priority system > class/event > normal rotation; no full-width status banner
+* - System Spotlight Graphics: resolveSystemSpotlightState imageOverrides from
+*   content.systemSpotlightImageOverrides (Manage Replace/Restore; DEV LS may keep
+*   stable URLs only — blob:/data: session-only)
 *
 * NOT YET:
 * - Weather API (header still uses seed weatherText)
 * - UP NEXT strip still static mock (does not follow resolved agenda) — cleanup
-* - Spotlight manage forms / upload / backend
+* - Spotlight manage forms / upload / backend (class/event Spotlight track)
 * - Fallback right-rail when Spotlight empty
 * - Half-hour ticks / themes
 * - Schedule day rollover from backend
-* - Affirmation live cross-tab rehydrate (refresh after Manage changes)
-* - Curfew Manage UI / DEV persist / final system Spotlight artwork
+* - Affirmation / system graphics live cross-tab rehydrate (refresh after Manage)
+* - Curfew Manage UI / DEV persist (parked)
 */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
@@ -385,8 +388,13 @@ export default function HouseDisplayPage() {
         dateYmd: hopeNow.dateKey,
         nowMin: hopeNow.nowMin,
         config: SEED_CURFEW_CONFIG,
+        imageOverrides: content.systemSpotlightImageOverrides,
       }),
-    [hopeNow.dateKey, hopeNow.nowMin],
+    [
+      hopeNow.dateKey,
+      hopeNow.nowMin,
+      content.systemSpotlightImageOverrides,
+    ],
   );
 
   const nextAgendaItems = useMemo(

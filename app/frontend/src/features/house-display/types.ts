@@ -13,6 +13,7 @@
  */
 
 import type { HouseDisplayScheduleSources } from "./scheduleTypes";
+import type { SystemSpotlightImageOverrides } from "./systemSpotlight";
 
 /** Static header placeholders until live clock/weather. */
 export interface HouseDisplayHeader {
@@ -201,6 +202,13 @@ export interface HouseDisplayContent {
    */
   affirmationRotateMs: number;
   announcements: HouseDisplayAnnouncement[];
+  /**
+   * Admin Manage overrides for system Spotlight slot art (assetKey -> image URL).
+   * Missing keys use bundled SYSTEM_SPOTLIGHT_IMAGES. Empty object = all defaults.
+   * FE mock: stable URLs may hydrate from DEV localStorage; blob: / data: stay
+   * session-only (not written to LS). Backend should own media later.
+   */
+  systemSpotlightImageOverrides: SystemSpotlightImageOverrides;
   birthday: HouseDisplayBirthday;
 }
 

@@ -79,14 +79,23 @@
  * - Legacy content.affirmationText = TV fallback when enabled pool empty
  * - Production backend should replace localStorage as source of truth later
  *
+ * DONE (System Spotlight Graphics Manage — FE):
+ * - Admin-only card after Announcements (hide if no ADMIN role)
+ * - Nine catalog slots; thumbs via getSystemSpotlightImageWithOverrides
+ * - Replace (file → blob: object URL) / Restore default; revoke prior blob per key
+ * - setSystemSpotlightImageOverride; TV resolve uses content.systemSpotlightImageOverrides
+ * - DEV LS: stable override URLs may persist (same schedule key); blob: / data: not persisted
+ * - Refresh Full Display after Manage for cross-tab (no live sync)
+ *
  * NEXT (Spotlight Content): Add Video / Edit / Delete / pin / sound / persist — parked
  * (Schedule Stage D/E may still appear elsewhere; this track is Spotlight Content.)
  *
  * NOT YET:
  * - manage One-Time conflict polish leftovers if any
  * - override exception UI, delete definition, ended-list conflict UI
- * - Affirmation live cross-tab / storage event rehydrate (refresh TV after Manage)
- * - Backend API / thunks
+ * - Affirmation / system graphics live cross-tab rehydrate (refresh TV after Manage)
+ * - Curfew Manage UI / DEV persist (parked)
+ * - Backend API / thunks / durable media storage
  * - Midnight re-resolve without refresh
  *
  * PAIR:
@@ -148,6 +157,11 @@ import {
   HOUSE_DISPLAY_PROGRAM_LOGO_OPTIONS,
   isHouseDisplayProgramLogoKey,
 } from "../../../features/house-display/programLogos";
+import {
+  SYSTEM_SPOTLIGHT_MANAGE_SLOTS,
+  canManageSystemSpotlightGraphics,
+  getSystemSpotlightImageWithOverrides,
+} from "../../../features/house-display/systemSpotlight";
 import type {
   HouseDisplayOneTimeEvent,
   HouseDisplayRecurringEvent,
@@ -163,6 +177,7 @@ import {
   addOneTimeEvent,
   addRecurringClass,
   addSpotlightFlyer,
+  setSystemSpotlightImageOverride,
   cancelOccurrence,
   editAffirmation,
   editOneTimeEvent,
@@ -242,6 +257,16 @@ export default function HouseDisplayManagePage() {
   const spotlightItems = useSelector(
     (state: RootState) => state.houseDisplay.content.spotlightItems,
   );
+  const systemSpotlightImageOverrides = useSelector(
+    (state: RootState) =>
+      state.houseDisplay.content.systemSpotlightImageOverrides,
+  );
+  /** Hub auth roles - System Spotlight Graphics manage is Admin-only (FE hide). */
+  const authUserRoles = useSelector(
+    (state: RootState) => state.auth.user?.roles ?? [],
+  );
+  const canManageSystemSpotlight =
+    canManageSystemSpotlightGraphics(authUserRoles);
 
   // --- Add Class dialog ---
   const [addClassOpen, setAddClassOpen] = useState(false);
@@ -288,9 +313,9 @@ export default function HouseDisplayManagePage() {
   // --- Affirmations state (list + add/edit/pin/enable + rotate interval) ---
   const [newAffirmationText, setNewAffirmationText] = useState("");
   const [addAffirmationError, setAddAffirmationError] = useState("");
-  const [editingAffirmationId, setEditingAffirmationId] = useState<string | null>(
-    null,
-  );
+  const [editingAffirmationId, setEditingAffirmationId] = useState<
+    string | null
+  >(null);
   const [editingAffirmationText, setEditingAffirmationText] = useState("");
   const [editAffirmationError, setEditAffirmationError] = useState("");
 
@@ -305,6 +330,17 @@ export default function HouseDisplayManagePage() {
   const [addFlyerActive, setAddFlyerActive] = useState(true);
   const [addFlyerError, setAddFlyerError] = useState("");
   const addFlyerFileInputRef = useRef<HTMLInputElement | null>(null);
+  /** Shared file picker for System Spotlight Graphics replace (Admin). */
+  const systemSpotlightFileInputRef = useRef<HTMLInputElement | null>(null);
+  /**
+   * Which assetKey the next file pick applies to (ref avoids stale state on change).
+   */
+  const systemSpotlightReplaceKeyRef = useRef<string | null>(null);
+  /**
+   * blob: URLs we created per key — revoke when replaced/cleared.
+   * Do not revoke bundled @assets URLs.
+   */
+  const systemSpotlightBlobByKeyRef = useRef<Record<string, string>>({});
   /** Track object URL for revoke on replace/cancel (not after successful save). */
   const addFlyerObjectUrlRef = useRef("");
 
@@ -634,6 +670,54 @@ export default function HouseDisplayManagePage() {
       const base = file.name.replace(/\.[^.]+$/, "").trim();
       if (base) setAddFlyerTitle(base);
     }
+  };
+
+  const handleSystemSpotlightReplaceClick = (assetKey: string) => {
+    systemSpotlightReplaceKeyRef.current = assetKey;
+    systemSpotlightFileInputRef.current?.click();
+  };
+
+  const handleSystemSpotlightFileChange = (
+    e: ChangeEvent<HTMLInputElement>,
+  ) => {
+    const assetKey = systemSpotlightReplaceKeyRef.current;
+    const file = e.target.files?.[0] ?? null;
+    // Allow re-picking the same file name later.
+    e.target.value = "";
+    systemSpotlightReplaceKeyRef.current = null;
+
+    if (!assetKey || !file) return;
+    if (!file.type.startsWith("image/")) return;
+
+    const prevBlob = systemSpotlightBlobByKeyRef.current[assetKey];
+    if (prevBlob) {
+      URL.revokeObjectURL(prevBlob);
+      delete systemSpotlightBlobByKeyRef.current[assetKey];
+    }
+
+    const url = URL.createObjectURL(file);
+    systemSpotlightBlobByKeyRef.current[assetKey] = url;
+
+    dispatch(
+      setSystemSpotlightImageOverride({
+        assetKey,
+        imageUrl: url,
+      }),
+    );
+  };
+
+  const handleSystemSpotlightRestoreDefault = (assetKey: string) => {
+    const prevBlob = systemSpotlightBlobByKeyRef.current[assetKey];
+    if (prevBlob) {
+      URL.revokeObjectURL(prevBlob);
+      delete systemSpotlightBlobByKeyRef.current[assetKey];
+    }
+    dispatch(
+      setSystemSpotlightImageOverride({
+        assetKey,
+        imageUrl: null,
+      }),
+    );
   };
 
   const handleAddFlyerSubmit = (e: FormEvent) => {
@@ -2441,10 +2525,7 @@ export default function HouseDisplayManagePage() {
                           size="small"
                           variant="outlined"
                           onClick={() =>
-                            handleSetAffirmationEnabled(
-                              item.id,
-                              !item.enabled,
-                            )
+                            handleSetAffirmationEnabled(item.id, !item.enabled)
                           }
                         >
                           {item.enabled ? "Disable" : "Enable"}
@@ -2582,6 +2663,138 @@ export default function HouseDisplayManagePage() {
           )}
         </CardContent>
       </Card>
+
+      {/* System Spotlight Graphics — Admin-only (hide if no permission) */}
+      {canManageSystemSpotlight ? (
+        <Card sx={{ maxWidth: 720 }}>
+          <CardContent
+            sx={{ display: "flex", flexDirection: "column", gap: 2 }}
+          >
+            <input
+              ref={systemSpotlightFileInputRef}
+              type="file"
+              accept="image/*"
+              hidden
+              aria-label="Replace system Spotlight graphic"
+              onChange={handleSystemSpotlightFileChange}
+            />
+            <Box>
+              <Typography variant="h6">System Spotlight Graphics</Typography>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ mt: 0.5 }}
+              >
+                House-status art for Good Morning, Roll Call, closing stages,
+                and Final Break. Admin only. File Replace uses a session
+                blob: URL (not written to DEV localStorage). Stable override
+                URLs may persist in DEV storage; data: is rejected. Timing is
+                unchanged. Refresh Full Display after changes (no live
+                cross-tab sync).
+              </Typography>
+            </Box>
+
+            <Divider />
+
+            <Stack divider={<Divider flexItem />} spacing={0}>
+              {SYSTEM_SPOTLIGHT_MANAGE_SLOTS.map((slot) => {
+                const imageUrl = getSystemSpotlightImageWithOverrides(
+                  slot.assetKey,
+                  systemSpotlightImageOverrides,
+                );
+                const hasImage =
+                  typeof imageUrl === "string" && imageUrl.trim().length > 0;
+                const hasOverride = Boolean(
+                  systemSpotlightImageOverrides[slot.assetKey]?.trim(),
+                );
+                return (
+                  <Box
+                    key={slot.assetKey}
+                    sx={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      alignItems: "center",
+                      gap: 1.5,
+                      py: 1.5,
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        width: 96,
+                        height: 54,
+                        flex: "0 0 auto",
+                        borderRadius: 1,
+                        overflow: "hidden",
+                        bgcolor: "action.hover",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      {hasImage ? (
+                        <Box
+                          component="img"
+                          src={imageUrl}
+                          alt=""
+                          sx={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "contain",
+                            display: "block",
+                          }}
+                        />
+                      ) : (
+                        <Typography variant="caption" color="text.secondary">
+                          No art
+                        </Typography>
+                      )}
+                    </Box>
+                    <Box sx={{ minWidth: 0, flex: "1 1 160px" }}>
+                      <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                        {slot.label}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {slot.assetKey}
+                        {hasOverride ? " · custom" : " · default"}
+                      </Typography>
+                    </Box>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        gap: 1,
+                        flex: "0 0 auto",
+                      }}
+                    >
+                      <Button
+                        type="button"
+                        size="small"
+                        variant="outlined"
+                        onClick={() =>
+                          handleSystemSpotlightReplaceClick(slot.assetKey)
+                        }
+                      >
+                        Replace
+                      </Button>
+                      <Button
+                        type="button"
+                        size="small"
+                        variant="text"
+                        disabled={!hasOverride}
+                        onClick={() =>
+                          handleSystemSpotlightRestoreDefault(slot.assetKey)
+                        }
+                      >
+                        Restore default
+                      </Button>
+                    </Box>
+                  </Box>
+                );
+              })}
+            </Stack>
+          </CardContent>
+        </Card>
+      ) : null}
 
       {/* Add One-Time Event dialog */}
       <Dialog
