@@ -1,8 +1,10 @@
 /**
  * House Display — Curfew / House Closing (pure, no React/Redux).
+ * Ph0–3 runtime pure engine locked; Manage Ph1–7 COMPLETE 2026-08-30.
  * Ph0–1: types, seed, effective close, stages, window end = curfew.
- * Ph2–3: agenda markers + TV phase banner.
+ * Ph2–3: agenda markers + TV phase / system Spotlight inputs.
  * Final Break: after curfew, last 15 min of that clock hour (e.g. 10:45–11:00).
+ * canManageCurfew: Admin FE gate for Manage card.
  *
  * Product locks:
  * - End-of-day midnight close = 1440 (not 0).
@@ -10,7 +12,7 @@
  * - Post-curfew: House Closed until :45 past the hour, Final Break :45–:00,
  *   then House Closed for the night (linger until next open).
  * - TV wording: "Final Break" only (no slang aliases).
- * - One date override per dateYmd (lookup only here; replace is a later reducer).
+ * - One date override per dateYmd (lookup here; replace/clear via reducers).
  * - Board does not auto-extend past curfew for late *staff* events; window may
  *   include Final Break hour for house-status markers only.
  */
@@ -83,13 +85,13 @@ export type HouseDisplayWeeklyCurfew = {
   ];
 };
 
-/** One date-specific close (extends/replaces that day's weekly default only). */
+/** One date-specific close (true override: may be earlier or later than weekly). */
 export interface HouseDisplayCurfewDateOverride {
   id: string;
   /** Hope House calendar day YYYY-MM-DD (America/Chicago). */
   dateYmd: string;
   closeMin: HouseDisplayCurfewCloseMin;
-  /** Optional staff note (reason for extension). */
+  /** Optional staff note (reason for the date override). */
   note?: string;
 }
 
@@ -117,6 +119,36 @@ export const SEED_CURFEW_CONFIG: HouseDisplayCurfewConfig = {
   weekly: SEED_WEEKLY_CURFEW,
   overrides: [],
 };
+
+/**
+ * Independent deep clone for Redux / content state.
+ * Do not put SEED_CURFEW_CONFIG or SEED_WEEKLY_CURFEW on state by reference —
+ * mutators must not mutate the exported seed weekly/overrides arrays.
+ */
+export function cloneCurfewConfig(
+  config: HouseDisplayCurfewConfig,
+): HouseDisplayCurfewConfig {
+  const days = config.weekly.closeMinByWeekday;
+  return {
+    weekly: {
+      closeMinByWeekday: [
+        days[0],
+        days[1],
+        days[2],
+        days[3],
+        days[4],
+        days[5],
+        days[6],
+      ],
+    },
+    overrides: config.overrides.map((o) => ({
+      id: o.id,
+      dateYmd: o.dateYmd,
+      closeMin: o.closeMin,
+      ...(o.note !== undefined ? { note: o.note } : {}),
+    })),
+  };
+}
 
 /** End-of-day midnight as minutes-from-midnight (not 0). */
 export const CURFEW_END_OF_DAY_MIN = 24 * 60; // 1440
@@ -499,6 +531,20 @@ export function formatCurfewCloseLabel(closeMin: number): string {
   if (hour12 === 0) hour12 = 12;
   const mm = minute.toString().padStart(2, "0");
   return `${hour12}:${mm} ${ampm}`;
+}
+
+/**
+ * Admin-only FE gate for Curfew / House Closing Manage card.
+ * Matches route role token "ADMIN". FE hide ≠ security — backend later.
+ */
+export const CURFEW_MANAGE_ROLES: readonly string[] = ["ADMIN"];
+
+/** True when the signed-in user may manage house curfew config. */
+export function canManageCurfew(
+  userRoles: readonly string[] | null | undefined,
+): boolean {
+  if (userRoles == null || userRoles.length === 0) return false;
+  return CURFEW_MANAGE_ROLES.some((required) => userRoles.includes(required));
 }
 
 /**

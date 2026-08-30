@@ -2,16 +2,21 @@
  * STATUS — DEV/prototype schedule SOURCE localStorage only
  * Branch: feature/house-display
  * Key: hhg-dev-house-display-schedule-v1
+ * Checkpoint: Curfew Manage Ph1–7 COMPLETE 2026-08-30
  *
  * Persists recurring + oneTime + exceptions + announcement lines (optional)
  * + affirmation library/pin/rotateMs (optional, additive)
  * + system Spotlight image overrides (optional, additive)
- * + program logo image overrides (optional, additive).
+ * + program logo image overrides (optional, additive)
+ * + curfew config weekly+overrides (optional, additive; 1..1440, 1440 OK).
  * Never agendaItems / full content tree. Fail-safe load → null (caller uses seed).
  *
  * Image overrides (system + program): sanitize drops blank, data:, and blob:
  * values so only stable URLs (https / same-origin paths) may persist in DEV
  * localStorage. Backend replaces this later.
+ *
+ * Curfew: sanitizeCurfewConfig / loadCurfewConfig / saveScheduleSources curfew arg;
+ * whole-key rewrite must always pass curfew with other optional fields.
  */
 import type { HouseDisplayScheduleSources } from "./scheduleTypes";
 import type {
@@ -28,6 +33,16 @@ import type {
   ProgramLogoImageOverrides,
 } from "./programLogos";
 import { PROGRAM_LOGO_MANAGE_SLOTS } from "./programLogos";
+import type {
+  HouseDisplayCurfewConfig,
+  HouseDisplayCurfewDateOverride,
+} from "./curfew";
+import {
+  cloneCurfewConfig,
+  isValidCurfewCloseMin,
+  SEED_CURFEW_CONFIG,
+} from "./curfew";
+import { parseDateInputToYmd } from "./scheduleForm";
 
 /** Versioned key - bump suffix if the JSON shape changes incompatibly. */
 export const HOUSE_DISPLAY_SCHEDULE_STORAGE_KEY =
@@ -84,13 +99,13 @@ export function loadAnnouncements(): HouseDisplayAnnouncement[] | null {
 /**
  * Write schedule sources + optional announcement lines + optional affirmation
  * bundle + optional system Spotlight image overrides + optional program logo
- * image overrides (not resolved agenda / full content tree). Optional fields
- * are additive so older payloads stay valid - no storage key bump.
- * Swallows errors so a full disk / private mode cannot crash the UI.
+ * image overrides + optional curfew config (not resolved agenda / full content
+ * tree). Optional fields are additive so older payloads stay valid - no storage
+ * key bump. Swallows errors so a full disk / private mode cannot crash the UI.
  *
  * IMPORTANT: this replaces the whole LS JSON. Callers that persist schedule
  * must pass current announcements, affirmation bundle, system Spotlight
- * overrides, AND program logo overrides when those features are in use
+ * overrides, program logo overrides, AND curfew when those features are in use
  * (slice persistScheduleSources does that), or those keys drop.
  */
 export function saveScheduleSources(
@@ -99,6 +114,7 @@ export function saveScheduleSources(
   affirmationPersist?: HouseDisplayAffirmationPersist,
   systemSpotlightImageOverrides?: SystemSpotlightImageOverrides | null,
   programLogoImageOverrides?: ProgramLogoImageOverrides | null,
+  curfew?: HouseDisplayCurfewConfig | null,
 ): void {
   try {
     if (typeof localStorage === "undefined") return;
@@ -110,6 +126,7 @@ export function saveScheduleSources(
       affirmationRotateMs?: number;
       systemSpotlightImageOverrides?: SystemSpotlightImageOverrides;
       programLogoImageOverrides?: ProgramLogoImageOverrides;
+      curfew?: HouseDisplayCurfewConfig;
     } = {
       recurring: sources.recurring,
       oneTime: sources.oneTime,
@@ -131,6 +148,13 @@ export function saveScheduleSources(
       payload.programLogoImageOverrides = sanitizeProgramLogoImageOverrides(
         programLogoImageOverrides,
       );
+    }
+    if (curfew) {
+      const cleanedCurfew = sanitizeCurfewConfig(curfew);
+      // Reject malformed bags — never write unsanitized curfew into LS.
+      if (cleanedCurfew) {
+        payload.curfew = cleanedCurfew;
+      }
     }
     localStorage.setItem(
       HOUSE_DISPLAY_SCHEDULE_STORAGE_KEY,
@@ -285,6 +309,102 @@ export function loadProgramLogoImageOverrides(): ProgramLogoImageOverrides | nul
     if (field == null) return null;
 
     return sanitizeProgramLogoImageOverrides(field);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Sanitize curfew bag for DEV LS / hydrate.
+ * - weekly.closeMinByWeekday: exactly 7 values; each must pass isValidCurfewCloseMin
+ *   (integer 1..1440; 1440 = end-of-day OK; 0 rejected).
+ * - Bad/missing weekly → null (caller uses seed clone). Do not half-repair weekly.
+ * - overrides: keep only well-formed rows; drop the rest (do not invent times).
+ * - One row per dateYmd: later array entry wins (dedupe).
+ * - Returns an independent clone (no shared refs with input or SEED).
+ */
+export function sanitizeCurfewConfig(
+  raw: unknown,
+): HouseDisplayCurfewConfig | null {
+  if (raw == null || typeof raw !== "object") return null;
+
+  const obj = raw as Record<string, unknown>;
+  const weeklyRaw = obj.weekly;
+  if (weeklyRaw == null || typeof weeklyRaw !== "object") return null;
+
+  const daysRaw = (weeklyRaw as Record<string, unknown>).closeMinByWeekday;
+  if (!Array.isArray(daysRaw) || daysRaw.length !== 7) return null;
+
+  const days: [number, number, number, number, number, number, number] = [
+    0, 0, 0, 0, 0, 0, 0,
+  ];
+
+  for (let i = 0; i < 7; i++) {
+    const value = daysRaw[i];
+    if (!isValidCurfewCloseMin(value)) return null;
+    days[i] = value;
+  }
+
+  const byDateYmd = new Map<string, HouseDisplayCurfewDateOverride>();
+  const overridesRaw = obj.overrides;
+
+  if (Array.isArray(overridesRaw)) {
+    for (const item of overridesRaw) {
+      if (item == null || typeof item !== "object") continue;
+
+      const row = item as Record<string, unknown>;
+      const id = row.id;
+      const dateYmd = row.dateYmd;
+      const closeMin = row.closeMin;
+
+      if (typeof id !== "string" || id.trim() === "") continue;
+      if (typeof dateYmd !== "string") continue;
+
+      const ymd = parseDateInputToYmd(dateYmd);
+      if (ymd == null) continue;
+      if (!isValidCurfewCloseMin(closeMin)) continue;
+
+      const cleaned: HouseDisplayCurfewDateOverride = {
+        id: id.trim(),
+        dateYmd: ymd,
+        closeMin,
+      };
+
+      if (typeof row.note === "string" && row.note.trim() !== "") {
+        cleaned.note = row.note.trim();
+      }
+
+      // Later row wins for the same date (one override per day).
+      byDateYmd.set(ymd, cleaned);
+    }
+  }
+
+  return cloneCurfewConfig({
+    weekly: { closeMinByWeekday: days },
+    overrides: Array.from(byDateYmd.values()),
+  });
+}
+
+/**
+ * Read curfew config from the same DEV storage key.
+ * Returns null when absent/invalid (caller uses seed clone via cloneCurfewConfig).
+ * Always runs sanitizeCurfewConfig so bad weekly/overrides never hydrate.
+ * Additive — older payloads without curfew stay valid; no key bump.
+ */
+export function loadCurfewConfig(): HouseDisplayCurfewConfig | null {
+  try {
+    if (typeof localStorage === "undefined") return null;
+
+    const raw = localStorage.getItem(HOUSE_DISPLAY_SCHEDULE_STORAGE_KEY);
+    if (raw == null || raw === "") return null;
+
+    const parsed: unknown = JSON.parse(raw);
+    if (parsed == null || typeof parsed !== "object") return null;
+
+    const field = (parsed as Record<string, unknown>).curfew;
+    if (field == null) return null;
+
+    return sanitizeCurfewConfig(field);
   } catch {
     return null;
   }

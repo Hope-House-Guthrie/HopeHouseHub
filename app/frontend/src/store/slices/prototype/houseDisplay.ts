@@ -45,6 +45,17 @@
  * - DEV hydrate/persist via schedulePersistence (stable URLs only; blob/data stripped)
  * - Schedule logoKey association unchanged
  *
+ * DONE (Curfew Manage Ph1–7 COMPLETE — 2026-08-30; manage browser QA passed):
+ * - Ph1: content.curfew clone of SEED_CURFEW_CONFIG
+ * - Ph2: DEV LS sanitize/load/save curfew on same schedule key (whole-key)
+ * - Ph3: syncAgenda + buildContent resolve via content.curfew
+ * - Ph4: setCurfewWeeklyClose / setCurfewDateOverride / clearCurfewDateOverride
+ * - Ph5–6: Manage Admin Curfew card (weekly + override + clear); canManageCurfew
+ * - Ph7: TV timeline / closingPhase / systemSpotlight use content.curfew
+ * - closeMin 1..1440 (1440 = end-of-day); true date overrides earlier/later OK
+ * - Stages still derived from effective C; no four staff closing events
+ * - Refresh Full Display after Manage (no live cross-tab)
+ *
  * NOT YET:
  * - override exception UI, delete definition, ended-list conflict UI
  * - Spotlight Add Video / Edit / Delete / sound / pin / persist
@@ -53,7 +64,7 @@
  * - Midnight re-resolve without refresh
  *
  * Who uses this:
- *   - manage.tsx  → Today cancel/restore; Add/Edit/End/Reinstate Recurring; One-Time; Spotlight; Affirmations
+ *   - manage.tsx  → Today cancel/restore; Add/Edit/End/Reinstate Recurring; One-Time; Spotlight; Affirmations; Curfew
  *   - index.tsx   → TV selects content only (affirmations via selectAffirmationText)
  */
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
@@ -75,8 +86,11 @@ import type {
 } from "../../../features/house-display/types";
 import {
   SEED_CURFEW_CONFIG,
+  cloneCurfewConfig,
+  isValidCurfewCloseMin,
   timelineWindowForDate,
 } from "../../../features/house-display/curfew";
+import type { HouseDisplayCurfewConfig } from "../../../features/house-display/curfew";
 import { getHopeHouseNow } from "../../../features/house-display/time";
 // Relative paths: Bun hot sometimes fails @/ resolve on newly added feature files
 import {
@@ -96,6 +110,7 @@ import {
   loadScheduleSources,
   loadSystemSpotlightImageOverrides,
   loadProgramLogoImageOverrides,
+  loadCurfewConfig,
   saveScheduleSources,
   type HouseDisplayAffirmationPersist,
 } from "../../../features/house-display/schedulePersistence";
@@ -141,6 +156,39 @@ export type EditRecurringClassPayload = {
    * undefined = keep existing; null = clear; string = replace (catalog key).
    */
   logoKey?: string | null;
+};
+
+/** Set one Weekday's default close (1..1440). dateYmd = re-resolve day only. */
+export type SetCurfewWeeklyClosePayload = {
+  /** 0 = Sun ... 6 = Sat */
+  weekday: number;
+  closeMin: number;
+  /** America/Chicago calendar day YYYY-MM-DD */
+  dateYmd: string;
+};
+
+/**
+ * Upsert one date override (true override: earlier or later than weekly OK).
+ * One row per dateYmd — same date replaces prior row.
+ * resolveDateYmd = Chicago day for agenda re-resolve only (often today).
+ */
+export type SetCurfewDateOverridePayload = {
+  /** UI id, e.g. curfew-ovr-${crypto.randomUUID()} */
+  id: string;
+  /** Override calendar day YYYY-MM-DD */
+  dateYmd: string;
+  closeMin: number;
+  note?: string;
+  /** America/Chicago day for syncAgendaFromSchedule */
+  resolveDateYmd: string;
+};
+
+/** Remove the override for one dateYmd (weekly default applies again). */
+export type ClearCurfewDateOverridePayload = {
+  /** Override calendar day YYYY-MM-DD to clear */
+  dateYmd: string;
+  /** America/Chicago day for agenda re-resolve only */
+  resolveDateYmd: string;
 };
 
 /**
@@ -255,11 +303,13 @@ function syncAgendaFromSchedule(
   dateYmd: string,
 ): void {
   const weekday = weekdayFromDateYmd(dateYmd);
-  // Board hours: weekday open + effective curfew end (seed weekly until Manage/persist).
+  // Board hours + closing stages: use content.curfew (Ph2 hydrate/persist bag).
+  // TV index still seeds until a later phase — Manage mutators not this step.
+  const curfewConfig = state.content.curfew;
   state.content.timeline = timelineWindowForDate({
     dateYmd,
     weekday,
-    config: SEED_CURFEW_CONFIG,
+    config: curfewConfig,
   });
   state.content.agendaItems = resolveAgendaForDate({
     dateYmd,
@@ -269,15 +319,16 @@ function syncAgendaFromSchedule(
       oneTime: state.schedule.oneTime,
       exceptions: state.schedule.exceptions,
     },
+    curfewConfig,
   });
 }
 
 /**
  * DEV/prototype: persist sources + announcements + affirmation bundle +
- * system Spotlight overrides + program logo overrides.
+ * system Spotlight overrides + program logo overrides + curfew.
  * Backend will replace this later — not a general app persistence layer.
- * Always pass announcements + affirmations + both override maps together so
- * whole-key rewrite does not drop optional fields.
+ * Always pass announcements + affirmations + both override maps + curfew
+ * together so whole-key rewrite does not drop optional fields.
  */
 function persistScheduleSources(state: HouseDisplayState): void {
   const affirmationPersist: HouseDisplayAffirmationPersist = {
@@ -295,6 +346,7 @@ function persistScheduleSources(state: HouseDisplayState): void {
     affirmationPersist,
     state.content.systemSpotlightImageOverrides,
     state.content.programLogoImageOverrides,
+    state.content.curfew,
   );
 }
 
@@ -390,6 +442,12 @@ function buildContent(
   affirmationPersist?: HouseDisplayAffirmationPersist | null,
   systemSpotlightImageOverrides: SystemSpotlightImageOverrides = {},
   programLogoImageOverrides: ProgramLogoImageOverrides = {},
+  /**
+   * Curfew bag for content.curfew. Always store an independent clone —
+   * never SEED_CURFEW_CONFIG / SEED_WEEKLY_CURFEW by reference.
+   * Ph1: callers omit → seed clone. Persist/wire state later.
+   */
+  curfew?: HouseDisplayCurfewConfig | null,
 ): HouseDisplayContent {
   const ymd = dateYmd ?? getHopeHouseNow().dateKey;
   const weekday = weekdayFromDateYmd(ymd);
@@ -411,6 +469,9 @@ function buildContent(
       ? affirmationPersist.affirmationRotateMs
       : SEED_AFFIRMATION_ROTATE_MS;
 
+  // Independent clone suitable for Redux (never retain seed array refs).
+  const curfewConfig = cloneCurfewConfig(curfew ?? SEED_CURFEW_CONFIG);
+
   return {
     header: {
       identityLabel: "Hope House Guthrie",
@@ -421,12 +482,14 @@ function buildContent(
     timeline: timelineWindowForDate({
       dateYmd: ymd,
       weekday,
-      config: SEED_CURFEW_CONFIG,
+      // Same bag stored on content.curfew (clone above).
+      config: curfewConfig,
     }),
     agendaItems: resolveAgendaForDate({
       dateYmd: ymd,
       weekday,
       sources: schedule,
+      curfewConfig,
     }),
     spotlightItems: [
       {
@@ -499,6 +562,7 @@ function buildContent(
     announcements,
     systemSpotlightImageOverrides,
     programLogoImageOverrides,
+    curfew: curfewConfig,
     birthday: {
       name: "Alex M.",
       dateLabel: "Thu, Aug 27",
@@ -508,7 +572,7 @@ function buildContent(
 
 // Hydrate schedule SOURCES only. Invalid/missing localStorage → seed.
 // agendaItems always come from resolve (never read from storage).
-// Announcements + affirmations + image overrides hydrate from the same DEV key.
+// Announcements + affirmations + image overrides + curfew hydrate from the same DEV key.
 const persistedSchedule = loadScheduleSources();
 const initialSchedule = cloneScheduleSources(
   persistedSchedule ?? INITIAL_SCHEDULE_SOURCES,
@@ -518,6 +582,7 @@ const persistedAffirmations = loadAffirmationPersist();
 const persistedSystemSpotlightImageOverrides =
   loadSystemSpotlightImageOverrides();
 const persistedProgramLogoImageOverrides = loadProgramLogoImageOverrides();
+const persistedCurfew = loadCurfewConfig();
 
 const initialState: HouseDisplayState = {
   schedule: initialSchedule,
@@ -528,6 +593,7 @@ const initialState: HouseDisplayState = {
     persistedAffirmations,
     persistedSystemSpotlightImageOverrides ?? {},
     persistedProgramLogoImageOverrides ?? {},
+    persistedCurfew,
   ),
 };
 
@@ -1386,14 +1452,125 @@ export const houseDisplaySlice = createSlice({
       if (!imageUrl) return;
       if (imageUrl.startsWith("data:")) return;
 
-      const prev = state.content.programLogoImageOverrides[
-        rawKey as keyof typeof state.content.programLogoImageOverrides
-      ];
+      const prev =
+        state.content.programLogoImageOverrides[
+          rawKey as keyof typeof state.content.programLogoImageOverrides
+        ];
       if (prev === imageUrl) return;
 
       state.content.programLogoImageOverrides[
         rawKey as keyof typeof state.content.programLogoImageOverrides
       ] = imageUrl;
+      persistScheduleSources(state);
+    },
+    /**
+     * Admin Manage: set one weekly curfew close (Sun=0…Sat=6).
+     * closeMin integer 1..1440 (1440 = end-of-day). Rejects 0 / invalid weekday.
+     * dateYmd only re-resolves today’s agenda/timeline; does not invent overrides.
+     */
+    setCurfewWeeklyClose: (
+      state,
+      action: PayloadAction<SetCurfewWeeklyClosePayload>,
+    ) => {
+      const weekday = action.payload.weekday;
+      const closeMin = action.payload.closeMin;
+      const dateYmd = action.payload.dateYmd;
+
+      if (
+        typeof weekday !== "number" ||
+        !Number.isInteger(weekday) ||
+        weekday < 0 ||
+        weekday > 6
+      ) {
+        return;
+      }
+      if (!isValidCurfewCloseMin(closeMin)) return;
+      if (!isRealDateYmd(dateYmd)) return;
+
+      const days = state.content.curfew.weekly.closeMinByWeekday;
+      if (days[weekday] === closeMin) return;
+
+      // New 7-tuple so we never mutate a shared seed array by accident.
+      state.content.curfew.weekly.closeMinByWeekday = [
+        days[0],
+        days[1],
+        days[2],
+        days[3],
+        days[4],
+        days[5],
+        days[6],
+      ];
+      state.content.curfew.weekly.closeMinByWeekday[weekday] = closeMin;
+
+      syncAgendaFromSchedule(state, dateYmd);
+      persistScheduleSources(state);
+    },
+    /**
+     * Admin Manage: upsert one curfew date override.
+     * Replaces any existing row with the same dateYmd (one per day).
+     * closeMin 1..1440; 0 rejected. resolveDateYmd re-syncs board only.
+     */
+    setCurfewDateOverride: (
+      state,
+      action: PayloadAction<SetCurfewDateOverridePayload>,
+    ) => {
+      const rawId = action.payload.id;
+      const dateYmd = action.payload.dateYmd;
+      const closeMin = action.payload.closeMin;
+      const resolveDateYmd = action.payload.resolveDateYmd;
+
+      if (typeof rawId !== "string" || rawId.trim() === "") return;
+      if (!isRealDateYmd(dateYmd)) return;
+      if (!isValidCurfewCloseMin(closeMin)) return;
+      if (!isRealDateYmd(resolveDateYmd)) return;
+
+      const id = rawId.trim();
+      const nextRow: {
+        id: string;
+        dateYmd: string;
+        closeMin: number;
+        note?: string;
+      } = {
+        id,
+        dateYmd: dateYmd.trim(),
+        closeMin,
+      };
+
+      const noteRaw = action.payload.note;
+      if (typeof noteRaw === "string" && noteRaw.trim() !== "") {
+        nextRow.note = noteRaw.trim();
+      }
+
+      const ymd = nextRow.dateYmd;
+      const others = state.content.curfew.overrides.filter(
+        (o) => o.dateYmd !== ymd,
+      );
+      state.content.curfew.overrides = [...others, nextRow];
+
+      syncAgendaFromSchedule(state, resolveDateYmd);
+      persistScheduleSources(state);
+    },
+    /**
+     * Admin Manage: remove date override for one dateYmd.
+     * That day falls back to weekly close. resolveDateYmd re-syncs board only.
+     */
+    clearCurfewDateOverride: (
+      state,
+      action: PayloadAction<ClearCurfewDateOverridePayload>,
+    ) => {
+      const dateYmd = action.payload.dateYmd;
+      const resolveDateYmd = action.payload.resolveDateYmd;
+
+      if (!isRealDateYmd(dateYmd)) return;
+      if (!isRealDateYmd(resolveDateYmd)) return;
+
+      const ymd = dateYmd.trim();
+      const prev = state.content.curfew.overrides;
+      const next = prev.filter((o) => o.dateYmd !== ymd);
+      if (next.length === prev.length) return;
+
+      state.content.curfew.overrides = next;
+      syncAgendaFromSchedule(state, resolveDateYmd);
       persistScheduleSources(state);
     },
   },
@@ -1424,5 +1601,8 @@ export const {
   unsuppressRecurringOccurrence,
   setSystemSpotlightImageOverride,
   setProgramLogoImageOverride,
+  setCurfewWeeklyClose,
+  setCurfewDateOverride,
+  clearCurfewDateOverride,
 } = houseDisplaySlice.actions;
 export default houseDisplaySlice.reducer;

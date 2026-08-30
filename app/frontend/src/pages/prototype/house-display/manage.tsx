@@ -100,14 +100,20 @@
  * - Schedule stores logoKey only; Class Image preview uses effective art
  * - DEV LS: stable program override URLs may persist; blob: / data: stripped
  *
+ * DONE (Curfew / House Closing Manage — FE Ph1–7 COMPLETE 2026-08-30; manage browser QA passed):
+ * - Admin-only card after Announcements, before System Spotlight Graphics
+ * - Weekly Sun–Sat + End of day (1440); date override upsert / list / Remove
+ * - Today effective preview; reducers + DEV LS whole-key curfew; TV uses content.curfew
+ * - Stages auto-derived from effective C (no four staff closing events)
+ * - Refresh Full Display after Manage (no live cross-tab)
+ *
  * NEXT (Spotlight Content): Add Video / Edit / Delete / pin / sound / persist — parked
  * (Schedule Stage D/E may still appear elsewhere; this track is Spotlight Content.)
  *
  * NOT YET:
  * - override exception UI, delete definition, ended-list conflict UI
  * - One-time Class Image Select (parked)
- * - Affirmation / system / program graphics live cross-tab rehydrate (refresh TV after Manage)
- * - Curfew Manage UI / DEV persist (parked)
+ * - Affirmation / system / program graphics / curfew live cross-tab rehydrate (refresh TV after Manage)
  * - Backend API / thunks / durable media storage / program catalog CRUD
  * - Midnight re-resolve without refresh
  *
@@ -155,6 +161,8 @@ import {
 } from "../../../features/house-display/scheduleFormat";
 import {
   formatMinToTimeInput,
+  parseTimeInputToMin,
+  parseDateInputToYmd,
   newAffirmationId,
   newAnnouncementId,
   newRecurringClassId,
@@ -164,6 +172,15 @@ import {
   validateOneTimeEventForm,
   validateAddSpotlightFlyerForm,
 } from "../../../features/house-display/scheduleForm";
+import {
+  canManageCurfew,
+  CURFEW_END_OF_DAY_MIN,
+  findCurfewOverrideForDate,
+  formatCurfewCloseLabel,
+  isValidCurfewCloseMin,
+  resolveEffectiveCurfewMin,
+} from "../../../features/house-display/curfew";
+import { timelineWindowForWeekday } from "../../../features/house-display/timeline";
 import { SPOTLIGHT_FLYER_PROTOTYPE_ASSETS } from "../../../features/house-display/spotlightFlyerPrototype";
 import {
   findProgramLogoOption,
@@ -195,6 +212,9 @@ import {
   addSpotlightFlyer,
   setSystemSpotlightImageOverride,
   setProgramLogoImageOverride,
+  setCurfewWeeklyClose,
+  setCurfewDateOverride,
+  clearCurfewDateOverride,
   cancelOccurrence,
   editAffirmation,
   editOneTimeEvent,
@@ -281,13 +301,17 @@ export default function HouseDisplayManagePage() {
   const programLogoImageOverrides = useSelector(
     (state: RootState) => state.houseDisplay.content.programLogoImageOverrides,
   );
-  /** Hub auth roles - System Spotlight + Program Graphics manage are Admin-only (FE hide). */
+  const curfew = useSelector(
+    (state: RootState) => state.houseDisplay.content.curfew,
+  );
+  /** Hub auth roles - System Spotlight + Program Graphics + Curfew are Admin-only (FE hide). */
   const authUserRoles = useSelector(
     (state: RootState) => state.auth.user?.roles ?? [],
   );
   const canManageSystemSpotlight =
     canManageSystemSpotlightGraphics(authUserRoles);
   const canManageProgramLogos = canManageProgramLogoGraphics(authUserRoles);
+  const canManageHouseCurfew = canManageCurfew(authUserRoles);
 
   // --- Add Class dialog ---
   const [addClassOpen, setAddClassOpen] = useState(false);
@@ -330,6 +354,14 @@ export default function HouseDisplayManagePage() {
   // --- Announcements state ---
   const [newAnnouncementText, setNewAnnouncementText] = useState("");
   const [addAnnouncementError, setAddAnnouncementError] = useState("");
+
+  // --- Curfew / House Closing (Admin) ---
+  const [curfewOverrideDate, setCurfewOverrideDate] = useState("");
+  const [curfewOverrideTime, setCurfewOverrideTime] = useState("");
+  const [curfewOverrideEndOfDay, setCurfewOverrideEndOfDay] = useState(false);
+  const [curfewOverrideNote, setCurfewOverrideNote] = useState("");
+  const [curfewOverrideError, setCurfewOverrideError] = useState("");
+  const [curfewWeeklyError, setCurfewWeeklyError] = useState("");
 
   // --- Affirmations state (list + add/edit/pin/enable + rotate interval) ---
   const [newAffirmationText, setNewAffirmationText] = useState("");
@@ -545,6 +577,152 @@ export default function HouseDisplayManagePage() {
 
   const handleRemoveAnnouncement = (announcementId: string) => {
     dispatch(removeAnnouncement({ id: announcementId }));
+  };
+
+  /**
+   * Parse UI close time → closeMin (1..1440).
+   * End-of-day checkbox → 1440. type=time "00:00" alone is rejected (use End of day).
+   */
+  const parseCurfewCloseFromUi = (
+    timeValue: string,
+    endOfDay: boolean,
+  ): number | null => {
+    if (endOfDay) return CURFEW_END_OF_DAY_MIN;
+    const min = parseTimeInputToMin(timeValue);
+    if (min == null) return null;
+    if (min === 0) return null;
+    if (!isValidCurfewCloseMin(min)) return null;
+    return min;
+  };
+
+  /** Soft floor: leave room for T-15 (openMin + 15). */
+  const minAllowedCloseForWeekday = (weekday: number): number => {
+    const openMin = timelineWindowForWeekday(
+      weekday as HouseDisplayWeekday,
+    ).windowStartMin;
+    return openMin + 15;
+  };
+
+  const handleCurfewWeeklyTimeChange = (
+    weekday: number,
+    timeValue: string,
+  ) => {
+    setCurfewWeeklyError("");
+    const closeMin = parseCurfewCloseFromUi(timeValue, false);
+    if (closeMin == null) {
+      setCurfewWeeklyError(
+        "Enter a valid close time, or use End of day (not 12:00 AM on the clock).",
+      );
+      return;
+    }
+    if (closeMin < minAllowedCloseForWeekday(weekday)) {
+      setCurfewWeeklyError(
+        "Close time must leave room for the T-15 stage after house open.",
+      );
+      return;
+    }
+    const resolveYmd = getHopeHouseNow().dateKey;
+    dispatch(
+      setCurfewWeeklyClose({
+        weekday,
+        closeMin,
+        dateYmd: resolveYmd,
+      }),
+    );
+  };
+
+  const handleCurfewWeeklyEndOfDay = (weekday: number, checked: boolean) => {
+    setCurfewWeeklyError("");
+    if (!checked) return;
+    const resolveYmd = getHopeHouseNow().dateKey;
+    dispatch(
+      setCurfewWeeklyClose({
+        weekday,
+        closeMin: CURFEW_END_OF_DAY_MIN,
+        dateYmd: resolveYmd,
+      }),
+    );
+  };
+
+  const handleCurfewOverrideSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    setCurfewOverrideError("");
+
+    const dateYmd = parseDateInputToYmd(curfewOverrideDate);
+    if (dateYmd == null) {
+      setCurfewOverrideError("Choose a valid override date.");
+      return;
+    }
+
+    const closeMin = parseCurfewCloseFromUi(
+      curfewOverrideTime,
+      curfewOverrideEndOfDay,
+    );
+    if (closeMin == null) {
+      setCurfewOverrideError(
+        "Enter a valid close time, or check End of day (12:00 AM).",
+      );
+      return;
+    }
+
+    // Soft floor uses that date's weekday open.
+    const parts = dateYmd.split("-").map(Number);
+    const y = parts[0] ?? 0;
+    const m = parts[1] ?? 1;
+    const d = parts[2] ?? 1;
+    const utc = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+    const weekday = utc.getUTCDay();
+    if (closeMin < minAllowedCloseForWeekday(weekday)) {
+      setCurfewOverrideError(
+        "Close time must leave room for the T-15 stage after house open.",
+      );
+      return;
+    }
+
+    const resolveYmd = getHopeHouseNow().dateKey;
+    const existing = findCurfewOverrideForDate(curfew.overrides, dateYmd);
+    const id =
+      existing?.id ??
+      `curfew-ovr-${
+        typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID()
+          : String(Date.now())
+      }`;
+
+    dispatch(
+      setCurfewDateOverride({
+        id,
+        dateYmd,
+        closeMin,
+        note: curfewOverrideNote.trim() || undefined,
+        resolveDateYmd: resolveYmd,
+      }),
+    );
+
+    setCurfewOverrideDate("");
+    setCurfewOverrideTime("");
+    setCurfewOverrideEndOfDay(false);
+    setCurfewOverrideNote("");
+    setCurfewOverrideError("");
+  };
+
+  const handleClearCurfewOverride = (overrideDateYmd: string) => {
+    dispatch(
+      clearCurfewDateOverride({
+        dateYmd: overrideDateYmd,
+        resolveDateYmd: getHopeHouseNow().dateKey,
+      }),
+    );
+  };
+
+  // Display helpers for weekly row time field (1440 → end-of-day UI, not 00:00)
+  const weeklyCloseIsEndOfDay = (weekday: number): boolean =>
+    curfew.weekly.closeMinByWeekday[weekday] === CURFEW_END_OF_DAY_MIN;
+
+  const weeklyCloseTimeInputValue = (weekday: number): string => {
+    const min = curfew.weekly.closeMinByWeekday[weekday];
+    if (!isValidCurfewCloseMin(min) || min === CURFEW_END_OF_DAY_MIN) return "";
+    return formatMinToTimeInput(min);
   };
 
   // --- Affirmation handlers (add/edit/remove/pin/enable/rotate) ---
@@ -2795,6 +2973,317 @@ export default function HouseDisplayManagePage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Curfew / House Closing — Admin-only (hide if no permission) */}
+      {canManageHouseCurfew ? (
+        <Card sx={{ maxWidth: 720 }}>
+          <CardContent
+            sx={{ display: "flex", flexDirection: "column", gap: 2 }}
+          >
+            <Box>
+              <Typography variant="h6">Curfew / House Closing</Typography>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ mt: 0.5 }}
+              >
+                Weekly defaults and one date override per day. Closing stages
+                (T-15 → Final Break) are derived from the effective close —
+                staff never enter four closing events. End of day = 12:00 AM
+                midnight on that calendar day (1440), not clock 0. Refresh Full
+                Display after changes (no live cross-tab sync).
+              </Typography>
+            </Box>
+
+            <Divider />
+
+            {/* Today effective preview */}
+            {(() => {
+              const todayYmd = hopeNow.dateKey;
+              const effective = resolveEffectiveCurfewMin({
+                dateYmd: todayYmd,
+                config: curfew,
+              });
+              const todayOvr = findCurfewOverrideForDate(
+                curfew.overrides,
+                todayYmd,
+              );
+              return (
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                    Today&apos;s effective close
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {formatCurfewCloseLabel(effective)}
+                    {todayOvr
+                      ? " (date override)"
+                      : " (weekly default)"}
+                    {todayOvr?.note ? ` — ${todayOvr.note}` : ""}
+                  </Typography>
+                </Box>
+              );
+            })()}
+
+            <Divider />
+
+            <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+              Weekly defaults
+            </Typography>
+            {curfewWeeklyError ? (
+              <Typography variant="body2" color="error">
+                {curfewWeeklyError}
+              </Typography>
+            ) : null}
+            <Stack spacing={1.5}>
+              {ADD_CLASS_WEEKDAY_OPTIONS.map((day) => {
+                const closeMin = curfew.weekly.closeMinByWeekday[day.value];
+                const endOfDay = weeklyCloseIsEndOfDay(day.value);
+                return (
+                  <Box
+                    key={`curfew-weekly-${day.value}`}
+                    sx={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      alignItems: "center",
+                      gap: 1.5,
+                    }}
+                  >
+                    <Typography
+                      variant="body2"
+                      sx={{ width: 40, fontWeight: 600, flex: "0 0 auto" }}
+                    >
+                      {day.label}
+                    </Typography>
+                    <TextField
+                      type="time"
+                      size="small"
+                      label="Close"
+                      value={weeklyCloseTimeInputValue(day.value)}
+                      disabled={endOfDay}
+                      onChange={(e) =>
+                        handleCurfewWeeklyTimeChange(day.value, e.target.value)
+                      }
+                      slotProps={{
+                        inputLabel: { shrink: true },
+                        htmlInput: {
+                          "aria-label": `${day.label} curfew close time`,
+                        },
+                      }}
+                      sx={{ width: 140 }}
+                    />
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={endOfDay}
+                          onChange={(e) =>
+                            handleCurfewWeeklyEndOfDay(
+                              day.value,
+                              e.target.checked,
+                            )
+                          }
+                          slotProps={{
+                            input: {
+                              "aria-label": `${day.label} end of day curfew`,
+                            },
+                          }}
+                        />
+                      }
+                      label="End of day (12:00 AM)"
+                    />
+                    <Typography variant="body2" color="text.secondary">
+                      {isValidCurfewCloseMin(closeMin)
+                        ? formatCurfewCloseLabel(closeMin)
+                        : "—"}
+                    </Typography>
+                  </Box>
+                );
+              })}
+            </Stack>
+
+            <Divider />
+
+            <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+              Date override
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              One override per date. May be earlier or later than weekly.
+              Saving the same date replaces the previous override.
+            </Typography>
+
+            <Box
+              component="form"
+              onSubmit={handleCurfewOverrideSubmit}
+              sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}
+            >
+              <Box
+                sx={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  alignItems: "flex-start",
+                  gap: 1.5,
+                }}
+              >
+                <TextField
+                  type="date"
+                  size="small"
+                  label="Date"
+                  value={curfewOverrideDate}
+                  onChange={(e) => setCurfewOverrideDate(e.target.value)}
+                  slotProps={{
+                    inputLabel: { shrink: true },
+                    htmlInput: { "aria-label": "Curfew override date" },
+                  }}
+                  sx={{ width: 170 }}
+                />
+                <TextField
+                  type="time"
+                  size="small"
+                  label="Close"
+                  value={curfewOverrideTime}
+                  disabled={curfewOverrideEndOfDay}
+                  onChange={(e) => setCurfewOverrideTime(e.target.value)}
+                  slotProps={{
+                    inputLabel: { shrink: true },
+                    htmlInput: { "aria-label": "Curfew override close time" },
+                  }}
+                  sx={{ width: 140 }}
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={curfewOverrideEndOfDay}
+                      onChange={(e) => {
+                        setCurfewOverrideEndOfDay(e.target.checked);
+                        if (e.target.checked) setCurfewOverrideTime("");
+                      }}
+                      slotProps={{
+                        input: {
+                          "aria-label": "Curfew override end of day",
+                        },
+                      }}
+                    />
+                  }
+                  label="End of day"
+                />
+              </Box>
+              <TextField
+                size="small"
+                label="Note (optional)"
+                value={curfewOverrideNote}
+                onChange={(e) => setCurfewOverrideNote(e.target.value)}
+                fullWidth
+                slotProps={{
+                  htmlInput: { "aria-label": "Curfew override note" },
+                }}
+              />
+              {curfewOverrideError ? (
+                <Typography variant="body2" color="error">
+                  {curfewOverrideError}
+                </Typography>
+              ) : null}
+              <Box>
+                <Button type="submit" variant="contained" size="small">
+                  Save override
+                </Button>
+              </Box>
+            </Box>
+
+            {curfew.overrides.length === 0 ? (
+              <Typography variant="body2" color="text.secondary">
+                No date overrides.
+              </Typography>
+            ) : (
+              <Stack divider={<Divider flexItem />} spacing={0}>
+                {[...curfew.overrides]
+                  .slice()
+                  .sort((a, b) => a.dateYmd.localeCompare(b.dateYmd))
+                  .map((ovr) => {
+                    const wd = (() => {
+                      const p = ovr.dateYmd.split("-").map(Number);
+                      const u = new Date(
+                        Date.UTC(p[0] ?? 0, (p[1] ?? 1) - 1, p[2] ?? 1, 12, 0, 0),
+                      );
+                      return u.getUTCDay() as HouseDisplayWeekday;
+                    })();
+                    const weeklyMin =
+                      curfew.weekly.closeMinByWeekday[wd] ?? 0;
+                    const earlier =
+                      isValidCurfewCloseMin(ovr.closeMin) &&
+                      isValidCurfewCloseMin(weeklyMin) &&
+                      ovr.closeMin < weeklyMin;
+                    const later =
+                      isValidCurfewCloseMin(ovr.closeMin) &&
+                      isValidCurfewCloseMin(weeklyMin) &&
+                      ovr.closeMin > weeklyMin;
+                    return (
+                      <Box
+                        key={ovr.id}
+                        sx={{
+                          display: "flex",
+                          flexWrap: "wrap",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          gap: 1.5,
+                          py: 1.5,
+                        }}
+                      >
+                        <Box sx={{ minWidth: 0, flex: "1 1 auto" }}>
+                          <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                            {ovr.dateYmd} —{" "}
+                            {formatCurfewCloseLabel(ovr.closeMin)}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Weekly default: {formatCurfewCloseLabel(weeklyMin)}
+                            {ovr.note ? ` · ${ovr.note}` : ""}
+                          </Typography>
+                          <Box
+                            sx={{
+                              display: "flex",
+                              flexWrap: "wrap",
+                              gap: 0.5,
+                              mt: 0.5,
+                            }}
+                          >
+                            <Chip
+                              size="small"
+                              label="overrides weekly"
+                              variant="outlined"
+                            />
+                            {earlier ? (
+                              <Chip
+                                size="small"
+                                label="earlier than weekly"
+                                color="warning"
+                                variant="outlined"
+                              />
+                            ) : null}
+                            {later ? (
+                              <Chip
+                                size="small"
+                                label="later than weekly"
+                                variant="outlined"
+                              />
+                            ) : null}
+                          </Box>
+                        </Box>
+                        <Button
+                          type="button"
+                          size="small"
+                          variant="text"
+                          color="error"
+                          onClick={() => handleClearCurfewOverride(ovr.dateYmd)}
+                          sx={{ flex: "0 0 auto" }}
+                        >
+                          Remove
+                        </Button>
+                      </Box>
+                    );
+                  })}
+              </Stack>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
 
       {/* System Spotlight Graphics — Admin-only (hide if no permission) */}
       {canManageSystemSpotlight ? (

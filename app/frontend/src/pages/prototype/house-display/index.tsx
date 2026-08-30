@@ -27,6 +27,9 @@
  *   stable URLs only — blob:/data: session-only)
  * - Program / Class Graphics: active-event logos via getProgramLogoImageWithOverrides
  *   + content.programLogoImageOverrides (catalog defaults; Admin Manage overrides)
+ * - Curfew Manage wire (Ph7, 2026-08-30): timelineWindowForDate + resolveClosingPhase +
+ *   resolveSystemSpotlightState use content.curfew (not SEED); refresh after Manage
+ * - Curfew Manage Ph1–7 COMPLETE (manage browser QA passed 2026-08-30)
  *
  * NOT YET:
  * - Weather API (header still uses seed weatherText)
@@ -35,8 +38,7 @@
  * - Fallback right-rail when Spotlight empty
  * - Half-hour ticks / themes
  * - Schedule day rollover from backend
- * - Affirmation / system / program graphics live cross-tab rehydrate (refresh after Manage)
- * - Curfew Manage UI / DEV persist (parked)
+ * - Affirmation / system / program graphics / curfew live cross-tab rehydrate (refresh after Manage)
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
@@ -65,7 +67,6 @@ import {
 } from "../../../features/house-display/spotlight";
 import { selectAffirmationText } from "../../../features/house-display/affirmations";
 import {
-  SEED_CURFEW_CONFIG,
   timelineWindowForDate,
   isSpotlightTakeoverAgendaItem,
   isOneTimeGlowAgendaItem,
@@ -314,16 +315,16 @@ export default function HouseDisplayPage() {
 
   /**
    * Live day window: weekday open + effective curfew end for Chicago dateKey.
-   * Seed weekly = Sun–Thu 10pm / Fri–Sat 11pm; date override (e.g. 1440) later via config.
+   * Uses content.curfew (weekly + date overrides from Manage / DEV LS).
    * Not stale Redux content.timeline alone.
    */
   const timeline = useMemo(
     () =>
       timelineWindowForDate({
         dateYmd: hopeNow.dateKey,
-        config: SEED_CURFEW_CONFIG,
+        config: content.curfew,
       }),
-    [hopeNow.dateKey],
+    [hopeNow.dateKey, content.curfew],
   );
 
   const hasBirthdayToday = Boolean(birthday?.name?.trim());
@@ -350,9 +351,9 @@ export default function HouseDisplayPage() {
       resolveClosingPhase({
         dateYmd: hopeNow.dateKey,
         nowMin: hopeNow.nowMin,
-        config: SEED_CURFEW_CONFIG,
+        config: content.curfew,
       }),
-    [hopeNow.dateKey, hopeNow.nowMin],
+    [hopeNow.dateKey, hopeNow.nowMin, content.curfew],
   );
 
   /** Map phase → stage id for the single active closing visual. */
@@ -383,10 +384,15 @@ export default function HouseDisplayPage() {
       resolveSystemSpotlightState({
         dateYmd: hopeNow.dateKey,
         nowMin: hopeNow.nowMin,
-        config: SEED_CURFEW_CONFIG,
+        config: content.curfew,
         imageOverrides: content.systemSpotlightImageOverrides,
       }),
-    [hopeNow.dateKey, hopeNow.nowMin, content.systemSpotlightImageOverrides],
+    [
+      hopeNow.dateKey,
+      hopeNow.nowMin,
+      content.curfew,
+      content.systemSpotlightImageOverrides,
+    ],
   );
 
   const nextAgendaItems = useMemo(

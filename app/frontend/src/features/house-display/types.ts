@@ -2,6 +2,7 @@
  * House Display — shared types (FE mock)
  * Used by: store slice, TV page, manage page.
  * No React here.
+ * Checkpoint: Curfew Manage Ph1–7 COMPLETE 2026-08-30 (content.curfew).
  *
  * TV layout regions:
  * header → agenda timeline → upcoming → lower band
@@ -15,6 +16,7 @@
 import type { HouseDisplayScheduleSources } from "./scheduleTypes";
 import type { SystemSpotlightImageOverrides } from "./systemSpotlight";
 import type { ProgramLogoImageOverrides } from "./programLogos";
+import type { HouseDisplayCurfewConfig } from "./curfew";
 
 /** Static header placeholders until live clock/weather. */
 export interface HouseDisplayHeader {
@@ -218,6 +220,15 @@ export interface HouseDisplayContent {
    * later; blob: / data: stay session-only. Production media = backend.
    */
   programLogoImageOverrides: ProgramLogoImageOverrides;
+  /**
+   * House curfew / closing config (weekly defaults + per-date overrides).
+   * Types/engine: features/house-display/curfew.ts (HouseDisplayCurfewConfig).
+   * closeMin is minutes from midnight, integer 1..1440; 1440 = end-of-day midnight.
+   * Default = independent clone of SEED_CURFEW_CONFIG (not a live seed reference).
+   * Ph1: on content only. Manage mutators / DEV LS / TV call-site wire = later.
+   * Stages stay derived from effective C — never four staff closing events.
+   */
+  curfew: HouseDisplayCurfewConfig;
   birthday: HouseDisplayBirthday;
 }
 
