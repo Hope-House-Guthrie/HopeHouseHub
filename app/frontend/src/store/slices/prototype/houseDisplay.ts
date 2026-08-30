@@ -40,25 +40,16 @@
  * - affirmationText kept as TV empty-pool fallback string
  * - No live cross-tab sync; backend should own truth later
  *
- * DONE (System Spotlight Graphics Manage — FE):
- * - content.systemSpotlightImageOverrides (assetKey → image URL; {} = bundled defaults)
- * - setSystemSpotlightImageOverride (reject unknown key + data:; clear on null/blank)
- * - buildContent / initialState hydrate via loadSystemSpotlightImageOverrides
- * - persistScheduleSources writes sanitized overrides with schedule/announcements/affirmations
- * - Stable URLs may persist in DEV LS; blob: / data: stripped (session-only in Redux)
- * - TV resolve reads overrides from content (manage Replace / Restore)
- *
  * NOT YET:
  * - override exception UI, delete definition, ended-list conflict UI
  * - Spotlight Add Video / Edit / Delete / sound / pin / persist
- * - Affirmation / system graphics live rehydrate for open TV tabs
- * - Curfew Manage UI / DEV persist (parked)
- * - Backend API / thunks / durable media storage
+ * - Affirmation storage/visibility rehydrate for open TV tabs
+ * - Backend API / thunks
  * - Midnight re-resolve without refresh
  *
  * Who uses this:
- *   - manage.tsx  → schedule, Spotlight, Affirmations, System Spotlight Graphics
- *   - index.tsx   → TV selects content (affirmations + systemSpotlightImageOverrides)
+ *   - manage.tsx  → Today cancel/restore; Add/Edit/End/Reinstate Recurring; One-Time; Spotlight; Affirmations
+ *   - index.tsx   → TV selects content only (affirmations via selectAffirmationText)
  */
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import type {
@@ -1286,10 +1277,9 @@ export const houseDisplaySlice = createSlice({
     /**
      * Admin Manage: set or clear one system Spotlight graphic override.
      * imageUrl non-empty string -> store trimmed URL for that assetKey.
-     * imageUrl null or blank -> remove override (bundled default again).
+     * imageUrl null or blank -> remove override(bundled default agin).
      * Rejects unknown assetKey and data: URLs.
-     * Persists via schedulePersistence: stable URLs may remain in DEV
-     * localStorage; blob: / data: are stripped on write (session Redux only).
+     * No DEV localStorage media yet - session Redux only until later.
      */
     setSystemSpotlightImageOverride: (
       state,
@@ -1310,6 +1300,7 @@ export const houseDisplaySlice = createSlice({
         (typeof rawUrl === "string" && rawUrl.trim() === "")
       ) {
         if (!(rawKey in state.content.systemSpotlightImageOverrides)) return;
+
         const next = { ...state.content.systemSpotlightImageOverrides };
         delete next[rawKey];
         state.content.systemSpotlightImageOverrides = next;
@@ -1318,6 +1309,7 @@ export const houseDisplaySlice = createSlice({
       }
 
       if (typeof rawUrl !== "string") return;
+
       const imageUrl = rawUrl.trim();
       if (!imageUrl) return;
       if (imageUrl.startsWith("data:")) return;
