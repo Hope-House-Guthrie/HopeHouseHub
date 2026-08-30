@@ -46,6 +46,12 @@
  * - exception kind "suppress" (Replace/Hide this date ≠ cancel)
  * - suppressRecurringOccurrence / unsuppressRecurringOccurrence
  *
+ * DONE (Stage E2 one-time conflict UI):
+ * - oneTimeAdd/Edit gates via findScheduleConflicts before dispatch
+ * - Dialog lists recurring (checkbox End/Replace) + oneTime (read-only; no checkbox)
+ * - Keep Both saves pending OT; Save & Replace Selected only selected recurring
+ * - Recurring Add/Edit/Reinstate still filter to kind recurring only
+ *
  * DONE (Spotlight Content Phase 1 — read-only UI):
  * - Spotlight Content card on /prototype/house-display (above Announcements)
  * - Selects content.spotlightItems; display sort by sortOrder then id
@@ -98,7 +104,6 @@
  * (Schedule Stage D/E may still appear elsewhere; this track is Spotlight Content.)
  *
  * NOT YET:
- * - manage One-Time conflict polish leftovers if any
  * - override exception UI, delete definition, ended-list conflict UI
  * - One-time Class Image Select (parked)
  * - Affirmation / system / program graphics live cross-tab rehydrate (refresh TV after Manage)
@@ -1321,7 +1326,14 @@ export default function HouseDisplayManagePage() {
     setEndingExistingClasses([]);
     setPendingSaveKind("add");
     setConflictDialogOpen(false);
-    if (pendingSaveKind !== "reinstate") {
+    // Mirror handleSaveWithSelectedEnds: one-time pending closes OT form;
+    // recurring pending closes Add Class; reinstate leaves forms alone.
+    if (
+      originalSaveKind === "oneTimeAdd" ||
+      originalSaveKind === "oneTimeEdit"
+    ) {
+      handleCloseAddOneTimeEvent();
+    } else if (originalSaveKind !== "reinstate") {
       handleCloseAddClass();
     }
   };
@@ -1878,50 +1890,100 @@ export default function HouseDisplayManagePage() {
                   ? "Reinstating this class conflicts with existing classes:"
                   : pendingSaveKind === "oneTimeAdd" ||
                       pendingSaveKind === "oneTimeEdit"
-                    ? "This one-time event conflicts with recurring classes on its date. Keep Both keeps everything; Save & Replace Selected hides only the selected recurring occurrence(s) for that day."
+                    ? "This one-time event overlaps other schedule items on its date. Recurring rows can be checked so Save & Replace Selected hides only those occurrences that day. Other one-time events are listed for awareness only (not replaced). Keep Both saves without changing existing items."
                     : "The class you are adding/editing conflicts with existing classes:"}
               </Typography>
               <Stack divider={<Divider flexItem />} spacing={1}>
                 {pendingConflicts.map((conflict) => {
-                  if (conflict.kind !== "recurring") return null;
-                  const isChecked = endingExistingClasses.some(
-                    (e) => e.id === conflict.seriesId,
-                  );
-                  const recurring = conflict as any;
-                  return (
-                    <Box
-                      key={conflict.seriesId}
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 1,
-                      }}
-                    >
-                      <Checkbox
-                        checked={isChecked}
-                        onChange={() =>
-                          handleSelectConflictToKill(conflict.seriesId)
-                        }
-                        aria-label={
-                          pendingSaveKind === "oneTimeAdd" ||
-                          pendingSaveKind === "oneTimeEdit"
-                            ? `Replace ${conflict.title}`
-                            : `End ${conflict.title}`
-                        }
-                      />
-                      <Box>
-                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                          {conflict.title}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {conflict.startMin}–{conflict.endMin} on{" "}
-                          {recurring.weekdays
-                            .map((d: number) => formatRecurringDaysLabel([d]))
-                            .join(", ")}
-                        </Typography>
+                  // Recurring conflicts: selectable End / Replace (unchanged Stage D/E2).
+                  if (conflict.kind === "recurring") {
+                    const isChecked = endingExistingClasses.some(
+                      (e) => e.id === conflict.seriesId,
+                    );
+                    return (
+                      <Box
+                        key={conflict.seriesId}
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 1,
+                        }}
+                      >
+                        <Checkbox
+                          checked={isChecked}
+                          onChange={() =>
+                            handleSelectConflictToKill(conflict.seriesId)
+                          }
+                          aria-label={
+                            pendingSaveKind === "oneTimeAdd" ||
+                            pendingSaveKind === "oneTimeEdit"
+                              ? `Replace ${conflict.title}`
+                              : `End ${conflict.title}`
+                          }
+                        />
+                        <Box>
+                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                            {conflict.title}
+                          </Typography>
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                          >
+                            {formatScheduleTimeRange(
+                              conflict.startMin,
+                              conflict.endMin,
+                            )}{" "}
+                            on{" "}
+                            {conflict.weekdays
+                              .map((d) => formatRecurringDaysLabel([d]))
+                              .join(", ")}
+                          </Typography>
+                        </Box>
                       </Box>
-                    </Box>
-                  );
+                    );
+                  }
+
+                  // One-time conflicts: informational only (E2). No checkbox —
+                  // never end/delete/suppress another one-time from this dialog.
+                  if (conflict.kind === "oneTime") {
+                    return (
+                      <Box
+                        key={conflict.eventId}
+                        sx={{
+                          display: "flex",
+                          alignItems: "flex-start",
+                          gap: 1,
+                          pl: 0.5,
+                        }}
+                      >
+                        <Box sx={{ minWidth: 0 }}>
+                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                            {conflict.title}
+                          </Typography>
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            sx={{ display: "block" }}
+                          >
+                            One-time · {conflict.dateYmd} ·{" "}
+                            {formatScheduleTimeRange(
+                              conflict.startMin,
+                              conflict.endMin,
+                            )}
+                          </Typography>
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            sx={{ display: "block" }}
+                          >
+                            Listed for awareness — not replaced by this dialog.
+                          </Typography>
+                        </Box>
+                      </Box>
+                    );
+                  }
+
+                  return null;
                 })}
               </Stack>
             </DialogContent>
