@@ -98,6 +98,21 @@ const AGENDA_NARROW_WIDTH_PCT = 50;
 const AGENDA_VERY_NARROW_WIDTH_PCT = 34;
 
 /**
+ * Shared TV section eyebrows (Today's schedule / Up next / Daily affirmation /
+ * Announcements). Soft teal + tracking so regions share one label language.
+ * Layout-only extras (mb, flex) stay on each call site.
+ */
+const SECTION_EYEBROW_SX = {
+  fontWeight: 800,
+  letterSpacing: "0.14em",
+  textTransform: "uppercase" as const,
+  color: "rgba(94, 234, 212, 0.9)",
+  fontSize: "clamp(0.75rem, 1.2vw, 1.05rem)",
+  lineHeight: 1.2,
+  opacity: 1,
+};
+
+/**
  * Single centered schedule-block line for room-scale TV reading.
  * Parts join with " | " — never includes Location:/Facilitator: labels.
  */
@@ -312,11 +327,7 @@ function AnnouncementsRollBody({
     const measure = () => {
       const viewH = viewport.clientHeight;
       const contentH = firstCopy.scrollHeight;
-      if (
-        reduceMotion ||
-        announcements.length === 0 ||
-        contentH <= viewH + 1
-      ) {
+      if (reduceMotion || announcements.length === 0 || contentH <= viewH + 1) {
         setRoll(null);
         return;
       }
@@ -863,8 +874,8 @@ export default function HouseDisplayPage() {
             gap: 1.5,
             textAlign: "center",
             bgcolor:
-              sys.kind === "house_closed"
-                ? "rgba(127, 29, 29, 0.35)"
+              sys.kind === "house_closed" || sys.kind === "house_closed_after"
+                ? "rgba(48, 8, 20, 0.82)"
                 : sys.kind === "final_break"
                   ? "rgba(30, 64, 175, 0.28)"
                   : sys.kind === "rollCall"
@@ -966,10 +977,7 @@ export default function HouseDisplayPage() {
     // Phase 1: active happening event takeover.
     if (slide.kind === "activeEvent") {
       const ev = slide.event;
-      const logoSrc = activeEventLogoSrc(
-        ev,
-        content.programLogoImageOverrides,
-      );
+      const logoSrc = activeEventLogoSrc(ev, content.programLogoImageOverrides);
       return (
         <Box
           sx={{
@@ -1239,31 +1247,33 @@ export default function HouseDisplayPage() {
     switch (state) {
       case "happening":
         return {
-          bgcolor: "rgba(94, 234, 212, 0.18)",
-          border: "2px solid rgba(94, 234, 212, 0.85)",
-          borderLeft: "6px solid #5eead4",
+          bgcolor: "rgba(45, 212, 191, 0.16)",
+          border: "1px solid rgba(94, 234, 212, 0.55)",
+          borderLeft: "5px solid #5eead4",
+          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.07)",
           opacity: 1,
           zIndex: 2,
         };
       case "past":
         return {
-          bgcolor: "rgba(224,225,221,0.08)",
-          border: "1px solid rgba(224,225,221,0.2)",
-          opacity: 0.45,
+          bgcolor: "rgba(8, 17, 28, 0.38)",
+          border: "1px solid rgba(224,225,221,0.12)",
+          opacity: 0.42,
           zIndex: 1,
         };
       case "canceled":
         return {
-          bgcolor: "rgba(248, 113, 113, 0.12)",
-          border: "2px dashed rgba(248, 113, 113, 0.9)",
-          opacity: 0.95,
+          bgcolor: "rgba(248, 113, 113, 0.10)",
+          border: "1.5px dashed rgba(248, 113, 113, 0.75)",
+          opacity: 0.92,
           zIndex: 1,
         };
       case "upcoming":
       default:
         return {
-          bgcolor: "rgba(224,225,221,0.16)",
-          border: "1px solid rgba(224,225,221,0.35)",
+          bgcolor: "rgba(14, 28, 44, 0.72)",
+          border: "1px solid rgba(224,225,221,0.22)",
+          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05)",
           opacity: 1,
           zIndex: 1,
         };
@@ -1277,7 +1287,8 @@ export default function HouseDisplayPage() {
         width: "100%",
         overflow: "hidden",
         boxSizing: "border-box",
-        bgcolor: "#0d1b2a",
+        background:
+          "radial-gradient(120% 80% at 12% -10%, rgba(56, 189, 248, 0.16) 0%, transparent 55%), radial-gradient(90% 70% at 100% 110%, rgba(45, 212, 191, 0.10) 0%, transparent 50%), linear-gradient(165deg, #08111c 0%, #0d1b2a 42%, #132a40 100%)",
         color: "#e0e1dd",
         display: "flex",
         flexDirection: "column",
@@ -1293,14 +1304,20 @@ export default function HouseDisplayPage() {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          borderBottom: "1px solid rgba(224,225,221,0.2)",
-          px: 1,
+          borderRadius: 2,
+          border: "1px solid rgba(224,225,221,0.14)",
+          bgcolor: "rgba(8, 17, 28, 0.42)",
+          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
+          px: { xs: 1.5, md: 2 },
         }}
       >
         <Typography
           sx={{
             fontWeight: 700,
             fontSize: "clamp(1.1rem, 2.2vw, 2rem)",
+            letterSpacing: "0.03em",
+            opacity: 0.92,
+            lineHeight: 1.15,
           }}
         >
           {header.identityLabel}
@@ -1308,14 +1325,24 @@ export default function HouseDisplayPage() {
         <Box sx={{ textAlign: "right" }}>
           <Typography
             sx={{
-              fontWeight: 700,
+              fontWeight: 800,
               fontSize: "clamp(1.25rem, 2.5vw, 2.25rem)",
+              letterSpacing: "0.04em",
+              fontVariantNumeric: "tabular-nums",
+              lineHeight: 1.05,
             }}
           >
             {hopeNow.clockText}
           </Typography>
           <Typography
-            sx={{ opacity: 0.8, fontSize: "clamp(0.85rem, 1.4vw, 1.25rem)" }}
+            sx={{
+              opacity: 0.62,
+              fontWeight: 500,
+              letterSpacing: "0.02em",
+              fontSize: "clamp(0.85rem, 1.4vw, 1.25rem)",
+              lineHeight: 1.25,
+              mt: 0.25,
+            }}
           >
             {hopeNow.dateText} · {header.weatherText}
           </Typography>
@@ -1329,15 +1356,20 @@ export default function HouseDisplayPage() {
           minHeight: 0,
           display: "flex",
           flexDirection: "row",
-          px: 1,
+          px: { xs: 1, md: 1.5 },
+          pr: 0,
           gap: 0,
+          borderRadius: 2,
+          border: "1px solid rgba(224,225,221,0.14)",
+          bgcolor: "rgba(8, 17, 28, 0.42)",
+          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
+          overflow: "hidden",
         }}
       >
         {/* Schedule column ~60% width */}
         <Box
           sx={{
-            flex: "0 0 50%",
-            maxWidth: "50%",
+            flex: "1 1 0%",
             minWidth: 0,
             minHeight: 0,
             display: "flex",
@@ -1346,12 +1378,9 @@ export default function HouseDisplayPage() {
         >
           <Typography
             sx={{
-              fontWeight: 700,
-              letterSpacing: 1,
+              ...SECTION_EYEBROW_SX,
               mb: 1,
-              opacity: 0.75,
-              fontSize: "clamp(0.9rem, 1.5vw, 1.35rem)",
-              textTransform: "uppercase",
+              fontSize: "clamp(0.85rem, 1.35vw, 1.2rem)",
             }}
           >
             Today&apos;s schedule
@@ -1381,12 +1410,19 @@ export default function HouseDisplayPage() {
                     position: "absolute",
                     top: `${m.topPct}%`,
                     right: 0,
-                    transform: "translateY(-50%)",
+                    transform:
+                      m.topPct <= 0
+                        ? "translateY(0)"
+                        : m.topPct >= 100
+                          ? "translateY(-100%)"
+                          : "translateY(-50%)",
                     fontSize: "clamp(0.65rem, 1.1vw, 0.95rem)",
-                    opacity: 0.55,
+                    opacity: 0.5,
                     fontWeight: 600,
                     lineHeight: 1,
                     whiteSpace: "nowrap",
+                    fontVariantNumeric: "tabular-nums",
+                    letterSpacing: "0.02em",
                   }}
                 >
                   {m.label}
@@ -1420,7 +1456,10 @@ export default function HouseDisplayPage() {
                 flex: 1,
                 minWidth: 0,
                 position: "relative",
-                borderLeft: "2px solid rgba(224,225,221,0.25)",
+                borderLeft: "2px solid rgba(94, 234, 212, 0.28)",
+                background:
+                  "linear-gradient(180deg, rgba(8, 17, 28, 0.28) 0%, rgba(8, 17, 28, 0.08) 100%)",
+                borderRadius: "0 8px 8px 0",
               }}
             >
               {/* Hour grid lines */}
@@ -1432,7 +1471,7 @@ export default function HouseDisplayPage() {
                     left: 0,
                     right: 0,
                     top: `${m.topPct}%`,
-                    borderTop: "1px solid rgba(224,225,221,0.12)",
+                    borderTop: "1px solid rgba(224,225,221,0.09)",
                   }}
                 />
               ))}
@@ -1517,7 +1556,7 @@ export default function HouseDisplayPage() {
                       px: 1,
                       pt: 0.25,
                       pb: 0.1,
-                      borderRadius: 1,
+                      borderRadius: 1.25,
                       color: "#e0e1dd",
                       display: "flex",
                       flexDirection: "column",
@@ -1596,8 +1635,7 @@ export default function HouseDisplayPage() {
         {/* House Spotlight ~40% — one card or flyer; empty if none active */}
         <Box
           sx={{
-            flex: "0 0 50%",
-            maxWidth: "50%",
+            flex: "1 1 0%",
             minWidth: 0,
             minHeight: 0,
             display: "flex",
@@ -1613,9 +1651,11 @@ export default function HouseDisplayPage() {
                 display: "flex",
                 flexDirection: "column",
                 borderRadius: 2,
-                border: "1px solid rgba(224,225,221,0.25)",
+                border: "1px solid rgba(224,225,221,0.18)",
                 overflow: "hidden",
-                bgcolor: "rgba(0,0,0,0.25)",
+                bgcolor: "rgba(8, 17, 28, 0.55)",
+                boxShadow:
+                  "inset 0 1px 0 rgba(255,255,255,0.06), 0 10px 28px rgba(0,0,0,0.28)",
               }}
             >
               {/* Stacked slides; outer chrome stays put. One-way soft slide: out left / in from right. */}
@@ -1681,18 +1721,17 @@ export default function HouseDisplayPage() {
           display: "flex",
           alignItems: "center",
           gap: 2,
-          px: 1,
-          borderTop: "1px solid rgba(224,225,221,0.15)",
-          borderBottom: "1px solid rgba(224,225,221,0.15)",
+          borderRadius: 2,
+          border: "1px solid rgba(224,225,221,0.14)",
+          bgcolor: "rgba(8, 17, 28, 0.42)",
+          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
+          px: { xs: 1.5, md: 2 },
         }}
       >
         <Typography
           sx={{
+            ...SECTION_EYEBROW_SX,
             flex: "0 0 auto",
-            fontWeight: 700,
-            opacity: 0.7,
-            textTransform: "uppercase",
-            fontSize: "clamp(0.75rem, 1.2vw, 1.1rem)",
           }}
         >
           Up next
@@ -1743,8 +1782,12 @@ export default function HouseDisplayPage() {
           minHeight: 0,
           display: "flex",
           gap: 2,
-          px: 1,
-          pt: 0.5,
+          borderRadius: 2,
+          border: "1px solid rgba(224,225,221,0.14)",
+          bgcolor: "rgba(8, 17, 28, 0.42)",
+          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
+          px: { xs: 1.5, md: 2 },
+          py: { xs: 1, md: 1.25 },
         }}
       >
         <Box
@@ -1759,11 +1802,8 @@ export default function HouseDisplayPage() {
         >
           <Typography
             sx={{
-              fontWeight: 700,
-              opacity: 0.7,
-              textTransform: "uppercase",
+              ...SECTION_EYEBROW_SX,
               mb: 1,
-              fontSize: "clamp(0.75rem, 1.2vw, 1.05rem)",
             }}
           >
             Daily affirmation
@@ -1801,11 +1841,8 @@ export default function HouseDisplayPage() {
           >
             <Typography
               sx={{
-                fontWeight: 700,
-                opacity: 0.7,
-                textTransform: "uppercase",
+                ...SECTION_EYEBROW_SX,
                 mb: 0.75,
-                fontSize: "clamp(0.75rem, 1.2vw, 1.05rem)",
                 flex: "0 0 auto",
               }}
             >
