@@ -26,10 +26,12 @@
  * - exception kind "suppress" (Replace/Hide this date ≠ cancel)
  * - suppressRecurringOccurrence / unsuppressRecurringOccurrence
  *
- * DONE (Spotlight Content Phases 1–4 manage mutators):
+ * DONE (Spotlight Content Phases 1–4 + Delete manage mutators):
  * - setSpotlightItemActive / moveSpotlightItem (no spotlight persist)
  * - addSpotlightFlyer (UI id + imageUrl; append sortOrder end; no persist;
  *   no base64/localStorage media — session Redux + bundled/@assets or object URL)
+ * - removeSpotlightItem (drop by id any kind incl. seeds; renumber sortOrder 0..n-1;
+ *   no persist; blob revoke stays in Manage handler for blob: imageUrl only)
  *
  * DONE (Daily Affirmations — FE prototype complete):
  * - content.affirmations[] + pinnedAffirmationId + affirmationRotateMs
@@ -58,7 +60,7 @@
  *
  * NOT YET:
  * - override exception UI, delete definition, ended-list conflict UI
- * - Spotlight Add Video / Edit / Delete / sound / pin / persist
+ * - Spotlight Add Video / Edit / sound / pin / persist (Delete done — session-only)
  * - Affirmation storage/visibility rehydrate for open TV tabs
  * - Backend API / thunks
  * - Midnight re-resolve without refresh
@@ -934,6 +936,34 @@ export const houseDisplaySlice = createSlice({
     },
 
     /**
+     * Remove one Spotlight item by id (Manage Delete).
+     * Drops from content.spotlightItems entirely (all kinds, including seeds).
+     * Remaining items renumbered sortOrder 0..n-1 (stable order before delete).
+     * Unknown/blank id = no-op. Does NOT persist (no spotlight localStorage).
+     * Does not revoke blob URLs - Manage handler owns revoke for session flyer blob: only.
+     * Backend/API will replace this client mock later.
+     */
+    removeSpotlightItem: (state, action: PayloadAction<{ id: string }>) => {
+      const rawId = action.payload.id;
+      const id = typeof rawId === "string" ? rawId.trim() : "";
+      if (!id) return;
+
+      const before = state.content.spotlightItems;
+      const next = before.filter((s) => s.id !== id);
+      if (next.length === before.length) return;
+
+      const ordered = next.slice().sort((a, b) => {
+        if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
+        return a.id.localeCompare(b.id);
+      });
+      ordered.forEach((item, i) => {
+        item.sortOrder = i;
+      });
+
+      state.content.spotlightItems = ordered;
+    },
+
+    /**
      * Cancel one occurrence for an explicit Chicago dateYmd.
      * Recurring → exception kind cancel (series unchanged).
      * One-time → row.canceled = true.
@@ -1589,6 +1619,7 @@ export const {
   setSpotlightItemActive,
   moveSpotlightItem,
   addSpotlightFlyer,
+  removeSpotlightItem,
   cancelOccurrence,
   restoreOccurrence,
   addRecurringClass,

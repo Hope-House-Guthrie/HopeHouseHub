@@ -74,6 +74,13 @@
  * - No base64; no localStorage media; no spotlight persist; no TV renderer change
  * - Full reload drops added flyers (seed rebuild)
  *
+ * DONE (Spotlight Content Phase 5 — Delete item):
+ * - removeSpotlightItem in slice (any kind incl. s1–s4 seeds; renumber 0..n-1; no persist)
+ * - Manage Delete per row → handleDeleteSpotlightItem; no confirm dialog
+ * - Session flyer blob: imageUrl revoked after dispatch; bundled/normal URLs never revoked
+ * - Disable stays separate (no revoke); no spotlight localStorage; no TV changes
+ * - Seed delete is session-only (reload may restore seeds)
+ *
  * DONE (Daily Affirmations — FE prototype complete):
  * - Card after Spotlight Content, before Announcements
  * - Add / Edit / Remove / Enable / Disable / Pin / Unpin / rotate-interval Select
@@ -107,8 +114,8 @@
  * - Stages auto-derived from effective C (no four staff closing events)
  * - Refresh Full Display after Manage (no live cross-tab)
  *
- * NEXT (Spotlight Content): Add Video / Edit / Delete / pin / sound / persist — parked
- * (Schedule Stage D/E may still appear elsewhere; this track is Spotlight Content.)
+ * NEXT (Spotlight Content): Add Video / Edit / pin / sound / persist — parked
+ * (Delete done — session-only. Schedule Stage D/E may still appear elsewhere.)
  *
  * NOT YET:
  * - override exception UI, delete definition, ended-list conflict UI
@@ -226,6 +233,7 @@ import {
   reinstateRecurringClass,
   removeAffirmation,
   removeAnnouncement,
+  removeSpotlightItem,
   restoreOccurrence,
   setAffirmationRotateMs,
   setSpotlightItemActive,
@@ -1020,6 +1028,20 @@ export default function HouseDisplayManagePage() {
     setAddFlyerSampleKey("");
     setAddFlyerActive(true);
     setAddFlyerError("");
+  };
+
+  const handleDeleteSpotlightItem = (id: string) => {
+    const item = spotlightItems.find((s) => s.id === id);
+    const imageUrl =
+      item && typeof item.imageUrl === "string" ? item.imageUrl : "";
+
+    dispatch(removeSpotlightItem({ id }));
+
+    // Session file flyer only - never revoke bundled assets or normal URLs.
+    // Disable must not call this path.
+    if (imageUrl.startsWith("blob:")) {
+      URL.revokeObjectURL(imageUrl);
+    }
   };
 
   const handleAddOneTimeEventSubmit = (e: FormEvent) => {
@@ -2494,6 +2516,14 @@ export default function HouseDisplayManagePage() {
                         }}
                       >
                         Move Down
+                      </Button>
+                      <Button
+                        type="button"
+                        size="small"
+                        color="error"
+                        onClick={() => handleDeleteSpotlightItem(item.id)}
+                      >
+                        Delete
                       </Button>
                     </Box>
                   </Box>
