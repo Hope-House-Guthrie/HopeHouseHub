@@ -447,16 +447,8 @@ export function isSpotlightTakeoverAgendaItem(
 }
 
 /**
- * True when timeline should draw the one-time perimeter glow.
- * Staff one-time only — not Roll Call / closing system rows.
+ * Derived closing-stage row (board paints as timed marker, not a class bar).
  */
-export function isOneTimeGlowAgendaItem(
-  item: Pick<HouseDisplayAgendaItem, "sourceType">,
-): boolean {
-  return item.sourceType === "oneTime";
-}
-
-/** Derived closing-stage row (board paints as timed marker, not a class bar). */
 export function isClosingStageAgendaItem(
   item: Pick<HouseDisplayAgendaItem, "sourceType" | "systemKind">,
 ): boolean {

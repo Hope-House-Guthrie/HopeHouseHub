@@ -17,7 +17,7 @@
  * - Daily Affirmation lower band: selectAffirmationText (pin → enabled rotate)
  *   + legacy affirmationText fallback when enabled pool empty; hopeNow tick
  * - Curfew Ph0–2: pure config/stages/phase; window end includes Final Break hour;
- *   derived closing agenda (system); Roll Call system (no one-time glow);
+ *   derived closing agenda (system); Roll Call system (no class takeover);
  *   timeline paints only current closing stage as hairline (real times)
  * - Curfew Ph3 (revised): system Spotlight takeover (Roll Call + closing phases +
  *   Final Break + House Closed) with image registry + placeholder fallback;
@@ -74,7 +74,6 @@ import { selectAffirmationText } from "../../../features/house-display/affirmati
 import {
   timelineWindowForDate,
   isSpotlightTakeoverAgendaItem,
-  isOneTimeGlowAgendaItem,
   resolveClosingPhase,
   type HouseDisplayClosingPhase,
   type HouseDisplayClosingStageId,
@@ -86,40 +85,6 @@ import {
 import { useHopeHouseNow } from "../../../features/house-display/useHopeHouseNow";
 // Program logos: catalog defaults + Admin overrides (content.programLogoImageOverrides).
 import { getProgramLogoImageWithOverrides } from "../../../features/house-display/programLogos";
-
-/* ---- One-time event perimeter glow (visual prototype) ----
- * Tunable knobs for browser testing. The glow is drawn with an SVG path
- * (stroke-dashoffset travel) inside the card, so it follows the rounded card
- * perimeter on both full-width and narrowed/50-50 overlap cards.
- */
-/** Full animation cycle time (ms) for the traveling highlight. */
-const ONE_TIME_GLOW_DURATION_MS = 6000;
-/** Highlight travel dash length in viewBox units (10 = ~1%). */
-const ONE_TIME_GLOW_DASH = 34;
-/** Rounded-rect stroke thickness (viewBox units) for the traveling highlight. */
-const ONE_TIME_GLOW_STROKE = 2;
-/** Rounded-rect stroke thickness for the faint static perimeter glow. */
-const ONE_TIME_GLOW_HALO_STROKE = 1;
-/** Traveling highlight color (soft teal-ish accent on the dark track). */
-const ONE_TIME_GLOW_COLOR = "rgba(103, 232, 249, 0.95)";
-/** Faint static perimeter glow color. */
-const ONE_TIME_GLOW_HALO_COLOR = "rgba(103, 232, 249, 0.35)";
-
-/** Stroke path length of the rounded-rect overlay (viewBox units). */
-const ONE_TIME_GLOW_PERIMETER = 2 * (94 + 94); // 4 * side of the inset rect
-
-/** Fixed keyframes rule name (referenced by style strings, so it must be stable). */
-const ONE_TIME_GLOW_ANIM_NAME = "oneTimePerimeterTravel";
-
-/**
- * The @keyframes rule itself. Injected once via a <style> tag so it is always
- * present in the DOM (emotion only auto-injects keyframes used in sx/css).
- * Linear travel = smooth, no flashing/pulse. Offset goes negative to advance.
- */
-const ONE_TIME_GLOW_CSS = `@keyframes ${ONE_TIME_GLOW_ANIM_NAME} {
-  from { stroke-dashoffset: 0; }
-  to   { stroke-dashoffset: -${ONE_TIME_GLOW_PERIMETER}; }
-}`;
 
 /* ---- Agenda card content (centered single line) ----
  * Full-width: "Class Name | Location | Facilitator" (omit empty parts).
@@ -473,7 +438,7 @@ export default function HouseDisplayPage() {
 
   const hasBirthdayToday = Boolean(birthday?.name?.trim());
 
-  /** Respect user OS reduced-motion preference (static glow instead of travel). */
+  /** Respect user OS reduced-motion preference (birthday confetti / shimmer). */
   const reduceMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
 
   const blocks = useMemo(
@@ -561,24 +526,6 @@ export default function HouseDisplayPage() {
     const map = new Map<string, boolean>();
     for (const item of agendaItems) {
       map.set(item.id, item.canceled);
-    }
-    return map;
-  }, [agendaItems]);
-
-  /** id → resolved agenda item (glow / system checks). */
-  const agendaItemById = useMemo(() => {
-    const map = new Map<string, HouseDisplayAgendaItem>();
-    for (const item of agendaItems) {
-      map.set(item.id, item);
-    }
-    return map;
-  }, [agendaItems]);
-
-  /** id → source identity from resolved agenda. */
-  const sourceTypeById = useMemo(() => {
-    const map = new Map<string, HouseDisplayAgendaItem["sourceType"]>();
-    for (const item of agendaItems) {
-      map.set(item.id, item.sourceType);
     }
     return map;
   }, [agendaItems]);
@@ -1338,8 +1285,6 @@ export default function HouseDisplayPage() {
         gap: { xs: 1, md: 1.5 },
       }}
     >
-      {/* Inject the one-time glow keyframes once (stable name used by style strings). */}
-      <style>{ONE_TIME_GLOW_CSS}</style>
       {/* ---- 1. Header ~10–12% ---- */}
       <Box
         sx={{
@@ -1538,10 +1483,6 @@ export default function HouseDisplayPage() {
                 );
 
                 const stateSx = blockSxForState(visualState);
-                const agendaRow = agendaItemById.get(b.id);
-                const isOneTimeGlow = agendaRow
-                  ? isOneTimeGlowAgendaItem(agendaRow)
-                  : sourceTypeById.get(b.id) === "oneTime";
 
                 // Centered single line for room-scale TV; progressive simplify on narrow columns.
                 const blockLine =
@@ -1586,73 +1527,6 @@ export default function HouseDisplayPage() {
                       ...stateSx,
                     }}
                   >
-                    {isOneTimeGlow ? (
-                      <Box
-                        sx={{
-                          position: "absolute",
-                          inset: 0,
-                          pointerEvents: "none",
-                          borderRadius: 1,
-                          overflow: "hidden",
-                          zIndex: 0,
-                        }}
-                      >
-                        <svg
-                          width="100%"
-                          height="100%"
-                          viewBox="0 0 100 100"
-                          preserveAspectRatio="none"
-                          style={{ display: "block" }}
-                          aria-hidden="true"
-                        >
-                          {/* Faint static perimeter glow — card still looks special
-                              even when the brighter highlight has moved on. */}
-                          <rect
-                            x="1"
-                            y="1"
-                            width="98"
-                            height="98"
-                            rx="3"
-                            fill="none"
-                            stroke={ONE_TIME_GLOW_HALO_COLOR}
-                            strokeWidth={ONE_TIME_GLOW_HALO_STROKE}
-                            vectorEffect="non-scaling-stroke"
-                          />
-                          {reduceMotion ? (
-                            /* Reduced motion: static full illuminated rim (no travel). */
-                            <rect
-                              x="3"
-                              y="3"
-                              width="94"
-                              height="94"
-                              rx="2.5"
-                              fill="none"
-                              stroke={ONE_TIME_GLOW_COLOR}
-                              strokeWidth={ONE_TIME_GLOW_STROKE}
-                              strokeDasharray={`${ONE_TIME_GLOW_PERIMETER} 0`}
-                            />
-                          ) : (
-                            /* Traveling illuminated highlight around the perimeter. */
-                            <rect
-                              x="3"
-                              y="3"
-                              width="94"
-                              height="94"
-                              rx="2.5"
-                              fill="none"
-                              stroke={ONE_TIME_GLOW_COLOR}
-                              strokeWidth={ONE_TIME_GLOW_STROKE}
-                              strokeLinecap="round"
-                              strokeDasharray={`${ONE_TIME_GLOW_DASH} ${ONE_TIME_GLOW_PERIMETER - ONE_TIME_GLOW_DASH}`}
-                              style={{
-                                animation: `${ONE_TIME_GLOW_ANIM_NAME} ${ONE_TIME_GLOW_DURATION_MS}ms linear infinite`,
-                                willChange: "stroke-dashoffset",
-                              }}
-                            />
-                          )}
-                        </svg>
-                      </Box>
-                    ) : null}
                     <Box
                       sx={{
                         position: "relative",

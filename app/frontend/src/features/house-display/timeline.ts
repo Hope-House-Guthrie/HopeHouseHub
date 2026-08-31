@@ -57,7 +57,7 @@ export const ROLL_CALL_DURATION_MIN = 10;
  * Synthetic Roll Call occurrence for one Chicago day.
  * Starts at the displayed day open (same as timelineWindowForWeekday start).
  * Not a staff-managed series — generated for the board each resolve.
- * sourceType "system" so TV does not apply one-time glow / takeover.
+ * sourceType "system" so TV does not apply active-event Spotlight takeover.
  * Timing unchanged (open + ROLL_CALL_DURATION_MIN).
  */
 export function buildRollCallAgendaItem(

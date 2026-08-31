@@ -59,7 +59,7 @@ export type HouseDisplayAgendaSourceType = "recurring" | "oneTime" | "system";
 
 /**
  * Subtype when sourceType === "system".
- * Used so TV can skip one-time glow and active-event Spotlight takeover.
+ * Used so TV can skip active-event Spotlight takeover on system rows.
  */
 export type HouseDisplayAgendaSystemKind = "rollCall" | "closingStage";
 
