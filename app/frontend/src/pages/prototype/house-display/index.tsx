@@ -33,6 +33,8 @@
  * - UP NEXT from live agendaItems + hopeNow.nowMin (max 3; canceled out;
  *   recurring/one-time/Roll Call/closing eligible; happening excluded;
  *   empty copy when none left; dead upcomingItems seed removed)
+ * - Announcements: fixed region; static when fit; overflow → seamless
+ *   bottom→top roll (duplicate list + gap; speed from content height)
  *
  * NOT YET:
  * - Weather API (header still uses seed weatherText)
@@ -49,6 +51,7 @@ import type { RootState } from "@/store";
 import type {
   HouseDisplayEventVisualState,
   HouseDisplayAgendaItem,
+  HouseDisplayAnnouncement,
 } from "@/features/house-display/types";
 import type { HouseDisplaySpotlightItem } from "../../../features/house-display/types";
 
@@ -271,6 +274,146 @@ const birthdayConfetti = keyframes`
     transform: translateY(70px) rotate(240deg);
     opacity: 0;
   };`;
+
+/** Gap between last announcement and the repeated copy (seamless loop). */
+const ANNOUNCEMENT_ROLL_GAP_PX = 48;
+/**
+ * Constant scroll speed for overflow announcements (px/sec).
+ * Duration = travel distance / this — longer lists take longer, same readability.
+ */
+const ANNOUNCEMENT_ROLL_PX_PER_SEC = 28;
+
+/**
+ * Seamless bottom→top roll when content taller than the fixed viewport.
+ * Travel uses CSS var --hd-announcement-roll-to (negative px = first copy + gap).
+ */
+const announcementRollUp = keyframes`
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(0, var(--hd-announcement-roll-to, -1px), 0);
+  }
+`;
+
+const announcementItemSx = {
+  mb: 0.75,
+  fontSize: "clamp(0.9rem, 1.4vw, 1.25rem)",
+  lineHeight: 1.35,
+} as const;
+
+function AnnouncementLines({
+  items,
+  keyPrefix,
+}: {
+  items: HouseDisplayAnnouncement[];
+  keyPrefix: string;
+}) {
+  return (
+    <>
+      {items.map((a) => (
+        <Typography key={`${keyPrefix}${a.id}`} sx={announcementItemSx}>
+          {a.text}
+        </Typography>
+      ))}
+    </>
+  );
+}
+
+/**
+ * Announcements body inside the fixed lower-band region.
+ * Heading stays outside (caller). Fits → static stack. Overflow → seamless
+ * vertical roll (duplicate list + gap). prefers-reduced-motion → static clip.
+ */
+function AnnouncementsRollBody({
+  announcements,
+  reduceMotion,
+}: {
+  announcements: HouseDisplayAnnouncement[];
+  reduceMotion: boolean;
+}) {
+  const viewportRef = useRef<HTMLDivElement | null>(null);
+  const firstCopyRef = useRef<HTMLDivElement | null>(null);
+  const [roll, setRoll] = useState<{
+    distancePx: number;
+    durationSec: number;
+  } | null>(null);
+
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    const firstCopy = firstCopyRef.current;
+    if (!viewport || !firstCopy) return;
+
+    const measure = () => {
+      const viewH = viewport.clientHeight;
+      const contentH = firstCopy.scrollHeight;
+      if (
+        reduceMotion ||
+        announcements.length === 0 ||
+        contentH <= viewH + 1
+      ) {
+        setRoll(null);
+        return;
+      }
+      const distancePx = contentH + ANNOUNCEMENT_ROLL_GAP_PX;
+      const durationSec = Math.max(
+        1,
+        distancePx / ANNOUNCEMENT_ROLL_PX_PER_SEC,
+      );
+      setRoll({ distancePx, durationSec });
+    };
+
+    measure();
+
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => {
+      measure();
+    });
+    ro.observe(viewport);
+    ro.observe(firstCopy);
+    return () => ro.disconnect();
+  }, [announcements, reduceMotion]);
+
+  return (
+    <Box
+      ref={viewportRef}
+      sx={{
+        flex: "1 1 auto",
+        minHeight: 0,
+        overflow: "hidden",
+        position: "relative",
+      }}
+    >
+      <Box
+        sx={
+          roll
+            ? {
+                // Negative px: after one cycle, second copy sits where first began.
+                ["--hd-announcement-roll-to" as string]: `-${roll.distancePx}px`,
+                animation: `${announcementRollUp} ${roll.durationSec}s linear infinite`,
+                willChange: "transform",
+              }
+            : undefined
+        }
+      >
+        <Box ref={firstCopyRef}>
+          <AnnouncementLines items={announcements} keyPrefix="a-" />
+        </Box>
+        {roll ? (
+          <>
+            <Box
+              aria-hidden
+              sx={{ height: ANNOUNCEMENT_ROLL_GAP_PX, flex: "0 0 auto" }}
+            />
+            <Box aria-hidden>
+              <AnnouncementLines items={announcements} keyPrefix="b-" />
+            </Box>
+          </>
+        ) : null}
+      </Box>
+    </Box>
+  );
+}
 
 export default function HouseDisplayPage() {
   const content = useSelector((state: RootState) => state.houseDisplay.content);
@@ -1773,7 +1916,15 @@ export default function HouseDisplayPage() {
             pl: 2,
           }}
         >
-          <Box sx={{ flex: "1 1 auto", minHeight: 0 }}>
+          <Box
+            sx={{
+              flex: "1 1 auto",
+              minHeight: 0,
+              display: "flex",
+              flexDirection: "column",
+              minWidth: 0,
+            }}
+          >
             <Typography
               sx={{
                 fontWeight: 700,
@@ -1781,22 +1932,15 @@ export default function HouseDisplayPage() {
                 textTransform: "uppercase",
                 mb: 0.75,
                 fontSize: "clamp(0.75rem, 1.2vw, 1.05rem)",
+                flex: "0 0 auto",
               }}
             >
               Announcements
             </Typography>
-            {announcements.map((a) => (
-              <Typography
-                key={a.id}
-                sx={{
-                  mb: 0.75,
-                  fontSize: "clamp(0.9rem, 1.4vw, 1.25rem)",
-                  lineHeight: 1.35,
-                }}
-              >
-                {a.text}
-              </Typography>
-            ))}
+            <AnnouncementsRollBody
+              announcements={announcements}
+              reduceMotion={reduceMotion}
+            />
           </Box>
 
           {hasBirthdayToday ? (
