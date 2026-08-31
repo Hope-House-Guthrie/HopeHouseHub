@@ -16,4 +16,25 @@
   systemd.targets.suspend.enable = false;
   systemd.targets.hibernate.enable = false;
   systemd.targets.hybrid-sleep.enable = false;
+
+  environment.etc = {
+    "xdg/kscreenlockerrc".text = ''
+      [Daemon]
+      Autolock=false
+      LockOnResume=false
+    '';
+
+    "xdg/powermanagementprofilesrc".text = ''
+      [AC][DimDisplay]
+      idleTimeoutWhenCharged=0
+
+      [AC][DPMSControl]
+      idleTimeoutWhenCharged=0
+
+      [AC][SuspendSession]
+      idleTimeoutWhenCharged=0
+      suspendThenHibernate=false
+      suspendType=1
+    '';
+  };
 }

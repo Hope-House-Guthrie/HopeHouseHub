@@ -25,12 +25,10 @@
     partOf = [ "graphical-session.target" ];
 
     preStart = ''
-      echo "Waiting for NetworkManager to report online..."
-      ${pkgs.networkmanager}/bin/nm-online --quiet --timeout=0
+      ${pkgs.networkmanager}/bin/nm-online
     '';
 
     script = ''
-      # Replace with your actual target URL
       ${pkgs.firefox}/bin/firefox --kiosk "https://hub.nhdhopehouseguthrie.org"
     '';
 
@@ -47,8 +45,15 @@
       DisableFirefoxStudies = true;
       DisableTelemetryUpload = true;
 
+      Homepage = {
+        URL = "https://hub.nhdhopehouseguthrie.org";
+        Locked = true;
+        StartPage = "homepage";
+      };
+
       OverrideFirstRunPage = "";
       OverridePostUpdatePage = "";
+      DontCheckDefaultBrowser = true;
 
       Preferences = {
         "datareporting.healthreport.uploadEnabled" = false;
