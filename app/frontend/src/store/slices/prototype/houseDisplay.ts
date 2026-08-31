@@ -546,12 +546,6 @@ function buildContent(
         videoSoundEnabled: true,
       },
     ],
-    // Still mock strip — not derived from agenda yet (known cleanup)
-    upcomingItems: [
-      { id: "u1", timeLabel: "3:30 PM", title: "House Meeting" },
-      { id: "u2", timeLabel: "6:00 PM", title: "Main NA" },
-      { id: "u3", timeLabel: "7:30 PM", title: "Quiet Hours prep" },
-    ],
 
     // Legacy single-string fallback for TV until library empty edge cases
     affirmationText:

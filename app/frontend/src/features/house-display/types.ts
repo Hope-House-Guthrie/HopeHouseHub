@@ -99,13 +99,6 @@ export interface HouseDisplayAgendaItem {
   logoKey?: string | null;
 }
 
-/** Thin "up next" strip item (static mock until derived from agenda + now). */
-export interface HouseDisplayUpcomingItem {
-  id: string;
-  timeLabel: string;
-  title: string;
-}
-
 /** One announcement line (rotation later). */
 export interface HouseDisplayAnnouncement {
   id: string;
@@ -187,7 +180,6 @@ export interface HouseDisplayContent {
   agendaItems: HouseDisplayAgendaItem[];
   /** Right ~40% House Spotlight slides (one shown at a time on TV). */
   spotlightItems: HouseDisplaySpotlightItem[];
-  upcomingItems: HouseDisplayUpcomingItem[];
   affirmationText: string;
   /**
    * Staff-managed Daily Affirmation library (Manage + TV).

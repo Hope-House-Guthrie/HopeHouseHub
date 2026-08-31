@@ -30,10 +30,12 @@
  * - Curfew Manage wire (Ph7, 2026-08-30): timelineWindowForDate + resolveClosingPhase +
  *   resolveSystemSpotlightState use content.curfew (not SEED); refresh after Manage
  * - Curfew Manage Ph1–7 COMPLETE (manage browser QA passed 2026-08-30)
+ * - UP NEXT from live agendaItems + hopeNow.nowMin (max 3; canceled out;
+ *   recurring/one-time/Roll Call/closing eligible; happening excluded;
+ *   empty copy when none left; dead upcomingItems seed removed)
  *
  * NOT YET:
  * - Weather API (header still uses seed weatherText)
- * - UP NEXT strip still static mock (does not follow resolved agenda) — cleanup
  * - Spotlight manage forms / upload / backend (class/event Spotlight track)
  * - Fallback right-rail when Spotlight empty
  * - Half-hour ticks / themes
@@ -276,7 +278,6 @@ export default function HouseDisplayPage() {
     header,
     agendaItems,
     spotlightItems,
-    upcomingItems,
     affirmationText,
     affirmations,
     pinnedAffirmationId,
@@ -395,11 +396,17 @@ export default function HouseDisplayPage() {
     ],
   );
 
+  /** Up Next: future non-canceled agenda only (incl. system). Max 3. */
   const nextAgendaItems = useMemo(
     () =>
       agendaItems
         .filter((item) => !item.canceled && item.startMin > hopeNow.nowMin)
-        .sort((a, b) => a.startMin - b.startMin)
+        .sort((a, b) => {
+          if (a.startMin !== b.startMin) return a.startMin - b.startMin;
+          const byTitle = a.title.localeCompare(b.title);
+          if (byTitle !== 0) return byTitle;
+          return a.id.localeCompare(b.id);
+        })
         .slice(0, 3),
     [agendaItems, hopeNow.nowMin],
   );
@@ -1679,20 +1686,36 @@ export default function HouseDisplayPage() {
             flexWrap: "nowrap",
             gap: 2,
             overflow: "hidden",
+            alignItems: "center",
+            minWidth: 0,
+            flex: "1 1 auto",
           }}
         >
-          {nextAgendaItems.map((item) => (
+          {nextAgendaItems.length === 0 ? (
             <Typography
-              key={item.id}
               sx={{
                 fontWeight: 600,
                 fontSize: "clamp(0.95rem, 1.0vw, 1.4rem)",
                 whiteSpace: "nowrap",
+                opacity: 0.65,
               }}
             >
-              {formatMinutesAsTime(item.startMin)} - {item.title}
+              No more scheduled activities today
             </Typography>
-          ))}
+          ) : (
+            nextAgendaItems.map((item) => (
+              <Typography
+                key={item.id}
+                sx={{
+                  fontWeight: 600,
+                  fontSize: "clamp(0.95rem, 1.0vw, 1.4rem)",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {formatMinutesAsTime(item.startMin)} - {item.title}
+              </Typography>
+            ))
+          )}
         </Box>
       </Box>
 
