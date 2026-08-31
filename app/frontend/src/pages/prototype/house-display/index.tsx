@@ -72,6 +72,11 @@ import {
 } from "../../../features/house-display/spotlight";
 import { selectAffirmationText } from "../../../features/house-display/affirmations";
 import {
+  selectBirthdayView,
+  type HouseDisplayBirthdayListItem,
+} from "../../../features/house-display/birthdays";
+import { MOCK_HOUSE_DISPLAY_BIRTHDAY_PEOPLE } from "../../../features/house-display/birthdayMock";
+import {
   timelineWindowForDate,
   isSpotlightTakeoverAgendaItem,
   resolveClosingPhase,
@@ -255,6 +260,149 @@ const birthdayConfetti = keyframes`
     opacity: 0;
   };`;
 
+/**
+ * Birthday celebration balloons: enter fully below the box, exit fully above,
+ * then loop. Opacity stays solid for the whole path — clipping is only from the
+ * parent overflow:hidden (no mid-box fade-out).
+ * Y travel uses per-balloon CSS vars (px), not % of the balloon element alone.
+ */
+const birthdayBalloonFloat = keyframes`
+  0% {
+    transform: translate3d(0, var(--hd-balloon-from, 80px), 0);
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(
+      var(--hd-balloon-drift, 6px),
+      var(--hd-balloon-to, -160px),
+      0
+    );
+    opacity: 1;
+  }
+`;
+
+/**
+ * Birthday balloon fleet (~8): large on far L/R edges; medium/small in the
+ * intermediate side lanes. edgePct is inset from that side only — keep max
+ * ~18% so a clear center safe zone remains around title / name / date.
+ * sizePx TV-readable: small 28–34 / medium 38–46 / large 48–58.
+ * fromPx / toPx: full stack starts below box, ends above box top.
+ * Delays/durations/from offsets staggered so heights differ at any moment.
+ */
+const BIRTHDAY_BALLOONS: readonly {
+  side: "left" | "right";
+  edgePct: number;
+  sizePx: number;
+  color: string;
+  delay: string;
+  duration: string;
+  drift: string;
+  /** translateY start (positive = below resting bottom:0). */
+  fromPx: number;
+  /** translateY end (negative = above box). */
+  toPx: number;
+  staticBottomPct: number;
+}[] = [
+  // --- Left lane (outer → intermediate) ---
+  {
+    side: "left",
+    edgePct: 1.5,
+    sizePx: 56,
+    color: "#FF8A80",
+    delay: "0s",
+    duration: "12.2s",
+    drift: "7px",
+    fromPx: 118,
+    toPx: -198,
+    staticBottomPct: 14,
+  },
+  {
+    side: "left",
+    edgePct: 8,
+    sizePx: 42,
+    color: "#FFD54F",
+    delay: "3.1s",
+    duration: "14.0s",
+    drift: "-5px",
+    fromPx: 92,
+    toPx: -178,
+    staticBottomPct: 36,
+  },
+  {
+    side: "left",
+    edgePct: 13.5,
+    sizePx: 30,
+    color: "#82B1FF",
+    delay: "1.4s",
+    duration: "10.8s",
+    drift: "9px",
+    fromPx: 76,
+    toPx: -166,
+    staticBottomPct: 52,
+  },
+  {
+    side: "left",
+    edgePct: 17.5,
+    sizePx: 36,
+    color: "#A5D6A7",
+    delay: "6.4s",
+    duration: "13.1s",
+    drift: "-4px",
+    fromPx: 100,
+    toPx: -184,
+    staticBottomPct: 68,
+  },
+  // --- Right lane (outer → intermediate) ---
+  {
+    side: "right",
+    edgePct: 1.5,
+    sizePx: 54,
+    color: "#CE93D8",
+    delay: "0.7s",
+    duration: "12.9s",
+    drift: "-8px",
+    fromPx: 120,
+    toPx: -200,
+    staticBottomPct: 18,
+  },
+  {
+    side: "right",
+    edgePct: 7.5,
+    sizePx: 44,
+    color: "#FFAB91",
+    delay: "4.2s",
+    duration: "11.4s",
+    drift: "6px",
+    fromPx: 88,
+    toPx: -174,
+    staticBottomPct: 42,
+  },
+  {
+    side: "right",
+    edgePct: 12.5,
+    sizePx: 32,
+    color: "#80CBC4",
+    delay: "2.2s",
+    duration: "13.6s",
+    drift: "-7px",
+    fromPx: 74,
+    toPx: -164,
+    staticBottomPct: 58,
+  },
+  {
+    side: "right",
+    edgePct: 17,
+    sizePx: 38,
+    color: "#F48FB1",
+    delay: "7.5s",
+    duration: "12.0s",
+    drift: "5px",
+    fromPx: 104,
+    toPx: -186,
+    staticBottomPct: 72,
+  },
+];
+
 /** Gap between last announcement and the repeated copy (seamless loop). */
 const ANNOUNCEMENT_ROLL_GAP_PX = 48;
 /**
@@ -391,6 +539,205 @@ function AnnouncementsRollBody({
   );
 }
 
+/** Short month labels for TV birthday rows (no year). Index 0 unused; 1=Jan. */
+const BIRTHDAY_MONTH_SHORT = [
+  "",
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+] as const;
+
+/** Gap between first strip copy and repeat (seamless horizontal loop). */
+const BIRTHDAY_MONTH_ROLL_GAP_PX = 48;
+/** Horizontal scroll speed for overflowing month strip (px/sec). */
+const BIRTHDAY_MONTH_ROLL_PX_PER_SEC = 32;
+
+/**
+ * Seamless leftward roll when month strip wider than fixed viewport.
+ * Travel uses CSS var --hd-birthday-month-roll-to (negative px).
+ */
+const birthdayMonthRollLeft = keyframes`
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(var(--hd-birthday-month-roll-to, -1px), 0, 0);
+  }
+`;
+
+function formatBirthdayMonthDay(item: HouseDisplayBirthdayListItem): string {
+  const mon =
+    BIRTHDAY_MONTH_SHORT[item.birthMonth] ?? String(item.birthMonth);
+  return `${mon} ${item.birthDay}`;
+}
+
+/** One nowrap horizontal copy: 🎂 date · name • date · name … */
+function BirthdayMonthStripLine({
+  items,
+  keyPrefix,
+}: {
+  items: readonly HouseDisplayBirthdayListItem[];
+  keyPrefix: string;
+}) {
+  return (
+    <Typography
+      component="div"
+      sx={{
+        display: "inline-flex",
+        flex: "0 0 auto",
+        alignItems: "center",
+        whiteSpace: "nowrap",
+        fontSize: "clamp(0.8rem, 1.2vw, 1.05rem)",
+        lineHeight: 1.35,
+        opacity: 0.9,
+      }}
+    >
+      <Box component="span" sx={{ mr: 0.75 }} aria-hidden>
+        🎂
+      </Box>
+      {items.map((item, index) => (
+        <Box component="span" key={`${keyPrefix}${item.id}`}>
+          {index > 0 ? (
+            <Box component="span" sx={{ mx: 1, opacity: 0.55 }}>
+              •
+            </Box>
+          ) : null}
+          {formatBirthdayMonthDay(item)}
+          {" · "}
+          {item.displayName}
+        </Box>
+      ))}
+    </Typography>
+  );
+}
+
+/**
+ * Compact fixed-height Birthdays This Month strip under Announcements.
+ * Fits → static one line. Overflow → seamless horizontal roll (own measure
+ * state; not coupled to AnnouncementsRollBody). reduced-motion → static clip.
+ */
+function BirthdaysThisMonthRollBody({
+  monthItems,
+  reduceMotion,
+}: {
+  monthItems: readonly HouseDisplayBirthdayListItem[];
+  reduceMotion: boolean;
+}) {
+  const viewportRef = useRef<HTMLDivElement | null>(null);
+  const firstCopyRef = useRef<HTMLDivElement | null>(null);
+  const [roll, setRoll] = useState<{
+    distancePx: number;
+    durationSec: number;
+  } | null>(null);
+
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    const firstCopy = firstCopyRef.current;
+    if (!viewport || !firstCopy) return;
+
+    const measure = () => {
+      const viewW = viewport.clientWidth;
+      const contentW = firstCopy.scrollWidth;
+      if (reduceMotion || monthItems.length === 0 || contentW <= viewW + 1) {
+        setRoll(null);
+        return;
+      }
+      const distancePx = contentW + BIRTHDAY_MONTH_ROLL_GAP_PX;
+      const durationSec = Math.max(
+        1,
+        distancePx / BIRTHDAY_MONTH_ROLL_PX_PER_SEC,
+      );
+      setRoll({ distancePx, durationSec });
+    };
+
+    measure();
+
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => {
+      measure();
+    });
+    ro.observe(viewport);
+    ro.observe(firstCopy);
+    return () => ro.disconnect();
+  }, [monthItems, reduceMotion]);
+
+  if (monthItems.length === 0) {
+    return (
+      <Typography
+        sx={{
+          opacity: 0.7,
+          fontSize: "clamp(0.8rem, 1.2vw, 1rem)",
+          lineHeight: 1.35,
+        }}
+      >
+        No birthdays this month
+      </Typography>
+    );
+  }
+
+  return (
+    <Box
+      ref={viewportRef}
+      sx={{
+        // Fixed compact footprint — never grow with roster length.
+        flex: "0 0 auto",
+        width: "100%",
+        minWidth: 0,
+        overflow: "hidden",
+        position: "relative",
+        height: "1.45em",
+      }}
+    >
+      <Box
+        sx={{
+          display: "inline-flex",
+          flexDirection: "row",
+          alignItems: "center",
+          height: "100%",
+          ...(roll
+            ? {
+                ["--hd-birthday-month-roll-to" as string]: `-${roll.distancePx}px`,
+                animation: `${birthdayMonthRollLeft} ${roll.durationSec}s linear infinite`,
+                willChange: "transform",
+              }
+            : undefined),
+        }}
+      >
+        <Box ref={firstCopyRef} sx={{ display: "inline-flex", flex: "0 0 auto" }}>
+          <BirthdayMonthStripLine items={monthItems} keyPrefix="bm-a-" />
+        </Box>
+        {roll ? (
+          <>
+            <Box
+              aria-hidden
+              sx={{
+                width: BIRTHDAY_MONTH_ROLL_GAP_PX,
+                flex: "0 0 auto",
+                height: 1,
+              }}
+            />
+            <Box
+              aria-hidden
+              sx={{ display: "inline-flex", flex: "0 0 auto" }}
+            >
+              <BirthdayMonthStripLine items={monthItems} keyPrefix="bm-b-" />
+            </Box>
+          </>
+        ) : null}
+      </Box>
+    </Box>
+  );
+}
+
 export default function HouseDisplayPage() {
   const content = useSelector((state: RootState) => state.houseDisplay.content);
   const {
@@ -447,7 +794,53 @@ export default function HouseDisplayPage() {
     [hopeNow.dateKey, content.curfew],
   );
 
-  const hasBirthdayToday = Boolean(birthday?.name?.trim());
+  /**
+   * Live birthday lists from mock client-shaped people + Chicago dateKey.
+   * Not Redux / content.birthday. todayItems drives celebration gate;
+   * monthItems + multi today rotating paiint come in later steps.
+   */
+  const birthdayView = useMemo(
+    () =>
+      selectBirthdayView({
+        people: MOCK_HOUSE_DISPLAY_BIRTHDAY_PEOPLE,
+        dateKey: hopeNow.dateKey,
+      }),
+    [hopeNow.dateKey],
+  );
+
+  const hasBirthdayToday = birthdayView.todayItems.length > 0;
+
+  /** ~12s per celebrant when multiple share today; single person never advances. */
+  const BIRTHDAY_TODAY_ROTATE_MS = 12_000;
+
+  /** Local TV presentation index into birthdayView.todayItems (not Redux). */
+  const [birthdayTodayRotateIndex, setBirthdayTodayRotateIndex] = useState(0);
+
+  /** Roster fingerprint so date/people changes reset the loop safely. */
+  const birthdayTodayIdsKey = birthdayView.todayItems
+    .map((p) => p.id)
+    .join("|");
+
+  // Chicago day or today-roster change → restart at first sorted name.
+  useEffect(() => {
+    setBirthdayTodayRotateIndex(0);
+  }, [hopeNow.dateKey, birthdayTodayIdsKey]);
+
+  // Multi same-day only: advance one name at a time; single celebrant = no timer.
+  useEffect(() => {
+    const n = birthdayView.todayItems.length;
+    if (n <= 1) return;
+
+    const id = window.setInterval(() => {
+      setBirthdayTodayRotateIndex((i) => (i + 1) % n);
+    }, BIRTHDAY_TODAY_ROTATE_MS);
+
+    return () => window.clearInterval(id);
+  }, [
+    birthdayTodayIdsKey,
+    birthdayView.todayItems.length,
+    BIRTHDAY_TODAY_ROTATE_MS,
+  ]);
 
   /** Respect user OS reduced-motion preference (birthday confetti / shimmer). */
   const reduceMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
@@ -1859,14 +2252,90 @@ export default function HouseDisplayPage() {
               sx={{
                 flex: "0 0 auto",
                 pt: 0.5,
+                pb: 0.75,
+                px: 1,
                 position: "relative",
                 overflow: "hidden",
                 borderRadius: 2,
                 border: "1px solid rgba(255, 215, 0, 0.28)",
                 background:
                   "linear-gradient(135deg, rgba(255, 193, 7, 0.08), rgba(255, 105, 180, 0.06))",
+                // Same general footprint — fill box better, not half-width / not taller panel.
+                minHeight: "5.75rem",
               }}
             >
+              {/* Side balloons behind text (z0). Float bottom→top; static if reduced-motion. */}
+              {BIRTHDAY_BALLOONS.map((b, index) => (
+                <Box
+                  key={`balloon-${b.side}-${index}`}
+                  aria-hidden
+                  sx={{
+                    position: "absolute",
+                    zIndex: 0,
+                    pointerEvents: "none",
+                    left: b.side === "left" ? `${b.edgePct}%` : "auto",
+                    right: b.side === "right" ? `${b.edgePct}%` : "auto",
+                    bottom: reduceMotion ? `${b.staticBottomPct}%` : 0,
+                    width: b.sizePx,
+                    // Full stack height so knot+string clip with the body.
+                    height: "auto",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    ["--hd-balloon-drift" as string]: b.drift,
+                    ["--hd-balloon-from" as string]: `${b.fromPx}px`,
+                    ["--hd-balloon-to" as string]: `${b.toPx}px`,
+                    animation: reduceMotion
+                      ? "none"
+                      : `${birthdayBalloonFloat} ${b.duration} linear ${b.delay} infinite`,
+                    opacity: reduceMotion ? 0.55 : 1,
+                    willChange: reduceMotion ? undefined : "transform",
+                  }}
+                >
+                  {/* Balloon body only (ellipse — no rectangular chrome). */}
+                  <Box
+                    sx={{
+                      width: b.sizePx,
+                      height: b.sizePx * 1.15,
+                      flex: "0 0 auto",
+                      alignSelf: "center",
+                      borderRadius: "50%",
+                      background: `radial-gradient(circle at 30% 28%, rgba(255,255,255,0.55), ${b.color})`,
+                      boxShadow: `inset -2px -3px 0 rgba(0,0,0,0.08)`,
+                    }}
+                  />
+                  {/* Tiny knot only — CSS triangle, no filled block. */}
+                  <Box
+                    sx={{
+                      width: 0,
+                      height: 0,
+                      flex: "0 0 auto",
+                      alignSelf: "center",
+                      borderLeft: `${Math.max(2, Math.round(b.sizePx * 0.06))}px solid transparent`,
+                      borderRight: `${Math.max(2, Math.round(b.sizePx * 0.06))}px solid transparent`,
+                      borderTop: `${Math.max(4, Math.round(b.sizePx * 0.1))}px solid ${b.color}`,
+                      mt: "-1px",
+                    }}
+                  />
+                  {/* Thin string only — 1px line, never a gray rectangle/weight. */}
+                  <Box
+                    sx={{
+                      width: 0,
+                      height: Math.round(b.sizePx * 0.55),
+                      flex: "0 0 auto",
+                      alignSelf: "center",
+                      borderLeft: "1.5px solid rgba(224,225,221,0.55)",
+                      backgroundColor: "transparent",
+                      boxShadow: "none",
+                      minWidth: 0,
+                      maxWidth: 0,
+                      overflow: "visible",
+                    }}
+                  />
+                </Box>
+              ))}
+
+              {/* Confetti above balloons, below text */}
               {!reduceMotion &&
                 [
                   { left: "8%", delay: "0s", duration: "3.4s" },
@@ -1880,6 +2349,7 @@ export default function HouseDisplayPage() {
                     key={piece.left}
                     sx={{
                       position: "absolute",
+                      zIndex: 1,
                       top: 0,
                       left: piece.left,
                       width: index % 2 === 0 ? 5 : 4,
@@ -1897,41 +2367,109 @@ export default function HouseDisplayPage() {
                     }}
                   />
                 ))}
-              <Typography
+
+              {/* Centered celebration copy (z2). Open mid for future cake art. */}
+              <Box
                 sx={{
-                  fontWeight: 700,
-                  opacity: 0.7,
-                  textTransform: "uppercase",
-                  mb: 0.5,
-                  fontSize: "clamp(0.7rem, 1.1vw, 0.95rem)",
-                  animation: reduceMotion
-                    ? "none"
-                    : `${birthdayShimmer} 2.4s ease-in-out infinite`,
+                  position: "relative",
+                  zIndex: 2,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  textAlign: "center",
+                  px: { xs: 4, md: 7 },
+                  pt: 0.25,
+                  pb: 0.25,
+                  // Side gutters keep text clear of edge + intermediate balloons.
+                  minHeight: "5.25rem",
+                  justifyContent: "flex-start",
                 }}
               >
-                🎂 Happy Birthday!
-              </Typography>
-              <Typography
-                sx={{
-                  fontWeight: 700,
-                  fontSize: "clamp(1rem, 1.8vw, 1.5rem)",
-                  animation: reduceMotion
-                    ? "none"
-                    : `${birthdayNameGlow} 3.2s ease-in-out infinite`,
-                }}
-              >
-                {birthday.name}
-              </Typography>
-              <Typography
-                sx={{
-                  opacity: 0.8,
-                  fontSize: "clamp(0.85rem, 1.3vw, 1.15rem)",
-                }}
-              >
-                {birthday.dateLabel}
-              </Typography>
+                <Typography
+                  sx={{
+                    fontWeight: 700,
+                    opacity: 0.78,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.06em",
+                    mb: 0.35,
+                    fontSize: "clamp(0.72rem, 1.15vw, 0.95rem)",
+                    animation: reduceMotion
+                      ? "none"
+                      : `${birthdayShimmer} 2.4s ease-in-out infinite`,
+                  }}
+                >
+                  Happy Birthday!
+                </Typography>
+
+                {/* Reserved vertical beat for future cake (do not fill with extra copy). */}
+                <Box
+                  aria-hidden
+                  sx={{
+                    flex: "0 0 auto",
+                    height: "0.55rem",
+                    width: "100%",
+                  }}
+                />
+
+                <Typography
+                  sx={{
+                    fontWeight: 800,
+                    fontSize: "clamp(1.45rem, 2.8vw, 2.35rem)",
+                    lineHeight: 1.15,
+                    letterSpacing: "0.01em",
+                    animation: reduceMotion
+                      ? "none"
+                      : `${birthdayNameGlow} 3.2s ease-in-out infinite`,
+                  }}
+                >
+                  {/* Multi same-day: one name via birthdayTodayRotateIndex (~12s). */}
+                  {birthdayView.todayItems[
+                    birthdayView.todayItems.length === 0
+                      ? 0
+                      : ((birthdayTodayRotateIndex %
+                          birthdayView.todayItems.length) +
+                          birthdayView.todayItems.length) %
+                        birthdayView.todayItems.length
+                  ]?.displayName ?? ""}
+                </Typography>
+
+                <Typography
+                  sx={{
+                    mt: 0.35,
+                    opacity: 0.82,
+                    fontSize: "clamp(0.85rem, 1.25vw, 1.15rem)",
+                    fontWeight: 500,
+                  }}
+                >
+                  {hopeNow.dateText}
+                </Typography>
+              </Box>
             </Box>
-          ) : null}
+          ) : (
+            <Box
+              sx={{
+                flex: "0 0 auto",
+                pt: 0.5,
+                minWidth: 0,
+                // Cap vertical growth so Announcements keeps room above.
+                maxHeight: "3.25rem",
+                overflow: "hidden",
+              }}
+            >
+              <Typography
+                sx={{
+                  ...SECTION_EYEBROW_SX,
+                  mb: 0.5,
+                }}
+              >
+                Birthdays This Month
+              </Typography>
+              <BirthdaysThisMonthRollBody
+                monthItems={birthdayView.monthItems}
+                reduceMotion={reduceMotion}
+              />
+            </Box>
+          )}
         </Box>
       </Box>
     </Box>
