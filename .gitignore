@@ -7,6 +7,3 @@ NOTES.md
 .env
 .terraform
 .provision
-
-# Local-only House Display prototype video (do not commit)
-app/frontend/assets/house-display/test-video.mp4
