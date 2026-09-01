@@ -73,39 +73,39 @@ import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import type {
   SystemSpotlightAssetKey,
   SystemSpotlightImageOverrides,
-} from "../../../features/house-display/systemSpotlight";
-import { SYSTEM_SPOTLIGHT_MANAGE_SLOTS } from "../../../features/house-display/systemSpotlight";
-import type { ProgramLogoImageOverrides } from "../../../features/house-display/programLogos";
+} from "@/features/prototype/house-display/systemSpotlight";
+import { SYSTEM_SPOTLIGHT_MANAGE_SLOTS } from "@/features/prototype/house-display/systemSpotlight";
+import type { ProgramLogoImageOverrides } from "@/features/prototype/house-display/programLogos";
 import {
   isHouseDisplayProgramLogoKey,
   PROGRAM_LOGO_MANAGE_SLOTS,
-} from "../../../features/house-display/programLogos";
+} from "@/features/prototype/house-display/programLogos";
 import type {
   HouseDisplayAffirmation,
   HouseDisplayAnnouncement,
   HouseDisplayContent,
   HouseDisplayState,
-} from "../../../features/house-display/types";
+} from "@/features/prototype/house-display/types";
 import {
   SEED_CURFEW_CONFIG,
   cloneCurfewConfig,
   isValidCurfewCloseMin,
   timelineWindowForDate,
-} from "../../../features/house-display/curfew";
-import type { HouseDisplayCurfewConfig } from "../../../features/house-display/curfew";
-import { getHopeHouseNow } from "../../../features/house-display/time";
+} from "@/features/prototype/house-display/curfew";
+import type { HouseDisplayCurfewConfig } from "@/features/prototype/house-display/curfew";
+import { getHopeHouseNow } from "@/features/prototype/house-display/time";
 // Relative paths: Bun hot sometimes fails @/ resolve on newly added feature files
 import {
   resolveAgendaForDate,
   weekdayFromDateYmd,
-} from "../../../features/house-display/resolveAgenda";
-import { INITIAL_SCHEDULE_SOURCES } from "../../../features/house-display/scheduleSeed";
+} from "@/features/prototype/house-display/resolveAgenda";
+import { INITIAL_SCHEDULE_SOURCES } from "@/features/prototype/house-display/scheduleSeed";
 import type {
   HouseDisplayOneTimeEvent,
   HouseDisplayRecurringEvent,
   HouseDisplayScheduleSources,
   HouseDisplayWeekday,
-} from "../../../features/house-display/scheduleTypes";
+} from "@/features/prototype/house-display/scheduleTypes";
 import {
   loadAffirmationPersist,
   loadAnnouncements,
@@ -115,7 +115,7 @@ import {
   loadCurfewConfig,
   saveScheduleSources,
   type HouseDisplayAffirmationPersist,
-} from "../../../features/house-display/schedulePersistence";
+} from "@/features/prototype/house-display/schedulePersistence";
 // Bundled flyer/video URLs (Bun @assets). public/house-display/* is NOT served by dev-server.
 // test-video.mp4 is local-only (gitignored) — DEV prototype asset, not production media.
 import kiddosDonationUrl from "@assets/house-display/kiddos-donation.png";

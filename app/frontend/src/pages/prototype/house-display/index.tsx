@@ -52,8 +52,8 @@ import type {
   HouseDisplayEventVisualState,
   HouseDisplayAgendaItem,
   HouseDisplayAnnouncement,
-} from "@/features/house-display/types";
-import type { HouseDisplaySpotlightItem } from "../../../features/house-display/types";
+} from "@/features/prototype/house-display/types";
+import type { HouseDisplaySpotlightItem } from "@/features/prototype/house-display/types";
 
 import {
   hourMarks,
@@ -61,7 +61,7 @@ import {
   layoutClosingStageMarkers,
   nowLineLayout,
   resolveEventVisualState,
-} from "@/features/house-display/timeline";
+} from "@/features/prototype/house-display/timeline";
 // Relative path: new helper file (HMR sometimes fails @/ resolve until full restart)
 import {
   clampSpotlightRotateIndex,
@@ -69,27 +69,27 @@ import {
   selectSpotlightItem,
   shouldRunSpotlightRotation,
   SPOTLIGHT_ROTATE_MS,
-} from "../../../features/house-display/spotlight";
-import { selectAffirmationText } from "../../../features/house-display/affirmations";
+} from "@/features/prototype/house-display/spotlight";
+import { selectAffirmationText } from "@/features/prototype/house-display/affirmations";
 import {
   selectBirthdayView,
   type HouseDisplayBirthdayListItem,
-} from "../../../features/house-display/birthdays";
-import { MOCK_HOUSE_DISPLAY_BIRTHDAY_PEOPLE } from "../../../features/house-display/birthdayMock";
+} from "@/features/prototype/house-display/birthdays";
+import { MOCK_HOUSE_DISPLAY_BIRTHDAY_PEOPLE } from "@/features/prototype/house-display/birthdayMock";
 import {
   timelineWindowForDate,
   isSpotlightTakeoverAgendaItem,
   resolveClosingPhase,
   type HouseDisplayClosingPhase,
   type HouseDisplayClosingStageId,
-} from "../../../features/house-display/curfew";
+} from "@/features/prototype/house-display/curfew";
 import {
   resolveSystemSpotlightState,
   type SystemSpotlightState,
-} from "../../../features/house-display/systemSpotlight";
-import { useHopeHouseNow } from "../../../features/house-display/useHopeHouseNow";
+} from "@/features/prototype/house-display/systemSpotlight";
+import { useHopeHouseNow } from "@/features/prototype/house-display/useHopeHouseNow";
 // Program logos: catalog defaults + Admin overrides (content.programLogoImageOverrides).
-import { getProgramLogoImageWithOverrides } from "../../../features/house-display/programLogos";
+import { getProgramLogoImageWithOverrides } from "@/features/prototype/house-display/programLogos";
 
 /* ---- Agenda card content (centered single line) ----
  * Full-width: "Class Name | Location | Facilitator" (omit empty parts).

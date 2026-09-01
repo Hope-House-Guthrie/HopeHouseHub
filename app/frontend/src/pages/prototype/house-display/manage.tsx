@@ -165,7 +165,7 @@ import type { RootState } from "@/store";
 import {
   formatRecurringDaysLabel,
   formatScheduleTimeRange,
-} from "../../../features/house-display/scheduleFormat";
+} from "@/features/prototype/house-display/scheduleFormat";
 import {
   formatMinToTimeInput,
   parseTimeInputToMin,
@@ -178,7 +178,7 @@ import {
   validateRecurringClassForm,
   validateOneTimeEventForm,
   validateAddSpotlightFlyerForm,
-} from "../../../features/house-display/scheduleForm";
+} from "@/features/prototype/house-display/scheduleForm";
 import {
   canManageCurfew,
   CURFEW_END_OF_DAY_MIN,
@@ -187,9 +187,9 @@ import {
   isValidCurfewCloseMin,
   resolveEffectiveCurfewMin,
   SEED_WEEKLY_CURFEW,
-} from "../../../features/house-display/curfew";
-import { timelineWindowForWeekday } from "../../../features/house-display/timeline";
-import { SPOTLIGHT_FLYER_PROTOTYPE_ASSETS } from "../../../features/house-display/spotlightFlyerPrototype";
+} from "@/features/prototype/house-display/curfew";
+import { timelineWindowForWeekday } from "@/features/prototype/house-display/timeline";
+import { SPOTLIGHT_FLYER_PROTOTYPE_ASSETS } from "@/features/prototype/house-display/spotlightFlyerPrototype";
 import {
   findProgramLogoOption,
   HOUSE_DISPLAY_PROGRAM_LOGO_OPTIONS,
@@ -197,21 +197,21 @@ import {
   PROGRAM_LOGO_MANAGE_SLOTS,
   canManageProgramLogoGraphics,
   getProgramLogoImageWithOverrides,
-} from "../../../features/house-display/programLogos";
+} from "@/features/prototype/house-display/programLogos";
 import {
   SYSTEM_SPOTLIGHT_MANAGE_SLOTS,
   canManageSystemSpotlightGraphics,
   getSystemSpotlightImageWithOverrides,
-} from "../../../features/house-display/systemSpotlight";
+} from "@/features/prototype/house-display/systemSpotlight";
 import type {
   HouseDisplayOneTimeEvent,
   HouseDisplayRecurringEvent,
   HouseDisplayWeekday,
   HouseDisplayScheduleSources,
-} from "../../../features/house-display/scheduleTypes";
-import type { HouseDisplayAgendaSourceType } from "../../../features/house-display/types";
-import { formatTimeLabel } from "../../../features/house-display/timeline";
-import { getHopeHouseNow } from "../../../features/house-display/time";
+} from "@/features/prototype/house-display/scheduleTypes";
+import type { HouseDisplayAgendaSourceType } from "@/features/prototype/house-display/types";
+import { formatTimeLabel } from "@/features/prototype/house-display/timeline";
+import { getHopeHouseNow } from "@/features/prototype/house-display/time";
 import {
   addAnnouncement,
   addAffirmation,
@@ -246,8 +246,8 @@ import {
   findScheduleConflicts,
   type ScheduleConflictCandidate,
   type OneTimeConflictCandidate,
-} from "../../../features/house-display/scheduleConflicts";
-import type { HouseDisplayOccurrenceException } from "../../../features/house-display/scheduleTypes";
+} from "@/features/prototype/house-display/scheduleConflicts";
+import type { HouseDisplayOccurrenceException } from "@/features/prototype/house-display/scheduleTypes";
 
 /**
  * Open the presentation-only TV route in a new tab so Hub stays open.
