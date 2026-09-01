@@ -42,7 +42,9 @@ export default function MainHeader({
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
 
-  const { user, isAuthenticated } = useSelector((state: RootState) => state.auth);
+  const { user, isAuthenticated } = useSelector(
+    (state: RootState) => state.auth,
+  );
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const isMenuOpen = Boolean(anchorEl);
@@ -67,7 +69,8 @@ export default function MainHeader({
   };
 
   const displayName = `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim();
-  const initials = `${user?.firstName?.[0] ?? ""}${user?.lastName?.[0] ?? ""}`.toUpperCase();
+  const initials =
+    `${user?.firstName?.[0] ?? ""}${user?.lastName?.[0] ?? ""}`.toUpperCase();
 
   const currentMatch = [...matches]
     .reverse()
@@ -81,12 +84,17 @@ export default function MainHeader({
     <AppBar
       position="fixed"
       sx={{
-        width: { md: isAuthenticated ? `calc(100% - ${drawerWidth}px)` : "100%" },
+        width: {
+          md: isAuthenticated ? `calc(100% - ${drawerWidth}px)` : "100%",
+        },
         ml: { md: isAuthenticated ? `${drawerWidth}px` : 0 },
         boxShadow: "none",
         borderBottom: `1px solid ${theme.palette.divider}`,
         backgroundColor: theme.palette.background.paper,
         color: theme.palette.text.primary,
+        "@media print": {
+          display: "none",
+        },
       }}
     >
       <Toolbar>
@@ -102,7 +110,14 @@ export default function MainHeader({
         )}
 
         {headerIcon && (
-          <Box sx={{ display: "flex", alignItems: "center", mr: 1.5, color: "text.secondary" }}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              mr: 1.5,
+              color: "text.secondary",
+            }}
+          >
             {headerIcon}
           </Box>
         )}
@@ -188,7 +203,11 @@ export default function MainHeader({
                 <ListItemIcon sx={{ minWidth: "36px !important" }}>
                   <LockResetIcon fontSize="small" />
                 </ListItemIcon>
-                <Typography variant="body2" component="span" sx={{ fontWeight: 500 }}>
+                <Typography
+                  variant="body2"
+                  component="span"
+                  sx={{ fontWeight: 500 }}
+                >
                   Change Password
                 </Typography>
               </MenuItem>
@@ -199,7 +218,12 @@ export default function MainHeader({
                 <ListItemIcon sx={{ minWidth: "36px !important" }}>
                   <LogoutIcon fontSize="small" color="error" />
                 </ListItemIcon>
-                <Typography variant="body2" component="span" color="error.main" sx={{ fontWeight: 500 }}>
+                <Typography
+                  variant="body2"
+                  component="span"
+                  color="error.main"
+                  sx={{ fontWeight: 500 }}
+                >
                   Sign out
                 </Typography>
               </MenuItem>

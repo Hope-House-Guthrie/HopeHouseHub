@@ -14,7 +14,9 @@ export default function MainLayout() {
   const location = useLocation();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
+  const { isAuthenticated, user } = useSelector(
+    (state: RootState) => state.auth,
+  );
 
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
@@ -29,7 +31,7 @@ export default function MainLayout() {
             drawerOpen={drawerOpen}
             setDrawerOpen={setDrawerOpen}
           />
-      
+
           <MainDrawer
             drawerWidth={DRAWER_WIDTH}
             drawerOpen={drawerOpen}
@@ -43,9 +45,14 @@ export default function MainLayout() {
         sx={{
           flexGrow: 1,
           p: 3,
-          width: { md: isAuthenticated ? `calc(100% - ${DRAWER_WIDTH}px)` : "100%" },
+          width: {
+            md: isAuthenticated ? `calc(100% - ${DRAWER_WIDTH}px)` : "100%",
+          },
           backgroundColor: theme.palette.background.default,
           marginTop: "64px",
+          "@media print": {
+            marginTop: 0,
+          },
         }}
       >
         <Outlet />
