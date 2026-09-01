@@ -575,8 +575,7 @@ const birthdayMonthRollLeft = keyframes`
 `;
 
 function formatBirthdayMonthDay(item: HouseDisplayBirthdayListItem): string {
-  const mon =
-    BIRTHDAY_MONTH_SHORT[item.birthMonth] ?? String(item.birthMonth);
+  const mon = BIRTHDAY_MONTH_SHORT[item.birthMonth] ?? String(item.birthMonth);
   return `${mon} ${item.birthDay}`;
 }
 
@@ -712,7 +711,10 @@ function BirthdaysThisMonthRollBody({
             : undefined),
         }}
       >
-        <Box ref={firstCopyRef} sx={{ display: "inline-flex", flex: "0 0 auto" }}>
+        <Box
+          ref={firstCopyRef}
+          sx={{ display: "inline-flex", flex: "0 0 auto" }}
+        >
           <BirthdayMonthStripLine items={monthItems} keyPrefix="bm-a-" />
         </Box>
         {roll ? (
@@ -725,10 +727,7 @@ function BirthdaysThisMonthRollBody({
                 height: 1,
               }}
             />
-            <Box
-              aria-hidden
-              sx={{ display: "inline-flex", flex: "0 0 auto" }}
-            >
+            <Box aria-hidden sx={{ display: "inline-flex", flex: "0 0 auto" }}>
               <BirthdayMonthStripLine items={monthItems} keyPrefix="bm-b-" />
             </Box>
           </>
@@ -1649,8 +1648,8 @@ export default function HouseDisplayPage() {
         };
       case "past":
         return {
-          bgcolor: "rgba(8, 17, 28, 0.38)",
-          border: "1px solid rgba(224,225,221,0.12)",
+          bgcolor: "rgba(45, 60, 74, 0.42)",
+          border: "1px solid rgba(224,225,221,0.14)",
           opacity: 0.42,
           zIndex: 1,
         };
@@ -1664,8 +1663,8 @@ export default function HouseDisplayPage() {
       case "upcoming":
       default:
         return {
-          bgcolor: "rgba(14, 28, 44, 0.72)",
-          border: "1px solid rgba(224,225,221,0.22)",
+          bgcolor: "rgba(38, 52, 66, 0.88)",
+          border: "1px solid rgba(224,225,221,0.24)",
           boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05)",
           opacity: 1,
           zIndex: 1,
@@ -1681,8 +1680,8 @@ export default function HouseDisplayPage() {
         overflow: "hidden",
         boxSizing: "border-box",
         background:
-          "radial-gradient(120% 80% at 12% -10%, rgba(56, 189, 248, 0.16) 0%, transparent 55%), radial-gradient(90% 70% at 100% 110%, rgba(45, 212, 191, 0.10) 0%, transparent 50%), linear-gradient(165deg, #08111c 0%, #0d1b2a 42%, #132a40 100%)",
-        color: "#e0e1dd",
+          "radial-gradient(120% 80% at 12% -10%, rgba(56, 189, 248, 0.14) 0%, transparent 55%), radial-gradient(90% 70% at 100% 110%, rgba(45, 212, 191, 0.10) 0%, transparent 50%), linear-gradient(165deg, #435868 0%, #526575 42%, #607383 100%)",
+        color: "#F5F7F8",
         display: "flex",
         flexDirection: "column",
         p: { xs: 1.5, md: 2.5 },
@@ -1698,8 +1697,8 @@ export default function HouseDisplayPage() {
           alignItems: "center",
           justifyContent: "space-between",
           borderRadius: 2,
-          border: "1px solid rgba(224,225,221,0.14)",
-          bgcolor: "rgba(8, 17, 28, 0.42)",
+          border: "1px solid rgba(224,225,221,0.18)",
+          bgcolor: "rgba(58, 76, 92, 0.82)",
           boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
           px: { xs: 1.5, md: 2 },
         }}
@@ -1729,12 +1728,13 @@ export default function HouseDisplayPage() {
           </Typography>
           <Typography
             sx={{
-              opacity: 0.62,
+              opacity: 0.78,
               fontWeight: 500,
               letterSpacing: "0.02em",
               fontSize: "clamp(0.85rem, 1.4vw, 1.25rem)",
               lineHeight: 1.25,
               mt: 0.25,
+              color: "#D2DADF",
             }}
           >
             {hopeNow.dateText} · {header.weatherText}
@@ -1753,8 +1753,8 @@ export default function HouseDisplayPage() {
           pr: 0,
           gap: 0,
           borderRadius: 2,
-          border: "1px solid rgba(224,225,221,0.14)",
-          bgcolor: "rgba(8, 17, 28, 0.42)",
+          border: "1px solid rgba(224,225,221,0.18)",
+          bgcolor: "rgba(58, 76, 92, 0.82)",
           boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
           overflow: "hidden",
         }}
@@ -1810,12 +1810,13 @@ export default function HouseDisplayPage() {
                           ? "translateY(-100%)"
                           : "translateY(-50%)",
                     fontSize: "clamp(0.65rem, 1.1vw, 0.95rem)",
-                    opacity: 0.5,
+                    opacity: 0.62,
                     fontWeight: 600,
                     lineHeight: 1,
                     whiteSpace: "nowrap",
                     fontVariantNumeric: "tabular-nums",
                     letterSpacing: "0.02em",
+                    color: "#D2DADF",
                   }}
                 >
                   {m.label}
@@ -1851,7 +1852,7 @@ export default function HouseDisplayPage() {
                 position: "relative",
                 borderLeft: "2px solid rgba(94, 234, 212, 0.28)",
                 background:
-                  "linear-gradient(180deg, rgba(8, 17, 28, 0.28) 0%, rgba(8, 17, 28, 0.08) 100%)",
+                  "linear-gradient(180deg, rgba(45, 60, 74, 0.58) 0%, rgba(45, 60, 74, 0.32) 100%)",
                 borderRadius: "0 8px 8px 0",
               }}
             >
@@ -1864,7 +1865,7 @@ export default function HouseDisplayPage() {
                     left: 0,
                     right: 0,
                     top: `${m.topPct}%`,
-                    borderTop: "1px solid rgba(224,225,221,0.09)",
+                    borderTop: "1px solid rgba(224,225,221,0.14)",
                   }}
                 />
               ))}
@@ -1950,7 +1951,7 @@ export default function HouseDisplayPage() {
                       pt: 0.25,
                       pb: 0.1,
                       borderRadius: 1.25,
-                      color: "#e0e1dd",
+                      color: "#F5F7F8",
                       display: "flex",
                       flexDirection: "column",
                       justifyContent: "flex-start",
@@ -2044,11 +2045,11 @@ export default function HouseDisplayPage() {
                 display: "flex",
                 flexDirection: "column",
                 borderRadius: 2,
-                border: "1px solid rgba(224,225,221,0.18)",
+                border: "1px solid rgba(224,225,221,0.22)",
                 overflow: "hidden",
-                bgcolor: "rgba(8, 17, 28, 0.55)",
+                bgcolor: "rgba(38, 52, 66, 0.92)",
                 boxShadow:
-                  "inset 0 1px 0 rgba(255,255,255,0.06), 0 10px 28px rgba(0,0,0,0.28)",
+                  "inset 0 1px 0 rgba(255,255,255,0.06), 0 10px 28px rgba(30, 40, 52, 0.38)",
               }}
             >
               {/* Stacked slides; outer chrome stays put. One-way soft slide: out left / in from right. */}
@@ -2115,8 +2116,8 @@ export default function HouseDisplayPage() {
           alignItems: "center",
           gap: 2,
           borderRadius: 2,
-          border: "1px solid rgba(224,225,221,0.14)",
-          bgcolor: "rgba(8, 17, 28, 0.42)",
+          border: "1px solid rgba(224,225,221,0.18)",
+          bgcolor: "rgba(58, 76, 92, 0.82)",
           boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
           px: { xs: 1.5, md: 2 },
         }}
@@ -2176,8 +2177,8 @@ export default function HouseDisplayPage() {
           display: "flex",
           gap: 2,
           borderRadius: 2,
-          border: "1px solid rgba(224,225,221,0.14)",
-          bgcolor: "rgba(8, 17, 28, 0.42)",
+          border: "1px solid rgba(224,225,221,0.18)",
+          bgcolor: "rgba(58, 76, 92, 0.82)",
           boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
           px: { xs: 1.5, md: 2 },
           py: { xs: 1, md: 1.25 },
@@ -2219,7 +2220,7 @@ export default function HouseDisplayPage() {
             display: "flex",
             flexDirection: "column",
             gap: 1,
-            borderLeft: "1px solid rgba(224,225,221,0.15)",
+            borderLeft: "1px solid rgba(224,225,221,0.18)",
             pl: 2,
           }}
         >
@@ -2259,7 +2260,7 @@ export default function HouseDisplayPage() {
                 borderRadius: 2,
                 border: "1px solid rgba(255, 215, 0, 0.28)",
                 background:
-                  "linear-gradient(135deg, rgba(255, 193, 7, 0.08), rgba(255, 105, 180, 0.06))",
+                  "linear-gradient(135deg, rgba(244, 143, 177, 0.06), rgba(244, 143, 177, 0.03))",
                 // Same general footprint — fill box better, not half-width / not taller panel.
                 minHeight: "5.75rem",
               }}

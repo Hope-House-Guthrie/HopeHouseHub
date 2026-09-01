@@ -930,6 +930,82 @@ export const houseDisplaySlice = createSlice({
     },
 
     /**
+     * Add one staff-created Spotlight video (Manage + Add Video).
+     * UI generates id via newSpotlightVideoId() BEFORE dispatch — no clock/random here.
+     * Appends at end of order (max sortOrder + 1). Forces kind "video" + pinMode "none".
+     * Empty fields for non-video properties. Duplicate/blank id or blank videoUrl = no-op.
+     * Does NOT persist (spotlight not on schedule localStorage). No base64 storage.
+     * Backend/API + real media URLs will replace this client mock later.
+     */
+    addSpotlightVideo: (
+      state,
+      action: PayloadAction<{
+        id: string;
+        title: string;
+        videoUrl: string;
+        videoMimeType?: string;
+        videoSoundEnabled?: boolean;
+        active?: boolean;
+      }>,
+    ) => {
+      const rawId = action.payload.id;
+      const id = typeof rawId === "string" ? rawId.trim() : "";
+      if (!id) return;
+
+      const title =
+        typeof action.payload.title === "string"
+          ? action.payload.title.trim()
+          : "";
+      if (!title) return;
+
+      const videoUrl =
+        typeof action.payload.videoUrl === "string"
+          ? action.payload.videoUrl.trim()
+          : "";
+      if (!videoUrl) return;
+
+      const duplicate = state.content.spotlightItems.some((s) => s.id === id);
+      if (duplicate) return;
+
+      const videoMimeType =
+        typeof action.payload.videoMimeType === "string" &&
+        action.payload.videoMimeType.trim()
+          ? action.payload.videoMimeType.trim()
+          : "video/mp4";
+
+      const videoSoundEnabled =
+        typeof action.payload.videoSoundEnabled === "boolean"
+          ? action.payload.videoSoundEnabled
+          : false;
+
+      const active =
+        typeof action.payload.active === "boolean"
+          ? action.payload.active
+          : true;
+
+      let maxOrder = -1;
+      for (const item of state.content.spotlightItems) {
+        if (item.sortOrder > maxOrder) maxOrder = item.sortOrder;
+      }
+
+      state.content.spotlightItems.push({
+        id,
+        kind: "video",
+        sortOrder: maxOrder + 1,
+        active,
+        pinMode: "none",
+        title,
+        subtitle: "",
+        message: "",
+        imageUrl: "",
+        imageAlt: "",
+        videoUrl,
+        videoMimeType,
+        videoSoundEnabled,
+      });
+    },
+
+    /**
      * Remove one Spotlight item by id (Manage Delete).
      * Drops from content.spotlightItems entirely (all kinds, including seeds).
      * Remaining items renumbered sortOrder 0..n-1 (stable order before delete).
@@ -1613,6 +1689,7 @@ export const {
   setSpotlightItemActive,
   moveSpotlightItem,
   addSpotlightFlyer,
+  addSpotlightVideo,
   removeSpotlightItem,
   cancelOccurrence,
   restoreOccurrence,

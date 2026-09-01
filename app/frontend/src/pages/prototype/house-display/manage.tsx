@@ -167,6 +167,10 @@ import {
   formatScheduleTimeRange,
 } from "../../../features/house-display/scheduleFormat";
 import {
+  newSpotlightVideoId,
+  validateAddSpotlightVideoForm,
+} from "../../../features/house-display/scheduleForm";
+import {
   formatMinToTimeInput,
   parseTimeInputToMin,
   parseDateInputToYmd,
@@ -218,6 +222,7 @@ import {
   addOneTimeEvent,
   addRecurringClass,
   addSpotlightFlyer,
+  addSpotlightVideo,
   setSystemSpotlightImageOverride,
   setProgramLogoImageOverride,
   setCurfewWeeklyClose,
@@ -409,6 +414,21 @@ export default function HouseDisplayManagePage() {
   const programLogoBlobByKeyRef = useRef<Record<string, string>>({});
   /** Track object URL for revoke on replace/cancel (not after successful save). */
   const addFlyerObjectUrlRef = useRef("");
+
+  // --- Add Video dialog (Spotlight Content Phase 5) ---
+  const [addVideoOpen, setAddVideoOpen] = useState(false);
+  const [addVideoTitle, setAddVideoTitle] = useState("");
+  /** Session-only object URL from file pick; "" when unused. Not base64. */
+  const [addVideoObjectUrl, setAddVideoObjectUrl] = useState("");
+  const [addVideoFileName, setAddVideoFileName] = useState("");
+  /** Captured from file.type on pick. */
+  const [addVideoMimeType, setAddVideoMimeType] = useState("video/mp4");
+  const [addVideoActive, setAddVideoActive] = useState(true);
+  const [addVideoSoundEnabled, setAddVideoSoundEnabled] = useState(true);
+  const [addVideoError, setAddVideoError] = useState("");
+  const addVideoFileInputRef = useRef<HTMLInputElement | null>(null);
+  /** Track object URL for revoke on cancel/replace (not after successful save). */
+  const addVideoObjectUrlRef = useRef("");
 
   // --- Conflict Dialog state ---
   const [pendingClassData, setPendingClassData] = useState<
@@ -612,10 +632,7 @@ export default function HouseDisplayManagePage() {
     return openMin + 15;
   };
 
-  const handleCurfewWeeklyTimeChange = (
-    weekday: number,
-    timeValue: string,
-  ) => {
+  const handleCurfewWeeklyTimeChange = (weekday: number, timeValue: string) => {
     setCurfewWeeklyError("");
     const closeMin = parseCurfewCloseFromUi(timeValue, false);
     if (closeMin == null) {
@@ -646,9 +663,7 @@ export default function HouseDisplayManagePage() {
     // Check → 1440. Uncheck → seed weekly default (Sun–Thu 22:00, Fri–Sat 23:00).
     const closeMin = checked
       ? CURFEW_END_OF_DAY_MIN
-      : SEED_WEEKLY_CURFEW.closeMinByWeekday[
-          weekday as HouseDisplayWeekday
-        ];
+      : SEED_WEEKLY_CURFEW.closeMinByWeekday[weekday as HouseDisplayWeekday];
     dispatch(
       setCurfewWeeklyClose({
         weekday,
@@ -1028,6 +1043,105 @@ export default function HouseDisplayManagePage() {
     setAddFlyerSampleKey("");
     setAddFlyerActive(true);
     setAddFlyerError("");
+  };
+
+  // --- Add Video handlers (Spotlight Content Phase 5) ---
+  const revokePendingVideoObjectUrl = () => {
+    const url = addVideoObjectUrlRef.current;
+    if (url) {
+      URL.revokeObjectURL(url);
+      addVideoObjectUrlRef.current = "";
+    }
+    setAddVideoObjectUrl("");
+    setAddVideoFileName("");
+    setAddVideoMimeType("video/mp4");
+    if (addVideoFileInputRef.current) {
+      addVideoFileInputRef.current.value = "";
+    }
+  };
+
+  const resetAddVideoForm = () => {
+    setAddVideoTitle("");
+    setAddVideoActive(true);
+    setAddVideoSoundEnabled(true);
+    setAddVideoError("");
+    revokePendingVideoObjectUrl();
+  };
+
+  const handleOpenAddVideo = () => {
+    resetAddVideoForm();
+    setAddVideoOpen(true);
+  };
+
+  const handleCloseAddVideo = () => {
+    setAddVideoOpen(false);
+    resetAddVideoForm();
+  };
+
+  const handleAddVideoFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] ?? null;
+    setAddVideoError("");
+    if (!file) {
+      revokePendingVideoObjectUrl();
+      return;
+    }
+    if (!file.type.startsWith("video/")) {
+      revokePendingVideoObjectUrl();
+      setAddVideoError("Please choose a video file (MP4, WebM, etc.).");
+      return;
+    }
+    // New pick replaces prior object URL
+    revokePendingVideoObjectUrl();
+    const url = URL.createObjectURL(file);
+    addVideoObjectUrlRef.current = url;
+    setAddVideoObjectUrl(url);
+    setAddVideoFileName(file.name);
+    setAddVideoMimeType(file.type || "video/mp4");
+    if (!addVideoTitle.trim()) {
+      const base = file.name.replace(/\.[^.]+$/, "").trim();
+      if (base) setAddVideoTitle(base);
+    }
+  };
+
+  const handleAddVideoSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    setAddVideoError("");
+
+    const validated = validateAddSpotlightVideoForm({
+      title: addVideoTitle,
+      videoUrl: addVideoObjectUrl,
+      videoMimeType: addVideoMimeType,
+      videoSoundEnabled: addVideoSoundEnabled,
+    });
+    if (!validated.ok) {
+      setAddVideoError(validated.error);
+      return;
+    }
+
+    dispatch(
+      addSpotlightVideo({
+        id: newSpotlightVideoId(),
+        title: validated.title,
+        videoUrl: validated.videoUrl,
+        videoMimeType: validated.videoMimeType,
+        videoSoundEnabled: validated.videoSoundEnabled,
+        active: addVideoActive,
+      }),
+    );
+
+    // Keep object URL alive in Redux for this session — do not revoke on save.
+    addVideoObjectUrlRef.current = "";
+    setAddVideoObjectUrl("");
+    setAddVideoFileName("");
+    setAddVideoMimeType("video/mp4");
+    if (addVideoFileInputRef.current) {
+      addVideoFileInputRef.current.value = "";
+    }
+    setAddVideoOpen(false);
+    setAddVideoTitle("");
+    setAddVideoActive(true);
+    setAddVideoSoundEnabled(true);
+    setAddVideoError("");
   };
 
   const handleDeleteSpotlightItem = (id: string) => {
@@ -2131,10 +2245,7 @@ export default function HouseDisplayManagePage() {
                           <Typography variant="body2" sx={{ fontWeight: 500 }}>
                             {conflict.title}
                           </Typography>
-                          <Typography
-                            variant="caption"
-                            color="text.secondary"
-                          >
+                          <Typography variant="caption" color="text.secondary">
                             {formatScheduleTimeRange(
                               conflict.startMin,
                               conflict.endMin,
@@ -2389,7 +2500,11 @@ export default function HouseDisplayManagePage() {
             >
               + Add Flyer
             </Button>
-            <Button type="button" variant="contained" disabled>
+            <Button
+              type="button"
+              variant="contained"
+              onClick={handleOpenAddVideo}
+            >
               + Add Video
             </Button>
           </Box>
@@ -2484,9 +2599,11 @@ export default function HouseDisplayManagePage() {
                         {item.active ? "Disable" : "Enable"}
                       </Button>
 
-                      <Button type="button" size="small" disabled>
-                        Edit
-                      </Button>
+                      {item.active ? (
+                        <Button type="button" size="small" disabled>
+                          Edit
+                        </Button>
+                      ) : null}
                       <Button
                         type="button"
                         size="small"
@@ -2658,6 +2775,130 @@ export default function HouseDisplayManagePage() {
             </Button>
             <Button type="submit" variant="contained">
               Add Flyer
+            </Button>
+          </DialogActions>
+        </Box>
+      </Dialog>
+
+      {/* Add Video dialog — Spotlight Content Phase 5 */}
+      <Dialog
+        open={addVideoOpen}
+        onClose={handleCloseAddVideo}
+        maxWidth="sm"
+        fullWidth
+      >
+        <Box component="form" onSubmit={handleAddVideoSubmit}>
+          <DialogTitle>Add Video</DialogTitle>
+          <DialogContent>
+            <Stack spacing={2} sx={{ mt: 1 }}>
+              <TextField
+                label="Video name"
+                value={addVideoTitle}
+                onChange={(e) => {
+                  setAddVideoTitle(e.target.value);
+                  if (addVideoError) setAddVideoError("");
+                }}
+                required
+                fullWidth
+                slotProps={{ input: { "aria-label": "Video name" } }}
+              />
+              <Button
+                type="button"
+                variant="outlined"
+                component="label"
+                sx={{ mr: 1 }}
+              >
+                Choose video file
+                <input
+                  ref={addVideoFileInputRef}
+                  type="file"
+                  accept="video/*"
+                  hidden
+                  onChange={handleAddVideoFileChange}
+                />
+              </Button>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ display: "inline" }}
+              >
+                {addVideoFileName ? addVideoFileName : "Choose a video file"}
+              </Typography>
+              {addVideoObjectUrl && (
+                <Box>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mb: 0.5 }}
+                  >
+                    Preview
+                  </Typography>
+                  <video
+                    src={addVideoObjectUrl}
+                    controls
+                    autoPlay={false}
+                    muted
+                    loop
+                    style={{
+                      maxWidth: "100%",
+                      maxHeight: 200,
+                      objectFit: "contain",
+                      borderRadius: 1,
+                      backgroundColor: "rgba(0,0,0,0.1)",
+                    }}
+                  />
+                </Box>
+              )}
+              <TextField
+                label="Video MIME type"
+                value={addVideoMimeType}
+                fullWidth
+                slotProps={{
+                  input: {
+                    readOnly: true,
+                  },
+                  htmlInput: {
+                    "aria-label": "Video MIME type",
+                  },
+                }}
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={addVideoActive}
+                    onChange={(e) => setAddVideoActive(e.target.checked)}
+                    slotProps={{
+                      input: { "aria-label": "Active on TV when saved" },
+                    }}
+                  />
+                }
+                label="Active on TV when saved"
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={addVideoSoundEnabled}
+                    onChange={(e) => setAddVideoSoundEnabled(e.target.checked)}
+                    slotProps={{
+                      input: { "aria-label": "Sound enabled" },
+                    }}
+                  />
+                }
+                label="Sound enabled"
+              />
+              {addVideoError ? (
+                <Typography variant="body2" color="error">
+                  {addVideoError}
+                </Typography>
+              ) : null}
+            </Stack>
+          </DialogContent>
+          <DialogActions>
+            <Button type="button" onClick={handleCloseAddVideo}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="contained">
+              Add Video
             </Button>
           </DialogActions>
         </Box>
@@ -3051,9 +3292,7 @@ export default function HouseDisplayManagePage() {
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
                     {formatCurfewCloseLabel(effective)}
-                    {todayOvr
-                      ? " (date override)"
-                      : " (weekly default)"}
+                    {todayOvr ? " (date override)" : " (weekly default)"}
                     {todayOvr?.note ? ` — ${todayOvr.note}` : ""}
                   </Typography>
                 </Box>
@@ -3142,8 +3381,8 @@ export default function HouseDisplayManagePage() {
               Date override
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              One override per date. May be earlier or later than weekly.
-              Saving the same date replaces the previous override.
+              One override per date. May be earlier or later than weekly. Saving
+              the same date replaces the previous override.
             </Typography>
 
             <Box
@@ -3237,12 +3476,18 @@ export default function HouseDisplayManagePage() {
                     const wd = (() => {
                       const p = ovr.dateYmd.split("-").map(Number);
                       const u = new Date(
-                        Date.UTC(p[0] ?? 0, (p[1] ?? 1) - 1, p[2] ?? 1, 12, 0, 0),
+                        Date.UTC(
+                          p[0] ?? 0,
+                          (p[1] ?? 1) - 1,
+                          p[2] ?? 1,
+                          12,
+                          0,
+                          0,
+                        ),
                       );
                       return u.getUTCDay() as HouseDisplayWeekday;
                     })();
-                    const weeklyMin =
-                      curfew.weekly.closeMinByWeekday[wd] ?? 0;
+                    const weeklyMin = curfew.weekly.closeMinByWeekday[wd] ?? 0;
                     const earlier =
                       isValidCurfewCloseMin(ovr.closeMin) &&
                       isValidCurfewCloseMin(weeklyMin) &&
@@ -3343,11 +3588,10 @@ export default function HouseDisplayManagePage() {
                 sx={{ mt: 0.5 }}
               >
                 House-status art for Good Morning, Roll Call, closing stages,
-                and Final Break. Admin only. File Replace uses a session
-                blob: URL (not written to DEV localStorage). Stable override
-                URLs may persist in DEV storage; data: is rejected. Timing is
-                unchanged. Refresh Full Display after changes (no live
-                cross-tab sync).
+                and Final Break. Admin only. File Replace uses a session blob:
+                URL (not written to DEV localStorage). Stable override URLs may
+                persist in DEV storage; data: is rejected. Timing is unchanged.
+                Refresh Full Display after changes (no live cross-tab sync).
               </Typography>
             </Box>
 

@@ -153,6 +153,14 @@ export function newAffirmationId(): string {
 export function newSpotlightFlyerId(): string {
   return `flyer-${crypto.randomUUID()}`;
 }
+/**
+ * Staff-created Spotlight video id (Manage + Add Video).
+ * Prefix video- vs class- / once- / ann- / flyer- / seed v1…
+ * UI only — never call inside reducers.
+ */
+export function newSpotlightVideoId(): string {
+  return `video-${crypto.randomUUID()}`;
+}
 
 /** Raw fields from Add Flyer dialog (prototype media only). */
 export type ValidateAddSpotlightFlyerFormInput = {
@@ -195,6 +203,66 @@ export function validateAddSpotlightFlyerForm(
   }
 
   return { ok: true, title, imageUrl };
+}
+
+/** Raw fields from Add Video dialog (prototype media only). */
+export type ValidateAddSpotlightVideoFormInput = {
+  title: string;
+  /** Bundled @assets URL, https URL, or session object URL - not base64. */
+  videoUrl: string;
+  /** Video MIME type, e.g. "video/mp4". */
+  videoMimeType?: string;
+  /** Whether to allow sound playback. */
+  videoSoundEnabled?: boolean;
+};
+
+export type ValidateAddSpotlightVideoFormResult =
+  | { ok: false; error: string }
+  | {
+      ok: true;
+      title: string;
+      videoUrl: string;
+      videoMimeType: string;
+      videoSoundEnabled: boolean;
+    };
+
+/**
+ * Add Video validation — pure; no React/Redux.
+ * Requires non-empty title + videoUrl. Does not set id/active/sortOrder.
+ */
+export function validateAddSpotlightVideoForm(
+  input: ValidateAddSpotlightVideoFormInput,
+): ValidateAddSpotlightVideoFormResult {
+  const title = typeof input.title === "string" ? input.title.trim() : "";
+  if (!title) {
+    return { ok: false, error: "Video name is required." };
+  }
+
+  const videoUrl =
+    typeof input.videoUrl === "string" ? input.videoUrl.trim() : "";
+  if (!videoUrl) {
+    return { ok: false, error: "Choose a video file." };
+  }
+
+  // Reject accidental data: URLs - prototype must not stash video bytes in Redux.
+  if (/^data:/i.test(videoUrl)) {
+    return {
+      ok: false,
+      error: "Video data URLs are not allowed in this prototype.",
+    };
+  }
+
+  const videoMimeType =
+    typeof input.videoMimeType === "string" && input.videoMimeType.trim()
+      ? input.videoMimeType.trim()
+      : "video/mp4";
+
+  const videoSoundEnabled =
+    typeof input.videoSoundEnabled === "boolean"
+      ? input.videoSoundEnabled
+      : false;
+
+  return { ok: true, title, videoUrl, videoMimeType, videoSoundEnabled };
 }
 
 /** Raw fields from Add/Edit One-Time dialog (date + HTML times). */
