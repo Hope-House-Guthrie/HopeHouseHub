@@ -11,6 +11,7 @@ import walkInServicesReducer from "./slices/prototype/walkInServices";
 import dailyDutiesReducer from "./slices/prototype/dailyDuties";
 import friendlyRemindersReducer from "./slices/prototype/friendlyReminders";
 import kitchenPrototypeReducer from "./slices/prototype/kitchen";
+import houseDisplayReducer from "./slices/prototype/houseDisplay";
 
 import { kennyismsApi, menuItemsApi, mealsApi } from "./slices/kitchen";
 
@@ -28,6 +29,7 @@ export const store = configureStore({
     dailyDuties: dailyDutiesReducer,
     friendlyReminders: friendlyRemindersReducer,
     kitchen: kitchenPrototypeReducer,
+    houseDisplay: houseDisplayReducer,
     [kennyismsApi.reducerPath]: kennyismsApi.reducer,
     [menuItemsApi.reducerPath]: menuItemsApi.reducer,
     [mealsApi.reducerPath]: mealsApi.reducer,

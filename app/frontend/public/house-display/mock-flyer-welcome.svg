@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920">
+  <rect width="1080" height="1920" fill="#0d1b2a"/>
+  <rect x="48" y="48" width="984" height="1824" fill="none" stroke="#5eead4" stroke-width="8" rx="24"/>
+  <text x="540" y="720" fill="#e0e1dd" font-family="system-ui,sans-serif" font-size="96" font-weight="700" text-anchor="middle">WELCOME</text>
+  <text x="540" y="860" fill="#5eead4" font-family="system-ui,sans-serif" font-size="52" font-weight="600" text-anchor="middle">Hope House Guthrie</text>
+  <text x="540" y="1000" fill="#e0e1dd" font-family="system-ui,sans-serif" font-size="40" text-anchor="middle">We&apos;re glad you&apos;re here.</text>
+  <text x="540" y="1680" fill="rgba(224,225,221,0.55)" font-family="system-ui,sans-serif" font-size="28" text-anchor="middle">Mock flyer — House Spotlight</text>
+</svg>
