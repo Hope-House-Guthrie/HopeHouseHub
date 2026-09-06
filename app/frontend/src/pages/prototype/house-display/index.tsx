@@ -47,6 +47,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import { Box, keyframes, Typography, useMediaQuery } from "@mui/material";
+import Logo from "@assets/hhg-logo.svg";
 import type { RootState } from "@/store";
 import type {
   HouseDisplayEventVisualState,
@@ -111,7 +112,7 @@ const SECTION_EYEBROW_SX = {
   fontWeight: 800,
   letterSpacing: "0.14em",
   textTransform: "uppercase" as const,
-  color: "rgba(94, 234, 212, 0.9)",
+  color: "#087947",
   fontSize: "clamp(0.75rem, 1.2vw, 1.05rem)",
   lineHeight: 1.2,
   opacity: 1,
@@ -428,6 +429,7 @@ const announcementItemSx = {
   mb: 0.75,
   fontSize: "clamp(0.9rem, 1.4vw, 1.25rem)",
   lineHeight: 1.35,
+  color: "#2F3B4D",
 } as const;
 
 function AnnouncementLines({
@@ -598,6 +600,7 @@ function BirthdayMonthStripLine({
         fontSize: "clamp(0.8rem, 1.2vw, 1.05rem)",
         lineHeight: 1.35,
         opacity: 0.9,
+        color: "#2F3B4D",
       }}
     >
       <Box component="span" sx={{ mr: 0.75 }} aria-hidden>
@@ -674,6 +677,7 @@ function BirthdaysThisMonthRollBody({
       <Typography
         sx={{
           opacity: 0.7,
+          color: "#2F3B4D",
           fontSize: "clamp(0.8rem, 1.2vw, 1rem)",
           lineHeight: 1.35,
         }}
@@ -1680,7 +1684,7 @@ export default function HouseDisplayPage() {
         overflow: "hidden",
         boxSizing: "border-box",
         background:
-          "radial-gradient(120% 80% at 12% -10%, rgba(56, 189, 248, 0.14) 0%, transparent 55%), radial-gradient(90% 70% at 100% 110%, rgba(45, 212, 191, 0.10) 0%, transparent 50%), linear-gradient(165deg, #435868 0%, #526575 42%, #607383 100%)",
+          "radial-gradient(120% 80% at 10% -8%, rgba(70, 88, 118, 0.09) 0%, transparent 58%), radial-gradient(95% 75% at 100% 108%, rgba(8, 121, 71, 0.06) 0%, transparent 52%), linear-gradient(165deg, #F7F9FA 0%, #F4F6F8 45%, #EEF2F5 100%)",
         color: "#F5F7F8",
         display: "flex",
         flexDirection: "column",
@@ -1697,27 +1701,60 @@ export default function HouseDisplayPage() {
           alignItems: "center",
           justifyContent: "space-between",
           borderRadius: 2,
-          border: "1px solid rgba(224,225,221,0.18)",
-          bgcolor: "rgba(58, 76, 92, 0.82)",
-          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
+          border: "1px solid rgba(70, 88, 118, 0.20)",
+          bgcolor: "#E4E9F0",
+          boxShadow:
+            "inset 0 1px 0 rgba(255,255,255,0.85), 0 1px 2px rgba(70, 88, 118, 0.08)",
           px: { xs: 1.5, md: 2 },
         }}
       >
-        <Typography
+        <Box
           sx={{
-            fontWeight: 700,
-            fontSize: "clamp(1.1rem, 2.2vw, 2rem)",
-            letterSpacing: "0.03em",
-            opacity: 0.92,
-            lineHeight: 1.15,
+            display: "flex",
+            alignItems: "center",
+            gap: 1.5,
+            minWidth: 0,
+            flex: "1 1 auto",
+            overflow: "hidden",
+            pr: 1,
           }}
         >
-          {header.identityLabel}
-        </Typography>
+          <Box
+            component="img"
+            src={Logo}
+            alt="Hope House Guthrie"
+            sx={{
+              height: "clamp(56px, 9vh, 96px)",
+              width: "auto",
+              maxWidth: "min(42vw, 280px)",
+              objectFit: "contain",
+              objectPosition: "left center",
+              display: "block",
+              flex: "0 0 auto",
+            }}
+          />
+          <Typography
+            sx={{
+              fontWeight: 700,
+              color: "#465876",
+              fontSize: "clamp(1.1rem, 2.2vw, 2rem)",
+              letterSpacing: "0.03em",
+              lineHeight: 1.15,
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              minWidth: 0,
+              flex: "1 1 auto",
+            }}
+          >
+            {header.identityLabel}
+          </Typography>
+        </Box>
         <Box sx={{ textAlign: "right" }}>
           <Typography
             sx={{
               fontWeight: 800,
+              color: "#2F3B4D",
               fontSize: "clamp(1.25rem, 2.5vw, 2.25rem)",
               letterSpacing: "0.04em",
               fontVariantNumeric: "tabular-nums",
@@ -1734,7 +1771,7 @@ export default function HouseDisplayPage() {
               fontSize: "clamp(0.85rem, 1.4vw, 1.25rem)",
               lineHeight: 1.25,
               mt: 0.25,
-              color: "#D2DADF",
+              color: "#5B6C82",
             }}
           >
             {hopeNow.dateText} · {header.weatherText}
@@ -1753,9 +1790,10 @@ export default function HouseDisplayPage() {
           pr: 0,
           gap: 0,
           borderRadius: 2,
-          border: "1px solid rgba(224,225,221,0.18)",
-          bgcolor: "rgba(58, 76, 92, 0.82)",
-          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
+          border: "1px solid rgba(70, 88, 118, 0.20)",
+          bgcolor: "#E4E9F0",
+          boxShadow:
+            "inset 0 1px 0 rgba(255,255,255,0.85), 0 1px 2px rgba(70, 88, 118, 0.08)",
           overflow: "hidden",
         }}
       >
@@ -1810,13 +1848,13 @@ export default function HouseDisplayPage() {
                           ? "translateY(-100%)"
                           : "translateY(-50%)",
                     fontSize: "clamp(0.65rem, 1.1vw, 0.95rem)",
-                    opacity: 0.62,
+                    opacity: 0.92,
                     fontWeight: 600,
                     lineHeight: 1,
                     whiteSpace: "nowrap",
                     fontVariantNumeric: "tabular-nums",
                     letterSpacing: "0.02em",
-                    color: "#D2DADF",
+                    color: "#5B6C82",
                   }}
                 >
                   {m.label}
@@ -2116,9 +2154,10 @@ export default function HouseDisplayPage() {
           alignItems: "center",
           gap: 2,
           borderRadius: 2,
-          border: "1px solid rgba(224,225,221,0.18)",
-          bgcolor: "rgba(58, 76, 92, 0.82)",
-          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
+          border: "1px solid rgba(70, 88, 118, 0.20)",
+          bgcolor: "#E4E9F0",
+          boxShadow:
+            "inset 0 1px 0 rgba(255,255,255,0.85), 0 1px 2px rgba(70, 88, 118, 0.08)",
           px: { xs: 1.5, md: 2 },
         }}
       >
@@ -2148,6 +2187,7 @@ export default function HouseDisplayPage() {
                 fontSize: "clamp(0.95rem, 1.0vw, 1.4rem)",
                 whiteSpace: "nowrap",
                 opacity: 0.65,
+                color: "#2F3B4D",
               }}
             >
               No more scheduled activities today
@@ -2160,6 +2200,7 @@ export default function HouseDisplayPage() {
                   fontWeight: 600,
                   fontSize: "clamp(0.95rem, 1.0vw, 1.4rem)",
                   whiteSpace: "nowrap",
+                  color: "#2F3B4D",
                 }}
               >
                 {formatMinutesAsTime(item.startMin)} - {item.title}
@@ -2177,9 +2218,10 @@ export default function HouseDisplayPage() {
           display: "flex",
           gap: 2,
           borderRadius: 2,
-          border: "1px solid rgba(224,225,221,0.18)",
-          bgcolor: "rgba(58, 76, 92, 0.82)",
-          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
+          border: "1px solid rgba(70, 88, 118, 0.20)",
+          bgcolor: "#E4E9F0",
+          boxShadow:
+            "inset 0 1px 0 rgba(255,255,255,0.85), 0 1px 2px rgba(70, 88, 118, 0.08)",
           px: { xs: 1.5, md: 2 },
           py: { xs: 1, md: 1.25 },
         }}
@@ -2207,6 +2249,7 @@ export default function HouseDisplayPage() {
               fontWeight: 600,
               fontSize: "clamp(1.1rem, 2.2vw, 1.9rem)",
               lineHeight: 1.3,
+              color: "#2F3B4D",
             }}
           >
             {liveAffirmationText}
