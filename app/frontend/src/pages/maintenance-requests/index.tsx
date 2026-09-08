@@ -1,91 +1,125 @@
 /**
-* ============================================================================
-* MAINTENANCE REQUESTS — living STATUS (authoritative for this feature)
-* Branch: feature/maintenance-requests (off develop)
-* Updated: 2026-08-22 — Phase 4 My list/detail/timeline COMPLETE (await commit)
-* STOPPING POINT: Phase 4 UI done. Manual test in progress or done.
-*   Commit Phase 4 when approved. Do not start Phase 5 (Add info / cancel)
-*   until Phase 4 approved.
-* ============================================================================
-* MODEL
-* - Client submits one item per request (MR-YYYY-#### mock FE; BE later).
-* - Client-visible statuses: Submitted → … → Completed / Cancellation
-*   Requested / Closed - No Work Needed.
-* - Original request immutable; Add Information / cancel = timeline later (Ph5).
-* - Locations seeded; staff catalog admin later. Specific Area/Room optional
-*   free text (helps locate; blank OK). Item free text later suggestions.
-* - Dup/recurring advisory only (parked Phase 6). No Mike UI in client v1.
-* - Confirm copy: includes real MR# + in queue — never claim acknowledged.
-* - Photos: optional max 3; FE mock data URLs; BE blob storage later.
-* - My Requests: filter by DEV client id now; auth user later.
-*
-* DONE — Phase 1 (commit 08d1ff3)
-* - features/maintenance-requests: types, config, devFixtures, api notes
-* - Redux slice + store register; route/nav Handyman
-* - Page shell New|My; one-item notice; DEV as-client + reset
-*
-* DONE — Phase 2 COMPLETE (e30fb00 form · bf48e01 normalize · + confirm MR#)
-* - Submit form fields 1–7; MR#; queue confirm; normalize free-text
-*
-* DONE — Phase 3 photos (e7a22bf)
-* - Optional photos max 3; picker + previews; mock data URLs
-*
-* DONE — Phase 4 My Requests (code on disk; commit when approved)
-* - Filter tickets to active DEV client (later auth)
-* - List: MR#, status Chip, Chicago submitted, location/area/item, photo count
-* - Click row → detail (original fields read-only) + photo thumbs
-* - Timeline read (oldest first); submitted event from create
-* - Empty state; Close detail / toggle select
-*
-* NEXT — Phase 5 (not started)
-* - Client Add Information + Request Cancellation (timeline events;
-*   cancel ≠ auto-close)
-*
-* PARKED
-* - Dup/recurring (Ph6), full DEV seed + Mike status sim (Ph7)
-* - Staff-on-behalf; location admin UI; backend/API; Open/Closed filters
-* - Explicit Take photo vs Upload buttons (picker only today)
-*
-* DEV NOTES
-* - import.meta.env.DEV only for as-client UI + localStorage
-* - Key: hhg-dev-maintenance-requests-v1 (DEV_MR_STORAGE_KEY)
-* - devFixtures.ts load/save/clear; Reset → Alex + empty requests
-* - Large data-URL photos may bloat DEV localStorage — mock only
-* - Not security; removable for production
-*
-* PATHS
-* - pages/maintenance-requests/index.tsx     ← UI + this STATUS
-* - features/maintenance-requests/types.ts
-* - features/maintenance-requests/config.ts
-* - features/maintenance-requests/mrNumber.ts
-* - features/maintenance-requests/normalizeClientText.ts
-* - features/maintenance-requests/devFixtures.ts
-* - features/maintenance-requests/apiBoundaryNotes.ts
-* - store/slices/maintenanceRequests.ts
-* - routes.tsx → /maintenance-requests
-*
-* HARD LOCKS
-* - Client-side only; no Mike management UI this phase
-* - Single route /maintenance-requests
-* - America/Chicago for MR year + display when dates shown
-* - FE hide / DEV chips ≠ security
-* - Ignore removed old MaintenanceTicket model
-* - Confirmation must NOT say Maintenance acknowledged
-* - Max 3 optional photos; never required for submit
-* - Original body immutable; Ph4 is read-only list/detail/timeline
-*
-* ============================================================================
-* Backend Handoff / Notes for TJ
-* ============================================================================
-* See features/maintenance-requests/apiBoundaryNotes.ts
-* Current: in-memory + DEV localStorage mock; no API.
-* Submit payload shape: SubmitMaintenanceRequestInput (+ optional photos[]) +
-*   server fills id, requestNumber, submittedAt, submitter, status=Submitted,
-*   timeline; photos → blob storage (not long-term base64 in JSON).
-* List/detail: GET own tickets only; timeline append-only events.
-* ============================================================================
-*/
-
+ * ============================================================================
+ * MAINTENANCE REQUESTS — living STATUS (authoritative for this feature)
+ * Branch: feature/maintenance-requests (off develop)
+ * Updated: 2026-09-07 — CLIENT FE PROTOTYPE COMPLETE (Phases 1–5)
+ * STOPPING POINT: Client Maintenance Requests frontend mock is DONE.
+ *   No Phase 6 (dup/recurring) or Phase 7 (DEV seed/Mike sim) in this prototype.
+ *   No Mike/staff management UI here. Next product path = backend/API (TJ).
+ * ============================================================================
+ * MODEL
+ * - Client submits one item per request (MR-YYYY-#### mock FE; BE later).
+ * - Client-visible statuses include Submitted … Completed / Cancellation
+ *   Requested / Closed - No Work Needed.
+ * - Original request fields immutable after submit.
+ * - Add Information = append-only timeline (required trimmed text; 0–3 NEW
+ *   photos per update; ticket may hold more than 3 photos across updates).
+ * - Request Cancellation → status Cancellation Requested only (not auto-close).
+ * - Locations seeded; staff catalog admin later. Specific Area/Room optional
+ *   free text (helps locate; blank OK). Item free text later suggestions.
+ * - Dup/recurring advisory = future/parked only (not built). No Mike UI in v1.
+ * - Confirm copy: includes real MR# + in queue — never claim acknowledged.
+ * - Photos: FE mock data URLs; production must use blob/file storage + ids/urls.
+ * - My Requests: filter by DEV client id now; auth user later.
+ *
+ * DONE — Phase 1 (commit 08d1ff3)
+ * - features/maintenance-requests: types, config, devFixtures, api notes
+ * - Redux slice + store register; route/nav Handyman
+ * - Page shell New|My; one-item notice; DEV as-client + reset
+ *
+ * DONE — Phase 2 COMPLETE (e30fb00 form · bf48e01 normalize · + confirm MR#)
+ * - Submit form fields 1–7; MR#; queue confirm; normalize free-text
+ *
+ * DONE — Phase 3 photos (e7a22bf)
+ * - Optional photos max 3 on initial submit; picker + previews; mock data URLs
+ *
+ * DONE — Phase 4 My Requests (0837cac)
+ * - Filter tickets to active DEV client (later auth)
+ * - List: MR#, status Chip, Chicago submitted, location/area/item, photo count
+ * - Click row → detail (original fields read-only) + photo thumbs
+ * - Timeline read (oldest first); submitted event from create
+ * - Empty state; Close detail / toggle select
+ *
+ * DONE — Phase 5 client follow-ups (QA Checks 1–4 PASS; ownership PASS)
+ * - Types: AddMaintenanceRequestInfoInput; RequestMaintenanceCancellationInput
+ * - Slice: addMaintenanceRequestInfo; requestMaintenanceCancellation
+ *   (ownership; append timeline; optional new photos; cancel ≠ auto-close)
+ * - apiBoundaryNotes Ph5 + FE-complete handoff
+ * - Detail: Add Information + Request Cancellation (gated buttons + Dialogs)
+ * - Add Info: custom empty-body validation (noValidate); 0–3 new photos/update
+ * - Timeline: body + photoIds thumbs (resolve from request.photos)
+ * - Gates: no Add Info on Completed / Closed - No Work Needed;
+ *   no cancel on those or already Cancellation Requested
+ * - After Cancellation Requested: cancel hidden; Add Info still allowed;
+ *   Add Info does not change status
+ * - Check 5 terminal-status buttons SKIPPED (no Completed/Closed fixture)
+ *
+ * FE PROTOTYPE COMPLETE
+ * - Client path Phases 1–5 is the finished frontend mock for this branch.
+ * - Do not treat Ph6/Ph7 as “next frontend steps” for this closeout.
+ *
+ * NEXT (product — not more client FE phases here)
+ * - Backend/API persistence, auth ownership, blob photo storage (see handoff)
+ * - Staff/Mike status management UI (separate future work)
+ * - Optional later FE ideas only if product asks (see PARKED)
+ *
+ * PARKED / FUTURE (not part of this FE prototype)
+ * - Phase 6-style dup/recurring advisory (Location + Area + Item; never auto-merge)
+ * - Phase 7-style full DEV seed pack + Mike status simulation controls
+ * - Staff-on-behalf submit; location admin UI; Open/Closed list filters
+ * - Explicit Take photo vs Upload buttons (picker only today)
+ * - Terminal-status button fixtures for extra QA (no Ph7 sim built)
+ *
+ * DEV NOTES
+ * - import.meta.env.DEV only for as-client UI + localStorage
+ * - Key: hhg-dev-maintenance-requests-v1 (DEV_MR_STORAGE_KEY)
+ * - devFixtures.ts load/save/clear; Reset → Alex + empty requests
+ * - Not security; removable for production
+ * - KNOWN LIMITATION (accepted): photos are base64 dataUrls in Redux/LS.
+ *   Text-only / small payloads hard-refresh OK. Several image dataUrls can
+ *   make saveDevMrPersisted fail (quota); catch leaves last good snapshot.
+ *   Confirmed: after photo-heavy session, LS could reload Submitted + 0 photos
+ *   + early text-only client_update while in-session Redux had later photos,
+ *   Cancellation Requested, and more timeline events. No FE workaround —
+ *   production must use blob/media storage + ids/urls, not base64 in JSON/LS.
+ *
+ * PATHS
+ * - pages/maintenance-requests/index.tsx     ← UI + this STATUS
+ * - features/maintenance-requests/types.ts
+ * - features/maintenance-requests/config.ts
+ * - features/maintenance-requests/mrNumber.ts
+ * - features/maintenance-requests/normalizeClientText.ts
+ * - features/maintenance-requests/devFixtures.ts
+ * - features/maintenance-requests/apiBoundaryNotes.ts
+ * - store/slices/maintenanceRequests.ts
+ * - routes.tsx → /maintenance-requests
+ *
+ * HARD LOCKS
+ * - Client-side FE mock complete through Ph5; no Mike management UI here
+ * - Single route /maintenance-requests
+ * - America/Chicago for MR year + display when dates shown
+ * - FE hide / DEV chips ≠ security
+ * - Ignore removed old MaintenanceTicket model
+ * - Confirmation must NOT say Maintenance acknowledged
+ * - Submit photos optional max 3; Add Info 0–3 NEW photos per update
+ * - Original body immutable; follow-ups are timeline (+ cancel status only)
+ * - Cancel → Cancellation Requested only; never auto Completed/Closed
+ * - No localStorage photo-persistence workaround; no Ph6/Ph7 in this closeout
+ *
+ * ============================================================================
+ * Backend Handoff / Notes for TJ
+ * ============================================================================
+ * See features/maintenance-requests/apiBoundaryNotes.ts (authoritative detail).
+ * Current FE: in-memory + DEV localStorage mock; no production API.
+ * Submit: SubmitMaintenanceRequestInput (+ optional photos[]); server assigns
+ *   id, requestNumber, submittedAt, submitter, status=Submitted, timeline.
+ * Photos: multipart/blob upload → store media + ids/urls on ticket/events —
+ *   never long-term base64 dataUrls in JSON or browser localStorage.
+ * List/detail: GET own tickets only; timeline append-only.
+ * Ph5: Add Information + Request Cancellation on own non-terminal tickets;
+ *   cancel does not auto-close (staff closes later).
+ * ============================================================================
+ */
 
 import { useMemo, useState, type FormEvent } from "react";
 import {
@@ -93,6 +127,10 @@ import {
   Box,
   Button,
   Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   FormControl,
   FormControlLabel,
   FormHelperText,
@@ -109,6 +147,8 @@ import {
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { store } from "@/store";
 import {
+  addMaintenanceRequestInfo,
+  requestMaintenanceCancellation,
   resetDevMrState,
   setDevActiveClient,
   submitMaintenanceRequest,
@@ -148,7 +188,7 @@ export default function MaintenanceRequestsPage() {
   >("");
   const [problemDescription, setProblemDescription] = useState("");
   const [hasAdditionalNotes, setHasAdditionalNotes] = useState<"yes" | "no">(
-    "no"
+    "no",
   );
   const [additionalNotes, setAdditionalNotes] = useState("");
   /** Optional photos for this submit (max MAX_MAINTENANCE_PHOTOS). */
@@ -156,7 +196,7 @@ export default function MaintenanceRequestsPage() {
   const [formErrors, setFormErrors] = useState<string[]>([]);
   /** Set after successful submit — queue message only (not acknowledged). */
   const [submitConfirmation, setSubmitConfirmation] = useState<string | null>(
-    null
+    null,
   );
 
   // --- Phase 4: MyRequests (list only this step) ---
@@ -164,6 +204,18 @@ export default function MaintenanceRequestsPage() {
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(
     null,
   );
+
+  // --- Phase 5: detail follow-ups (separate from New Request form) ---
+  const [addInfoOpen, setAddInfoOpen] = useState(false);
+  const [addInfoBody, setAddInfoBody] = useState("");
+  /** New photos for Add Information only - not the New Request photos state. */
+  const [addInfoPhotos, setAddInfoPhotos] = useState<MaintenanceRequestPhoto[]>(
+    [],
+  );
+  const [addInfoError, setAddInfoError] = useState<string | null>(null);
+
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
 
   /** Tickets for the active DEV client only (later: auth user id). */
   const myRequests = useMemo(() => {
@@ -182,9 +234,20 @@ export default function MaintenanceRequestsPage() {
     return myRequests.find((r) => r.id === selectedRequestId) ?? null;
   }, [myRequests, selectedRequestId]);
 
+  /** Phase 5: client follow-ups only on non-terminal own tickets (selected is already mine). */
+  const canAddInfo =
+    !!selectedRequest &&
+    selectedRequest.status !== "Completed" &&
+    selectedRequest.status !== "Closed - No Work Needed";
+
+  const canRequestCancellation =
+    !!selectedRequest &&
+    canAddInfo &&
+    selectedRequest.status !== "Cancellation Requested";
+
   const activeLocations = useMemo(
     () => locations.filter((l) => !l.archived),
-    [locations]
+    [locations],
   );
 
   const clearNewRequestForm = () => {
@@ -198,6 +261,20 @@ export default function MaintenanceRequestsPage() {
     setAdditionalNotes("");
     setPhotos([]);
     setFormErrors([]);
+  };
+
+  /** Phase 5: close Add Information dialog and clear its local fields only. */
+  const handleCloseAddInfo = () => {
+    setAddInfoOpen(false);
+    setAddInfoBody("");
+    setAddInfoPhotos([]);
+    setAddInfoError(null);
+  };
+
+  /** Phase 5: close Request Cancellation dialog and clear reason. */
+  const handleCloseCancel = () => {
+    setCancelOpen(false);
+    setCancelReason("");
   };
 
   /** Blur/submit free-text cleanup (formatting only). */
@@ -258,6 +335,90 @@ export default function MaintenanceRequestsPage() {
     setPhotos((prev) => prev.filter((p) => p.id !== id));
   };
 
+  /**
+   * Phase 5: Add Information photos only (addInfoPhotos).
+   * Same mock data-URL pattern as New Request; does not touch photos.
+   */
+  const handleAddInfoPhotoFilesSelected = (fileList: FileList | null) => {
+    if (!fileList || fileList.length === 0) return;
+
+    const room = MAX_MAINTENANCE_PHOTOS - addInfoPhotos.length;
+    if (room <= 0) return;
+
+    const picked = Array.from(fileList)
+      .filter((f) => f.type.startsWith("image/"))
+      .slice(0, room);
+
+    if (picked.length === 0) return;
+
+    picked.forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = typeof reader.result === "string" ? reader.result : "";
+        if (!dataUrl) return;
+        const photo: MaintenanceRequestPhoto = {
+          id:
+            typeof crypto !== "undefined" && crypto.randomUUID
+              ? crypto.randomUUID()
+              : "photo-" + Date.now() + "-" + file.name,
+          dataUrl,
+          fileName: file.name || "photo",
+          addedAt: new Date().toISOString(),
+        };
+        setAddInfoPhotos((prev) => {
+          if (prev.length >= MAX_MAINTENANCE_PHOTOS) return prev;
+          return [...prev, photo].slice(0, MAX_MAINTENANCE_PHOTOS);
+        });
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removeAddInfoPhotoAt = (id: string) => {
+    setAddInfoPhotos((prev) => prev.filter((p) => p.id !== id));
+  };
+
+  /** Phase 5: Add Information — required body; optional 0–3 new photos. */
+  const handleSubmitAddInfo = (e: FormEvent) => {
+    e.preventDefault();
+    if (!selectedRequest || !canAddInfo) return;
+
+    const cleanBody = normalizeClientText(addInfoBody, "sentence");
+    setAddInfoBody(cleanBody);
+
+    if (!cleanBody.trim()) {
+      setAddInfoError("Please enter the information to add.");
+      return;
+    }
+
+    setAddInfoError(null);
+    dispatch(
+      addMaintenanceRequestInfo({
+        requestId: selectedRequest.id,
+        body: cleanBody.trim(),
+        photos: addInfoPhotos.length > 0 ? addInfoPhotos : undefined,
+      }),
+    );
+    handleCloseAddInfo();
+  };
+
+  /** Phase 5: Request Cancellation — optional reason; not auto-close. */
+  const handleSubmitCancelRequest = (e: FormEvent) => {
+    e.preventDefault();
+    if (!selectedRequest || !canRequestCancellation) return;
+
+    const cleanReason = normalizeClientText(cancelReason, "sentence");
+    setCancelReason(cleanReason);
+
+    dispatch(
+      requestMaintenanceCancellation({
+        requestId: selectedRequest.id,
+        reason: cleanReason.trim() ? cleanReason.trim() : undefined,
+      }),
+    );
+    handleCloseCancel();
+  };
+
   const handleSubmitNewRequest = (e: FormEvent) => {
     e.preventDefault();
     setSubmitConfirmation(null);
@@ -284,7 +445,7 @@ export default function MaintenanceRequestsPage() {
     if (!category) errors.push("Category is required.");
     if (!stillUsableSafely) {
       errors.push(
-        "Please answer whether the area/item can still be used safely."
+        "Please answer whether the area/item can still be used safely.",
       );
     }
     if (!cleanProblem.trim()) {
@@ -310,15 +471,14 @@ export default function MaintenanceRequestsPage() {
         additionalNotes:
           hasAdditionalNotes === "yes" ? cleanNotes || undefined : undefined,
         photos,
-      })
+      }),
     );
 
     // Actual MR# from the ticket just created (slice unshifts newest first)
-    const created =
-      store.getState().maintenanceRequests.requests[0] ?? null;
+    const created = store.getState().maintenanceRequests.requests[0] ?? null;
     const mrLabel = created?.requestNumber ?? "MR-????-????";
     setSubmitConfirmation(
-      `Maintenance request ${mrLabel} was submitted. Your request has been added to the maintenance queue. Maintenance has not acknowledged it yet. You can check My Requests for updates.`
+      `Maintenance request ${mrLabel} was submitted. Your request has been added to the maintenance queue. Maintenance has not acknowledged it yet. You can check My Requests for updates.`,
     );
     clearNewRequestForm();
   };
@@ -327,7 +487,7 @@ export default function MaintenanceRequestsPage() {
 
   const activeLocationCount = useMemo(
     () => locations.filter((l) => !l.archived).length,
-    [locations]
+    [locations],
   );
 
   return (
@@ -580,7 +740,8 @@ export default function MaintenanceRequestsPage() {
               {/* 8. Optional photos (max 3) */}
               <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
                 <FormLabel>
-                  Photos (optional) — {photos.length} of {MAX_MAINTENANCE_PHOTOS}
+                  Photos (optional) — {photos.length} of{" "}
+                  {MAX_MAINTENANCE_PHOTOS}
                 </FormLabel>
                 <Typography variant="body2" color="text.secondary">
                   Up to {MAX_MAINTENANCE_PHOTOS} pictures of the problem. Not
@@ -678,10 +839,8 @@ export default function MaintenanceRequestsPage() {
           <Typography variant="h6">My Requests</Typography>
           <Typography variant="body2" color="text.secondary">
             Only your own requests
-            {isDev
-              ? " (DEV filter: " + activeDevClientName + ")"
-              : ""}
-            . Closed stay in history. Click a row for detail and timeline.
+            {isDev ? " (DEV filter: " + activeDevClientName + ")" : ""}. Closed
+            stay in history. Click a row for detail and timeline.
           </Typography>
 
           {myRequests.length === 0 ? (
@@ -724,10 +883,8 @@ export default function MaintenanceRequestsPage() {
                 </Box>
                 <Typography variant="body2">
                   {req.locationName}
-                  {req.areaOrRoom.trim()
-                    ? " · " + req.areaOrRoom
-                    : ""}{" "}
-                  · {req.item}
+                  {req.areaOrRoom.trim() ? " · " + req.areaOrRoom : ""} ·{" "}
+                  {req.item}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   {req.category} ·{" "}
@@ -768,6 +925,28 @@ export default function MaintenanceRequestsPage() {
                 >
                   Close detail
                 </Button>
+                {canAddInfo && (
+                  <Button
+                    type="button"
+                    size="small"
+                    variant="contained"
+                    onClick={() => setAddInfoOpen(true)}
+                  >
+                    Add Information
+                  </Button>
+                )}
+
+                {canRequestCancellation && (
+                  <Button
+                    type="button"
+                    size="small"
+                    variant="outlined"
+                    color="warning"
+                    onClick={() => setCancelOpen(true)}
+                  >
+                    Request Cancellation
+                  </Button>
+                )}
               </Box>
 
               <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
@@ -853,8 +1032,8 @@ export default function MaintenanceRequestsPage() {
                 color="text.secondary"
                 sx={{ display: "block", mb: 2 }}
               >
-                Original request is read-only. Updates will show on the timeline
-                later (Add Information / status).
+                Original request is read-only. Add Information and cancellation
+                updates appear on the timeline below.
               </Typography>
 
               <Typography variant="subtitle2" sx={{ mb: 1 }}>
@@ -886,6 +1065,7 @@ export default function MaintenanceRequestsPage() {
                         <Typography variant="body2" sx={{ fontWeight: 600 }}>
                           {ev.summary}
                         </Typography>
+
                         <Typography
                           variant="caption"
                           color="text.secondary"
@@ -897,6 +1077,7 @@ export default function MaintenanceRequestsPage() {
                           {ev.actorLabel ? " · " + ev.actorLabel : ""}
                           {ev.status ? " · " + ev.status : ""}
                         </Typography>
+
                         {ev.body ? (
                           <Typography
                             variant="body2"
@@ -904,6 +1085,42 @@ export default function MaintenanceRequestsPage() {
                           >
                             {ev.body}
                           </Typography>
+                        ) : null}
+
+                        {ev.photoIds && ev.photoIds.length > 0 ? (
+                          <Box
+                            sx={{
+                              display: "flex",
+                              flexWrap: "wrap",
+                              gap: 1,
+                              mt: 0.5,
+                            }}
+                          >
+                            {ev.photoIds.map((photoId) => {
+                              const photo = selectedRequest.photos.find(
+                                (p) => p.id === photoId,
+                              );
+
+                              if (!photo) return null;
+
+                              return (
+                                <Box
+                                  key={photoId}
+                                  component="img"
+                                  src={photo.dataUrl}
+                                  alt={photo.fileName}
+                                  sx={{
+                                    width: 72,
+                                    height: 72,
+                                    objectFit: "cover",
+                                    borderRadius: 1,
+                                    border: "1px solid",
+                                    borderColor: "divider",
+                                  }}
+                                />
+                              );
+                            })}
+                          </Box>
                         ) : null}
                       </Box>
                     ))}
@@ -913,6 +1130,148 @@ export default function MaintenanceRequestsPage() {
           )}
         </Box>
       )}
+
+      {/* Phase 5: client follow-up dialog (not New Request) */}
+      <Dialog
+        open={addInfoOpen}
+        onClose={handleCloseAddInfo}
+        fullWidth
+        maxWidth="sm"
+      >
+        <Box
+          component="form"
+          noValidate
+          onSubmit={handleSubmitAddInfo}
+        >
+          <DialogTitle>Add Information</DialogTitle>
+          <DialogContent
+            sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 1 }}
+          >
+            <Typography variant="body2" color="text.secondary">
+              Adds a timeline update only. Does not change the original request
+              fields. Status stays the same.
+            </Typography>
+            <TextField
+              label="Information to add"
+              value={addInfoBody}
+              onChange={(e) => {
+                setAddInfoBody(e.target.value);
+                if (addInfoError) setAddInfoError(null);
+              }}
+              fullWidth
+              multiline
+              minRows={3}
+              error={!!addInfoError}
+              helperText={addInfoError ?? " "}
+              autoFocus
+            />
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+              <FormLabel>
+                New photos this update (optional) - {addInfoPhotos.length} of{" "}
+                {MAX_MAINTENANCE_PHOTOS}
+              </FormLabel>
+              <Typography variant="body2" color="text.secondary">
+                Up to {MAX_MAINTENANCE_PHOTOS} new photos on this update. The
+                ticket can collect more than {MAX_MAINTENANCE_PHOTOS} total over
+                time.
+              </Typography>
+              <Button
+                type="button"
+                variant="outlined"
+                component="label"
+                disabled={addInfoPhotos.length >= MAX_MAINTENANCE_PHOTOS}
+              >
+                {addInfoPhotos.length >= MAX_MAINTENANCE_PHOTOS
+                  ? "Photo limit reached"
+                  : "Add photo"}
+                <input
+                  hidden
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={(e) => {
+                    handleAddInfoPhotoFilesSelected(e.target.files);
+                    e.target.value = "";
+                  }}
+                />
+              </Button>
+              {addInfoPhotos.length > 0 && (
+                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+                  {addInfoPhotos.map((p) => (
+                    <Box key={p.id} sx={{ position: "relative" }}>
+                      <Box
+                        component="img"
+                        src={p.dataUrl}
+                        alt={p.fileName}
+                        sx={{
+                          width: 96,
+                          height: 96,
+                          objectFit: "cover",
+                          borderRadius: 1,
+                          border: "1px solid",
+                          borderColor: "divider",
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        size="small"
+                        onClick={() => removeAddInfoPhotoAt(p.id)}
+                        aria-label={"Remove " + p.fileName}
+                        sx={{ mt: 0.5 }}
+                      >
+                        Remove
+                      </Button>
+                    </Box>
+                  ))}
+                </Box>
+              )}
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button type="button" onClick={handleCloseAddInfo}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="contained">
+              Submit update
+            </Button>
+          </DialogActions>
+        </Box>
+      </Dialog>
+
+      <Dialog
+        open={cancelOpen}
+        onClose={handleCloseCancel}
+        fullWidth
+        maxWidth="sm"
+      >
+        <Box component="form" onSubmit={handleSubmitCancelRequest}>
+          <DialogTitle>Request Cancellation</DialogTitle>
+          <DialogContent
+            sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 1 }}
+          >
+            <Typography variant="body2" color="text.secondary">
+              Sets status to Cancellation Requested only. Does not close the
+              request. Maintenance still reviews it.
+            </Typography>
+            <TextField
+              label="Reason (optional)"
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              fullWidth
+              multiline
+              minRows={2}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button type="button" onClick={handleCloseCancel}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="contained" color="warning">
+              Request cancellation
+            </Button>
+          </DialogActions>
+        </Box>
+      </Dialog>
     </Box>
   );
 }

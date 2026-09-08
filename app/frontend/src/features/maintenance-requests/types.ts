@@ -151,3 +151,28 @@ export interface SubmitMaintenanceRequestInput {
    */
   photos?: MaintenanceRequestPhoto[];
 }
+
+/**
+ * Client Add Information (Phase 5).
+ * Append-only timeline + optional new photos; does not edit original submit fields.
+ * body: required non-empty after trim (page validates before dispatch).
+ * photos: optional 0-MAX_MAINTENANCE_PHOTOS new images for this update only.
+ */
+export interface AddMaintenanceRequestInfoInput {
+  requestId: string;
+  /** Required non-empty after trim */
+  body: string;
+  /** Optional new photos for this update (max 3). Empty / omitted = none. */
+  photos?: MaintenanceRequestPhoto[];
+}
+
+/**
+ * Client Request Cancellation (Phase 5).
+ * Sets status Cancellation Requested + timeline; does NOT auto-close.
+ * reason optional free text.
+ */
+export interface RequestMaintenanceCancellationInput {
+  requestId: string;
+  /** Optional; blank / omitted OK */
+  reason?: string;
+}

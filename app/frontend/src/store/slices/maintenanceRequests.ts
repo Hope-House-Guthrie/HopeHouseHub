@@ -27,9 +27,11 @@ import {
   saveDevMrPersisted,
 } from "@/features/maintenance-requests/devFixtures";
 import type {
+  AddMaintenanceRequestInfoInput,
   DevMockClient,
   MaintenanceLocation,
   MaintenanceRequest,
+  RequestMaintenanceCancellationInput,
   SubmitMaintenanceRequestInput,
 } from "@/features/maintenance-requests/types";
 import {
@@ -213,9 +215,97 @@ export const maintenanceRequestsSlice = createSlice({
       state.requests.unshift(request);
       persistDevMrState(state);
     },
+    /**
+     * Client Add Information (Phase 5).
+     * Timeline + optional new photos only. Original submit fields stay immutable.
+     * Page should require trimmed non-empty body before dispatch; reducer also guards.
+     */
+    addMaintenanceRequestInfo: (
+      state,
+      action: PayloadAction<AddMaintenanceRequestInfoInput>,
+    ) => {
+      const { requestId, body, photos } = action.payload;
+      const trimmed = (body ?? "").trim();
+      if (!trimmed) return;
+
+      const req = state.requests.find((r) => r.id === requestId);
+      if (!req) return;
+      if (req.submittedByClientId !== state.activeDevClientId) return;
+
+      const at = new Date().toISOString();
+      const newPhotos = (photos ?? []).slice(0, MAX_MAINTENANCE_PHOTOS);
+
+      if (newPhotos.length > 0) {
+        req.photos.push(...newPhotos);
+      }
+
+      const eventId =
+        typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `tl-update-${at}`;
+      req.timeline.push({
+        id: eventId,
+        kind: "client_update",
+        at,
+        summary: "Client added information",
+        body: trimmed,
+        photoIds: newPhotos.length > 0 ? newPhotos.map((p) => p.id) : undefined,
+        actorLabel: state.activeDevClientName,
+      });
+
+      persistDevMrState(state);
+    },
+    /**
+     * Client Request Cancellation (Phase 5).
+     * Status -> Cancellation Requested + timeline. Does NOT auto-close.
+     */
+    requestMaintenanceCancellation: (
+      state,
+      action: PayloadAction<RequestMaintenanceCancellationInput>,
+    ) => {
+      const { requestId, reason } = action.payload;
+      const req = state.requests.find((r) => r.id === requestId);
+      if (!req) return;
+      if (req.submittedByClientId !== state.activeDevClientId) return;
+
+      if (
+        req.status === "Completed" ||
+        req.status === "Closed - No Work Needed" ||
+        req.status === "Cancellation Requested"
+      ) {
+        return;
+      }
+
+      const at = new Date().toISOString();
+      const reasonTrimmed = (reason ?? "").trim();
+
+      req.status = "Cancellation Requested";
+
+      const eventId =
+        typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `tl-cancel-${at}`;
+
+      req.timeline.push({
+        id: eventId,
+        kind: "cancellation_requested",
+        at,
+        summary: "Cancellation requested",
+        body: reasonTrimmed ? reasonTrimmed : undefined,
+        status: "Cancellation Requested",
+        actorLabel: state.activeDevClientName,
+      });
+
+      persistDevMrState(state);
+    },
   },
 });
 
-export const { setDevActiveClient, resetDevMrState, submitMaintenanceRequest } =
-  maintenanceRequestsSlice.actions;
+export const {
+  setDevActiveClient,
+  resetDevMrState,
+  submitMaintenanceRequest,
+  addMaintenanceRequestInfo,
+  requestMaintenanceCancellation,
+} = maintenanceRequestsSlice.actions;
 export default maintenanceRequestsSlice.reducer;
