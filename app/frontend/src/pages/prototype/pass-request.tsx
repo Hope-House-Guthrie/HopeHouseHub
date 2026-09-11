@@ -510,23 +510,18 @@ export default function PassRequestsPage() {
               <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
                 <Button
                   variant={passDuration === "12h" ? "contained" : "outlined"}
-                  color="warning"
-                  sx={{ bgcolor: passDuration === "12h" ? "warning.main" : "transparent" }}
                   onClick={() => setPassDuration("12h")}
                 >
                   12h
                 </Button>
                 <Button
                   variant={passDuration === "24h" ? "contained" : "outlined"}
-                  color="info"
-                  sx={{ bgcolor: passDuration === "24h" ? "info.main" : "transparent" }}
                   onClick={() => setPassDuration("24h")}
                 >
                   24h
                 </Button>
                 <Button
                   variant={passDuration === "48h" ? "contained" : "outlined"}
-                  color="secondary"
                   onClick={() => setPassDuration("48h")}
                 >
                   48h
