@@ -9,6 +9,7 @@ import {
     VolunteerActivism as WalkInServicesIcon,
     DirectionsCar as VehiclesIcon,
     AssignmentInd as DailyDutiesIcon,
+    Assignment as IntakeIcon,
     NotificationImportant as FriendlyRemindersIcon, 
     History as HistoryIcon,
     PendingActions as PendingActionsIcon,
@@ -57,6 +58,7 @@ import IncidentReportsHistoryPage from "@/pages/prototype/incident-reports/histo
 import UaManagementPage from "@/pages/prototype/ua-management";
 import HouseDisplayPage from "@/pages/prototype/house-display";
 import HouseDisplayManagePage from "@/pages/prototype/house-display/manage";
+import IntakePage from "@/pages/prototype/intake";
 
 
 export const routesConfig: NavigationNode[] = [
@@ -346,6 +348,24 @@ export const routesConfig: NavigationNode[] = [
                         handle: {
                             title: "UA Management",
                             icon: <UaManagementIcon />,
+                            showInNavigation: true,
+                            group: "Prototype",
+                            roles: ["PROTOTYPE"],
+                        },
+                    },
+                    {
+                        path: "prototype/intake",
+                        element: <IntakePage />,
+                        handle: {
+                            title: "Client Intake",
+                            icon: <IntakeIcon />,
+                            showInNavigation: true,
+                            group: "Prototype",
+                            roles: ["PROTOTYPE"],
+                        },
+                        config: {
+                            title: "Client Intake",
+                            icon: <IntakeIcon />,
                             showInNavigation: true,
                             group: "Prototype",
                             roles: ["PROTOTYPE"],
