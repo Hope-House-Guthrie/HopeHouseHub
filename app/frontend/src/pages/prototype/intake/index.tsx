@@ -15,11 +15,13 @@ import {
   RadioGroup,
   Select,
   Tab,
+  TableBody,
   Tabs,
   TextField,
   Typography,
 } from "@mui/material";
 import { useState } from "react";
+import SignatureCanvas from "../../../components/SignatureCanvas";
 
 const intakeSections = [
   { id: "client-information", label: "Client Information" },
@@ -34,7 +36,7 @@ const intakeSections = [
   { id: "program-assignment", label: "Program Assignment" },
   { id: "covid-health", label: "COVID-19 Health & Safety" },
   { id: "snap-notice", label: "SNAP Benefits Notice" },
-  { id: "client-handbook", label: "Client Handbook & Guidelines" },
+  { id: "client-handbook", label: "Client Handbook" },
   { id: "authorizations", label: "Authorizations" },
   { id: "final-review", label: "Final Review" },
 ];
@@ -115,13 +117,12 @@ export default function IntakePage() {
     useState("");
   const [schoolName, setSchoolName] = useState("");
   const [snapBenefits, setSnapBenefits] = useState("");
+  const [snapLoadDay, setSnapLoadDay] = useState("");
   const [snapAcknowledgmentDate, setSnapAcknowledgmentDate] = useState("");
   const [snapMonthlyAmount, setSnapMonthlyAmount] = useState("");
-  const [snapBenefitDate, setSnapBenefitDate] = useState("");
 
   const [soonerCareBenefits, setSoonerCareBenefits] = useState("");
-  const [soonerCareName, setSoonerCareName] = useState("");
-  const [soonerCareType, setSoonerCareType] = useState("");
+  const [soonerCarePlan, setSoonerCarePlan] = useState("");
   const [soonerCareId, setSoonerCareId] = useState("");
 
   const [medicaidBenefits, setMedicaidBenefits] = useState("");
@@ -228,6 +229,12 @@ export default function IntakePage() {
     useState<File | null>(null);
   const [activeIntakeSection, setActiveIntakeSection] =
     useState("client-information");
+  const [activeHandbookTab, setActiveHandbookTab] = useState("getting-started");
+  const [hmisAuthorization, setHmisAuthorization] = useState("");
+  const [hmisSignature, setHmisSignature] = useState("");
+  const [hmisSignatureDate, setHmisSignatureDate] = useState("");
+  const [finalClientSignature, setFinalClientSignature] = useState("");
+  const [finalAdminSignature, setFinalAdminSignature] = useState("");
   const [minorChildren, setMinorChildren] = useState<
     {
       firstName: string;
@@ -1417,7 +1424,7 @@ export default function IntakePage() {
 
                     <TextField
                       fullWidth
-                      label="Where was the client living before coming to Hope House?"
+                      label="Where was the client living before coming to Hope House Guthrie?"
                       value={priorLivingSituation}
                       onChange={(event) =>
                         setPriorLivingSituation(event.target.value)
@@ -1526,13 +1533,13 @@ export default function IntakePage() {
                     </Box>
                   </Box>
 
-                  {/* Last Place Stayed Before Hope House */}
+                  {/* Last Place Stayed Before Hope House Guthrie */}
                   <Box sx={{ mt: 3 }}>
                     <Typography
                       variant="subtitle1"
                       sx={{ fontWeight: 600, mb: 1 }}
                     >
-                      Last Place Stayed Before Hope House
+                      Last Place Stayed Before Hope House Guthrie
                     </Typography>
 
                     <TextField
@@ -1865,23 +1872,22 @@ export default function IntakePage() {
                           }}
                         >
                           <TextField
-                            label="SoonerCare Name"
-                            value={soonerCareName}
+                            select
+                            label="SoonerCare Plan"
+                            value={soonerCarePlan}
                             onChange={(event) =>
-                              setSoonerCareName(event.target.value)
+                              setSoonerCarePlan(event.target.value)
                             }
                             fullWidth
-                          />
+                          >
+                            <MenuItem value="Oklahoma Complete">
+                              Oklahoma Complete
+                            </MenuItem>
+                            <MenuItem value="Aetna">Aetna</MenuItem>
+                            <MenuItem value="Humana">Humana</MenuItem>
+                          </TextField>
                           <TextField
-                            label="SoonerCare Type"
-                            value={soonerCareType}
-                            onChange={(event) =>
-                              setSoonerCareType(event.target.value)
-                            }
-                            fullWidth
-                          />
-                          <TextField
-                            label="SoonerCare ID #"
+                            label="Member Number"
                             value={soonerCareId}
                             onChange={(event) =>
                               setSoonerCareId(event.target.value)
@@ -1919,7 +1925,27 @@ export default function IntakePage() {
                         </RadioGroup>
                       </FormControl>
                       {snapBenefits === "yes" && (
-                        <Box sx={{ mt: 1, width: "100%" }}>
+                        <Box
+                          sx={{
+                            mt: 1,
+                            width: "100%",
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 2,
+                          }}
+                        >
+                          <TextField
+                            label="Day SNAP Benefits Load"
+                            value={snapLoadDay}
+                            onChange={(event) =>
+                              setSnapLoadDay(event.target.value)
+                            }
+                            type="number"
+                            slotProps={{
+                              htmlInput: { min: 1, max: 31 },
+                            }}
+                            fullWidth
+                          />
                           <TextField
                             label="Monthly SNAP Amount"
                             value={snapMonthlyAmount}
@@ -3505,7 +3531,7 @@ export default function IntakePage() {
                       </Typography>
                       <Typography sx={{ mt: 2 }}>
                         This policy is intended to promote accountability,
-                        safety, and mutual respect within the Hope House
+                        safety, and mutual respect within the Hope House Guthrie
                         community.
                       </Typography>
                       <TextField
@@ -3531,8 +3557,9 @@ export default function IntakePage() {
                         The Hope House Guthrie dress code is intended to
                         maintain a clean, appropriate, and professional
                         appearance within our community. Our appearance reflects
-                        both ourselves and Hope House and should be respectful
-                        to clients, staff, donors, visitors, and the community.
+                        both ourselves and Hope House Guthrie and should be
+                        respectful to clients, staff, donors, visitors, and the
+                        community.
                       </Typography>
 
                       <Typography sx={{ mt: 1 }}>
@@ -3731,7 +3758,7 @@ export default function IntakePage() {
                             <li>
                               During the first 30 days of the program, LTP
                               clients are required to remain on the Hope House
-                              premises.
+                              Guthrie premises.
                             </li>
                             <li>
                               LTP clients will receive a 30-day or 60-day
@@ -3826,8 +3853,8 @@ export default function IntakePage() {
                             </li>
                             <li>
                               LTP clients are required to follow the Hope House
-                              dress code and 3-foot rule, as explained by the
-                              Facility Director.
+                              Guthrie dress code and 3-foot rule, as explained
+                              by the Facility Director.
                             </li>
                             <li>
                               LTP clients are responsible for taking the
@@ -4224,8 +4251,8 @@ export default function IntakePage() {
                     <Typography>
                       Public health requirements and recommended precautions
                       related to COVID-19 may be updated over time. Hope House
-                      reserves the right to implement reasonable health and
-                      safety measures as needed to protect clients, staff,
+                      Guthrie reserves the right to implement reasonable health
+                      and safety measures as needed to protect clients, staff,
                       volunteers, and visitors.
                     </Typography>
 
@@ -4406,6 +4433,1146 @@ export default function IntakePage() {
                         sx={{ mt: 2, width: 220, maxWidth: "100%" }}
                       />
                     </Box>
+                  </Box>
+                </Paper>
+              )}
+
+              {/* Client Handbook */}
+              {activeIntakeSection === "client-handbook" && (
+                <Paper sx={{ p: 3, mt: 3 }}>
+                  <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                    Client Handbook
+                  </Typography>
+
+                  <Box
+                    sx={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(3, 1fr)",
+                      gap: 1.5,
+                      mt: 2,
+                    }}
+                  >
+                    {[
+                      ["getting-started", "Getting Started"],
+                      ["passes-conduct", "Passes & House Conduct"],
+                      ["responsibilities", "Responsibilities & Daily Life"],
+                      ["community-rules", "Personal & Community Rules"],
+                      ["safety", "Dress, Transportation & Safety"],
+                      ["counseling", "Counseling"],
+                    ].map(([id, label]) => (
+                      <Button
+                        key={id}
+                        variant={
+                          activeHandbookTab === id ? "contained" : "outlined"
+                        }
+                        onClick={() => setActiveHandbookTab(id ?? "")}
+                      >
+                        {label}
+                      </Button>
+                    ))}
+                  </Box>
+
+                  {/* Getting Started - Client Handbook */}
+                  {activeHandbookTab === "getting-started" && (
+                    <Box sx={{ mt: 3 }}>
+                      <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                        Getting Started
+                      </Typography>
+
+                      {/* 30-Day Rule */}
+                      <Box sx={{ mt: 2 }}>
+                        <Typography sx={{ fontWeight: 600 }}>
+                          1. 30-Day Orientation
+                        </Typography>
+
+                        <Typography sx={{ mt: 0.5 }}>
+                          Clients enrolled in the Life Transformation Program
+                          (LTP) must remain on Hope House Guthrie premises
+                          during their first 30 days. This orientation
+                          requirement applies to LTP clients only.
+                        </Typography>
+                      </Box>
+
+                      {/* Personal Cell Phone Policy */}
+                      <Box sx={{ mt: 2 }}>
+                        <Typography sx={{ fontWeight: 600 }}>
+                          2. Personal Cell Phone Policy
+                        </Typography>
+
+                        <Typography sx={{ mt: 0.5 }}>
+                          LTP clients may not use personal cell phones during
+                          their 30-day orientation. Drug Court participants are
+                          exempt from this rule.
+                        </Typography>
+                      </Box>
+
+                      {/* Client Cost-Sharing Contribution */}
+                      <Box sx={{ mt: 2 }}>
+                        <Typography sx={{ fontWeight: 600 }}>
+                          3. Client Cost-Sharing Contribution
+                        </Typography>
+
+                        <Typography sx={{ mt: 0.5 }}>
+                          Clients who are employed or have a verifiable source
+                          of income at intake are responsible for a $75 monthly
+                          Client Cost-Sharing Contribution. If a client becomes
+                          employed after intake, the contribution begins one
+                          month after their hire date.
+                        </Typography>
+                        <Typography sx={{ mt: 1 }}>
+                          This contribution is for housing only and is not a fee
+                          for services, meals, or program participation.
+                        </Typography>
+
+                        <Typography sx={{ mt: 1 }}>
+                          Payment is due in the exact amount on the 1st of each
+                          month. Payments received after the 1st may be subject
+                          to a $15 late fee, for a total amount due of $90.
+                        </Typography>
+                      </Box>
+
+                      {/* COVID-19 Vaccination */}
+                      <Box sx={{ mt: 2 }}>
+                        <Typography sx={{ fontWeight: 600 }}>
+                          4. COVID-19 Vaccination
+                        </Typography>
+
+                        <Typography sx={{ mt: 0.5 }}>
+                          COVID-19 vaccination is required. Clients who are not
+                          vaccinated before admission will be given a date by
+                          Administration to receive their vaccination.
+                        </Typography>
+
+                        <Typography sx={{ mt: 1 }}>
+                          Free vaccinations with insurance are available at
+                          Wal-Mart and the Logan County Health Department. If
+                          you need insurance, we can get you to the Logan County
+                          Health Department, where they can help you get signed
+                          up.
+                        </Typography>
+                      </Box>
+
+                      {/* Employment Requirement */}
+                      <Box sx={{ mt: 2 }}>
+                        <Typography sx={{ fontWeight: 600 }}>
+                          5. Employment Requirement
+                        </Typography>
+
+                        <Typography sx={{ mt: 0.5 }}>
+                          All eligible clients are required to obtain employment
+                          after completing their 30-day orientation, unless
+                          Administration approves them to begin working sooner.
+                        </Typography>
+
+                        <Typography sx={{ mt: 1 }}>
+                          Clients are responsible for arranging and paying for
+                          their own transportation to and from work.
+                        </Typography>
+                      </Box>
+
+                      {/* Local Employment */}
+                      <Box sx={{ mt: 2 }}>
+                        <Typography sx={{ fontWeight: 600 }}>
+                          6. Local Employment
+                        </Typography>
+
+                        <Typography sx={{ mt: 0.5 }}>
+                          LTP clients may work locally after completing their
+                          30-day orientation with approval from Administration.
+                          Drug Court participants are exempt and able to start
+                          work right away.
+                        </Typography>
+                      </Box>
+
+                      {/* Visitors During Orientation */}
+                      <Box sx={{ mt: 2 }}>
+                        <Typography sx={{ fontWeight: 600 }}>
+                          7. Visitors During Orientation
+                        </Typography>
+
+                        <Typography sx={{ mt: 0.5 }}>
+                          LTP clients may not have outside visitors during their
+                          first 30 days.
+                        </Typography>
+
+                        <Typography sx={{ mt: 1 }}>
+                          Children may visit if an approved visitation request
+                          is submitted at least 24 hours in advance.
+                        </Typography>
+                      </Box>
+
+                      {/* Care Packages */}
+                      <Box sx={{ mt: 2 }}>
+                        <Typography sx={{ fontWeight: 600 }}>
+                          8. Care Packages
+                        </Typography>
+
+                        <Typography sx={{ mt: 0.5 }}>
+                          Clients may receive one care package per week with
+                          prior notification.
+                        </Typography>
+                      </Box>
+                    </Box>
+                  )}
+
+                  {/* Passes & House Conduct */}
+                  {activeHandbookTab === "passes-conduct" && (
+                    <Box sx={{ mt: 3 }}>
+                      <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                        Passes & House Conduct
+                      </Typography>
+
+                      {/* Passes & Visitation */}
+                      <Box sx={{ mt: 2 }}>
+                        <Typography sx={{ fontWeight: 600 }}>
+                          9. Passes & Visitation
+                        </Typography>
+
+                        <Typography sx={{ mt: 0.5 }}>
+                          After completing the 30-day orientation, LTP clients
+                          are eligible for one 12-hour pass each week and one
+                          24-hour pass each month. After six months in the
+                          program, the monthly 24-hour pass may be extended to
+                          48 hours with Administration approval.
+                        </Typography>
+
+                        <Typography sx={{ mt: 1 }}>
+                          TEMP clients must submit a pass request if they will
+                          be away from Hope House Guthrie for more than 12
+                          hours. LTP clients must submit a day pass request if
+                          they will be away for more than 4 hours. Passes must
+                          be approved before leaving.
+                        </Typography>
+                        <Typography sx={{ mt: 1 }}>
+                          Before an LTP client is eligible for a 12-hour or
+                          24-hour pass, they must pass a drug screen and have
+                          completed 8 Administration-approved volunteer hours.
+                          Incomplete or incorrectly completed pass requests will
+                          be denied.
+                        </Typography>
+                      </Box>
+
+                      {/* Outside Food & Kitchen Use */}
+                      <Box sx={{ mt: 2 }}>
+                        <Typography sx={{ fontWeight: 600 }}>
+                          10. Outside Food & Kitchen Use
+                        </Typography>
+
+                        <Typography sx={{ mt: 0.5 }}>
+                          Clients who order outside food must notify the front
+                          desk.
+                        </Typography>
+                        <Typography sx={{ mt: 1 }}>
+                          Clients may use the toaster and microwave for personal
+                          use. Personal cooking in the kitchen is not allowed.
+                          Questions about kitchen use should be directed to a
+                          House Leader or Administration.
+                        </Typography>
+                      </Box>
+
+                      {/* House Cell Phone */}
+                      <Box sx={{ mt: 2 }}>
+                        <Typography sx={{ fontWeight: 600 }}>
+                          11. House Cell Phone
+                        </Typography>
+
+                        <Typography sx={{ mt: 0.5 }}>
+                          Hope House Guthrie cell phone is primarily used for
+                          Hope House Guthrie business and incoming calls.
+                        </Typography>
+                        <Typography sx={{ mt: 1 }}>
+                          Clients in their 30-day orientation may sign out the
+                          house cell phone to make personal calls. Personal
+                          calls are limited to 15 minutes, and the client must
+                          remain in the common area while using the phone.
+                        </Typography>
+                        <Typography sx={{ mt: 1 }}>
+                          The 15-minute limit does not apply to necessary calls
+                          involving benefits, insurance, SNAP, medical care,
+                          employment, legal matters, or other important
+                          services. Clients may remain on these calls as long as
+                          reasonably necessary to complete their business.
+                        </Typography>
+                      </Box>
+
+                      {/* Staff-Only Areas & Client Rooms */}
+                      <Box sx={{ mt: 2 }}>
+                        <Typography sx={{ fontWeight: 600 }}>
+                          12. Staff-Only Areas & Client Rooms
+                        </Typography>
+
+                        <Typography sx={{ mt: 0.5 }}>
+                          Clients may not enter Staff Only areas without
+                          permission from Leadership.
+                        </Typography>
+                        <Typography sx={{ mt: 1 }}>
+                          Clients must receive approval from Leadership before
+                          entering another client's room. This helps Leadership
+                          know where clients are and protects everyone from
+                          misunderstandings involving personal belongings,
+                          missing items, or other concerns.
+                        </Typography>
+                        <Typography sx={{ mt: 1 }}>
+                          When visiting another client's room, the door must
+                          remain open. Clients may not enter another client's
+                          room when that client is not present unless
+                          specifically authorized by Leadership.
+                        </Typography>
+                      </Box>
+
+                      {/* Conduct */}
+                      <Box sx={{ mt: 2 }}>
+                        <Typography sx={{ fontWeight: 600 }}>
+                          13. Conduct
+                        </Typography>
+
+                        <Typography sx={{ mt: 0.5 }}>
+                          Physical or verbal assaults toward clients, staff,
+                          volunteers, or visitors will result in immediate
+                          expulsion from Hope House Guthrie.
+                        </Typography>
+                        <Typography sx={{ mt: 1 }}>
+                          Profanity and vulgar language are not allowed. Clients
+                          are expected to comply with administration requests
+                          and program guidelines. Failure to do so is considered
+                          insubordination.
+                        </Typography>
+                      </Box>
+
+                      {/* Bars & Casinos */}
+                      <Box sx={{ mt: 2 }}>
+                        <Typography sx={{ fontWeight: 600 }}>
+                          14. Bars & Casinos
+                        </Typography>
+
+                        <Typography sx={{ mt: 0.5 }}>
+                          Clients participating in the Emergency/Temporary
+                          Shelter Program or Life Transformation Program are not
+                          permitted to visit bars or casinos.
+                        </Typography>
+                        <Typography sx={{ mt: 1 }}>
+                          This includes entering the premises, remaining
+                          on-site, or participating in activities associated
+                          with bars or casinos.
+                        </Typography>
+                      </Box>
+                    </Box>
+                  )}
+
+                  {/* Responsibilities & Daily Life */}
+                  {activeHandbookTab === "responsibilities" && (
+                    <Box sx={{ mt: 3 }}>
+                      <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                        Responsibilities & Daily Life
+                      </Typography>
+                      {/* Community Service & Housework */}
+                      <Box sx={{ mt: 2 }}>
+                        <Typography sx={{ fontWeight: 600 }}>
+                          15. Community Service & Housework
+                        </Typography>
+
+                        <Typography sx={{ mt: 0.5 }}>
+                          All community service, chores, or housework assigned
+                          to TEMP or LTP clients is mandatory and must be
+                          completed as directed.
+                        </Typography>
+                      </Box>
+
+                      {/* Transportation */}
+                      <Box sx={{ mt: 2 }}>
+                        <Typography sx={{ fontWeight: 600 }}>
+                          16. Transportation
+                        </Typography>
+
+                        <Typography sx={{ mt: 0.5 }}>
+                          Clients are responsible for arranging their own
+                          transportation to appointments, meetings, work, and
+                          other activities.
+                        </Typography>
+
+                        <Typography sx={{ mt: 1 }}>
+                          If transportation assistance from Hope House Guthrie
+                          is needed, the request must be added to the Daily
+                          Activities calendar at least one week in advance.
+                        </Typography>
+
+                        <Typography sx={{ mt: 1 }}>
+                          Eligible clients may also use SoonerRide for
+                          transportation to qualifying appointments. Rides can
+                          be scheduled by phone at 877-404-4500, through the
+                          Modivcare app, or online at
+                          https://member.modivcare.com/en/login.
+                        </Typography>
+                      </Box>
+
+                      {/* SSI/SSDI */}
+                      <Box sx={{ mt: 2 }}>
+                        <Typography sx={{ fontWeight: 600 }}>
+                          17. SSI/SSDI
+                        </Typography>
+
+                        <Typography sx={{ mt: 0.5 }}>
+                          Clients who enter Hope House Guthrie without an active
+                          or pending SSI/SSDI case supported by documentation
+                          may not begin a new SSI/SSDI application in place of
+                          seeking employment.
+                        </Typography>
+                      </Box>
+
+                      {/* Roll Call */}
+                      <Box sx={{ mt: 2 }}>
+                        <Typography sx={{ fontWeight: 600 }}>
+                          18. Roll Call
+                        </Typography>
+
+                        <Typography sx={{ mt: 0.5 }}>
+                          Roll Call is mandatory for all clients.
+                        </Typography>
+                        <Typography sx={{ mt: 1 }}>
+                          Roll Call takes place at 8:00 AM Monday thru Friday
+                          and 10:00 AM Saturday and Sunday.
+                        </Typography>
+                      </Box>
+
+                      {/* Curfew */}
+                      <Box sx={{ mt: 2 }}>
+                        <Typography sx={{ fontWeight: 600 }}>
+                          19. Curfew
+                        </Typography>
+
+                        <Typography sx={{ mt: 0.5 }}>
+                          Curfew is 10:00 PM Sunday through Thursday and 11:00
+                          PM Friday and Saturday.
+                        </Typography>
+                        <Typography sx={{ mt: 1 }}>
+                          A 15-minute warning will be given before curfew. At
+                          curfew, TV must be turned off, lights turned out, and
+                          common areas shut down.
+                        </Typography>
+                      </Box>
+
+                      {/* Laundry */}
+                      <Box sx={{ mt: 2 }}>
+                        <Typography sx={{ fontWeight: 600 }}>
+                          20. Laundry
+                        </Typography>
+
+                        <Typography sx={{ mt: 0.5 }}>
+                          Hope House Guthrie provides each client with two
+                          laundry detergent pods and two dryer sheets per week.
+                        </Typography>
+                        <Typography sx={{ mt: 1 }}>
+                          Laundry schedules are posted on the laundry room doors
+                          and must be followed.
+                        </Typography>
+                        <Typography sx={{ mt: 1 }}>
+                          Clients who have an income are responsible for
+                          purchasing their own basic personal essentials like
+                          laundry detergent, hygiene, toilet paper.
+                        </Typography>
+                      </Box>
+
+                      {/* Room Inspections */}
+                      <Box sx={{ mt: 2 }}>
+                        <Typography sx={{ fontWeight: 600 }}>
+                          21. Room Inspections
+                        </Typography>
+
+                        <Typography sx={{ mt: 0.5 }}>
+                          Administration may conduct random room inspections.
+                        </Typography>
+                        <Typography sx={{ mt: 1 }}>
+                          Client rooms and bathrooms must be kept clean and free
+                          of clutter. This includes dresser drawers, desk, and
+                          other personal storage areas.
+                        </Typography>
+                      </Box>
+
+                      {/* Chain of Command */}
+                      <Box sx={{ mt: 2 }}>
+                        <Typography sx={{ fontWeight: 600 }}>
+                          22. Chain of Command
+                        </Typography>
+
+                        <Typography sx={{ mt: 0.5 }}>
+                          Clients are expected to follow Hope House Guthries
+                          Chain of Command when they have a question, concern,
+                          or problem.
+                        </Typography>
+                        <Typography sx={{ mt: 1 }}>
+                          Begin with your House Leader. If the issue is not
+                          resolved, speak with administration which goes the
+                          Senior House Leader and then Administrator.
+                        </Typography>
+                      </Box>
+                    </Box>
+                  )}
+
+                  {/* Personal & Community Rules */}
+                  {activeHandbookTab === "community-rules" && (
+                    <Box sx={{ mt: 3 }}>
+                      <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                        Personal & Community
+                      </Typography>
+
+                      {/* Pets */}
+                      <Box sx={{ mt: 2 }}>
+                        <Typography sx={{ fontWeight: 600 }}>
+                          23. Pets
+                        </Typography>
+
+                        <Typography sx={{ mt: 0.5 }}>
+                          Hope House Guthrie does not accept pets, including
+                          emotional support animals (ESAs) or service animals.
+                        </Typography>
+                        <Typography sx={{ mt: 1 }}>
+                          Animals that were already residing at Hope House
+                          Guthrie before this policy went into effect may have
+                          been grandfathered in and are not considered an
+                          exception for new admissions.
+                        </Typography>
+                        <Typography sx={{ mt: 1 }}>
+                          This is an administrative decision.
+                        </Typography>
+                      </Box>
+
+                      {/* Loaning Money */}
+                      <Box sx={{ mt: 2 }}>
+                        <Typography sx={{ fontWeight: 600 }}>
+                          24. Loaning Money
+                        </Typography>
+
+                        <Typography sx={{ mt: 0.5 }}>
+                          Clients are strongly discouraged from loaning,
+                          borrowing, or exchanging money with other clients.
+                          Financial arrangements between clients can create
+                          conflicts, misunderstandings, or pressure between
+                          individuals.
+                        </Typography>
+                        <Typography sx={{ mt: 1 }}>
+                          If money or property is given as a genuine gift, it
+                          must be given freely with no expectation of repayment,
+                          favors, services, or anything else in return.
+                        </Typography>
+                        <Typography sx={{ mt: 1 }}>
+                          Hope House Guthrie is not responsible for money or
+                          property loaned, borrowed, exchanged, or given between
+                          clients.
+                        </Typography>
+                        <Typography sx={{ mt: 1 }}>
+                          Cash, checks, money orders and other valuables should
+                          be secured in your assigned locker when available.
+                        </Typography>
+                        <Typography sx={{ mt: 1 }}>
+                          A personal financial budget will also be required
+                          during your first evaluation.
+                        </Typography>
+                      </Box>
+
+                      {/* Client Relationships */}
+                      <Box sx={{ mt: 2 }}>
+                        <Typography sx={{ fontWeight: 600 }}>
+                          25. Client Relationships
+                        </Typography>
+
+                        <Typography sx={{ mt: 0.5 }}>
+                          Neighborhood Hope Dealers, Inc., dba Hope House
+                          Guthrie, does not allow personal or sexual
+                          relationships between clients during the program,
+                          regardless of sex.
+                        </Typography>
+                        <Typography sx={{ mt: 1 }}>
+                          Clients should speak with Administration about the
+                          3-Foot Rule.
+                        </Typography>
+                      </Box>
+
+                      {/* Maintenance Tools */}
+                      <Box sx={{ mt: 2 }}>
+                        <Typography sx={{ fontWeight: 600 }}>
+                          26. Maintenance Tools
+                        </Typography>
+
+                        <Typography sx={{ mt: 0.5 }}>
+                          Clients must receive prior authorization from
+                          Administration or the Maintenance Manager before using
+                          any tools in the maintenance room.
+                        </Typography>
+                      </Box>
+
+                      {/* Super Saturday */}
+                      <Box sx={{ mt: 2 }}>
+                        <Typography sx={{ fontWeight: 600 }}>
+                          27. Super Saturday
+                        </Typography>
+
+                        <Typography sx={{ mt: 0.5 }}>
+                          The first Saturday of every month is Hope House
+                          Guthrie's Super Saturday. No visitation or pass
+                          requests will be approved before 2:00 PM.
+                        </Typography>
+                      </Box>
+
+                      {/* Intake Waivers */}
+                      <Box sx={{ mt: 2 }}>
+                        <Typography sx={{ fontWeight: 600 }}>
+                          28. Intake Waivers
+                        </Typography>
+
+                        <Typography sx={{ mt: 0.5 }}>
+                          Clients must follow all waivers they initialed and
+                          signed during intake.
+                        </Typography>
+                        <Typography sx={{ mt: 0.5 }}>
+                          This is an administrative decision.
+                        </Typography>
+                      </Box>
+
+                      {/* Personal Belongings */}
+                      <Box sx={{ mt: 2 }}>
+                        <Typography sx={{ fontWeight: 600 }}>
+                          29. Personal Belongings
+                        </Typography>
+
+                        <Typography sx={{ mt: 0.5 }}>
+                          Clients may not keep an excessive amount of clothing
+                          or personal belongings at Hope House Guthrie.
+                        </Typography>
+                        <Typography sx={{ mt: 1 }}>
+                          Clients may have no more than 8 changes of personal
+                          clothing, excluding work uniforms.
+                        </Typography>
+                        <Typography sx={{ mt: 1 }}>
+                          If a client's room contains excessive belongings, they
+                          may be required to obtain a storage unit and reduce
+                          the amount of property kept at Hope House Guthrie.
+                        </Typography>
+                      </Box>
+
+                      {/* Children */}
+                      <Box sx={{ mt: 2 }}>
+                        <Typography sx={{ fontWeight: 600 }}>
+                          30. Children
+                        </Typography>
+
+                        <Typography sx={{ mt: 0.5 }}>
+                          Visiting children must be supervised by an adult
+                          family member at all times.
+                        </Typography>
+                        <Typography sx={{ mt: 1 }}>
+                          Children living at Hope House Guthrie must be
+                          supervised by their parent.
+                        </Typography>
+                        <Typography sx={{ mt: 1 }}>
+                          Running inside the facility is prohibited.
+                        </Typography>
+                        <Typography sx={{ mt: 1 }}>
+                          Children must be in bed by 8:30 PM each day.
+                        </Typography>
+                      </Box>
+
+                      {/* Shoes */}
+                      <Box sx={{ mt: 2 }}>
+                        <Typography sx={{ fontWeight: 600 }}>
+                          31. Shoes
+                        </Typography>
+
+                        <Typography sx={{ mt: 0.5 }}>
+                          Shoes must be worn at all times while in the common
+                          areas of the facility.
+                        </Typography>
+                      </Box>
+                    </Box>
+                  )}
+
+                  {/* Dress, Transportation & Safety */}
+                  {activeHandbookTab === "safety" && (
+                    <Box sx={{ mt: 3 }}>
+                      <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                        Dress, Transportation & Safety
+                      </Typography>
+
+                      {/* Dress for Success */}
+                      <Box sx={{ mt: 3 }}>
+                        <Typography sx={{ fontWeight: 600 }}>
+                          32. Dress for Success
+                        </Typography>
+
+                        <Typography sx={{ mt: 0.5 }}>
+                          The Dress for Success policy is in effect Monday
+                          through Friday, from 8:45 AM to 5:00 PM.
+                        </Typography>
+                        <Typography sx={{ mt: 1 }}>
+                          Clothing must be neat, modest, and appropriate.
+                        </Typography>
+                        <Typography sx={{ mt: 1 }}>
+                          Exposed undergarments are not permitted.
+                        </Typography>
+                        <Typography sx={{ mt: 1 }}>
+                          For questions regarding the dress code, please speak
+                          with Administration.
+                        </Typography>
+                      </Box>
+
+                      {/* Transportation Assistance */}
+                      <Box sx={{ mt: 3 }}>
+                        <Typography sx={{ fontWeight: 600 }}>
+                          33. Transportation Assistance
+                        </Typography>
+
+                        <Typography sx={{ mt: 0.5 }}>
+                          Hope House Guthrie may provide transportation
+                          assistance for appointments, employment, and other
+                          program-related activities when available.
+                        </Typography>
+                        <Typography sx={{ mt: 1 }}>
+                          When transportation is provided, clients may be asked
+                          to make a voluntary cost-sharing contribution to help
+                          offset vehicle operating expenses such as fuel and
+                          maintenance.
+                        </Typography>
+                        <Typography sx={{ mt: 1 }}>
+                          This contribution is not a fee for services and is not
+                          required as a condition of participation in housing,
+                          meals, or program services.
+                        </Typography>
+                      </Box>
+
+                      {/* Prohibited Substances */}
+                      <Box sx={{ mt: 3 }}>
+                        <Typography sx={{ fontWeight: 600 }}>
+                          34. Prohibited Substances
+                        </Typography>
+
+                        <Typography sx={{ mt: 0.5 }}>
+                          Medical marijuana cards, CBD products, Kratom,
+                          Suboxone, Subutex, and Methadone are not recognized or
+                          permitted.
+                        </Typography>
+                        <Typography sx={{ mt: 1 }}>
+                          This is an administrative decision.
+                        </Typography>
+                      </Box>
+
+                      {/* Medication Procedures */}
+                      <Box sx={{ mt: 3 }}>
+                        <Typography sx={{ fontWeight: 600 }}>
+                          35. Medication Procedures
+                        </Typography>
+
+                        <Typography sx={{ mt: 0.5 }}>
+                          Clients must complete their medication sheet each time
+                          they receive their medications.
+                        </Typography>
+                        <Typography sx={{ mt: 1 }}>
+                          Active clients may not keep prescription or
+                          over-the-counter medications in their rooms. All
+                          client medications must be stored and handled
+                          according to Hope House Guthrie's medication
+                          procedures.
+                        </Typography>
+                        <Typography sx={{ mt: 1 }}>
+                          Neighborhood Hope Dealers, Inc., dba Hope House
+                          Guthrie, reserves the right to conduct medication
+                          checks whenever deemed necessary.
+                        </Typography>
+                      </Box>
+
+                      {/* Misuse of Products */}
+                      <Box sx={{ mt: 3 }}>
+                        <Typography sx={{ fontWeight: 600 }}>
+                          36. Misuse of Products
+                        </Typography>
+
+                        <Typography sx={{ mt: 0.5 }}>
+                          Anyone caught or suspected of using products for
+                          inhalation or for purposes other than their intended
+                          use will be asked to vacate the premises.
+                        </Typography>
+                        <Typography sx={{ mt: 1 }}>
+                          This policy is intended to promote a safe environment
+                          for everyone.
+                        </Typography>
+                        <Typography sx={{ mt: 1 }}>
+                          All visitors are expected to follow this policy and
+                          use products only as intended.
+                        </Typography>
+                      </Box>
+                    </Box>
+                  )}
+
+                  {/* Counseling */}
+                  {activeHandbookTab === "counseling" && (
+                    <Box sx={{ mt: 3 }}>
+                      <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                        Counseling
+                      </Typography>
+
+                      {/* Counseling */}
+                      <Box sx={{ mt: 3 }}>
+                        <Typography sx={{ fontWeight: 600 }}>
+                          37. Counseling
+                        </Typography>
+
+                        <Typography sx={{ mt: 0.5 }}>
+                          All clients are required to attend all scheduled
+                          counseling sessions.
+                        </Typography>
+                        <Typography sx={{ mt: 1 }}>
+                          All clients are required to complete a minimum of 8
+                          counseling sessions with an approved counselor or
+                          behavioral health provider. Local options include
+                          Beacon of Hope, NorthCare and Logan Community Services
+                          (LCS), but clients may use another provider with
+                          approval.
+                        </Typography>
+                      </Box>
+
+                      {/* Client Acknowledgment */}
+                      <Box sx={{ mt: 3 }}>
+                        <Typography sx={{ fontWeight: 600 }}>
+                          Client Acknowledgment
+                        </Typography>
+
+                        <Typography sx={{ mt: 0.5 }}>
+                          I acknowledge that I have received a copy of the
+                          Neighborhood Hope Dealers, Inc., dba Hope House
+                          Guthrie Client Handbook & Program Guidelines.
+                        </Typography>
+                        <Typography sx={{ mt: 1 }}>
+                          I have read, or have had these guidelines explained to
+                          me, and I understand that I am responsible for
+                          following all program rules, policies, and
+                          expectations.
+                        </Typography>
+                        <Typography sx={{ mt: 1 }}>
+                          I understand that failure to comply with these
+                          guidelines may result in disciplinary action, up to
+                          and including discharge from the program.
+                        </Typography>
+                        <Typography sx={{ mt: 1 }}>
+                          I further acknowledge that I have been given the
+                          opportunity to ask questions regarding these
+                          guidelines and that all questions have been answered
+                          to my satisfaction.
+                        </Typography>
+                      </Box>
+                    </Box>
+                  )}
+                </Paper>
+              )}
+
+              {/* Authorizations */}
+              {activeIntakeSection === "authorizations" && (
+                <Paper sx={{ p: 3 }}>
+                  <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                    Authorizations
+                  </Typography>
+
+                  <Box
+                    sx={{
+                      mt: 3,
+                      p: 2,
+                      bgcolor: "#C2E6F6",
+                      borderRadius: 1,
+                    }}
+                  >
+                    <Typography sx={{ fontWeight: 600 }}>
+                      Explain to Client
+                    </Typography>
+
+                    <Typography sx={{ mt: 1 }}>
+                      HMIS/ShareLink is a shared information system used by Hope
+                      House Guthrie and other service organizations to help
+                      coordinate services and keep you from having to provide
+                      the same information over and over.
+                    </Typography>
+
+                    <Typography sx={{ mt: 1 }}>
+                      If you choose Yes, Hope House Guthrie may enter and share
+                      information such as your name, contact information,
+                      employment, housing needs, services you receive, and
+                      certain health or support information with organizations
+                      helping provide services to you.
+                    </Typography>
+
+                    <Typography sx={{ mt: 1 }}>
+                      The purpose is to help organizations understand what
+                      services you need, determine eligibility, and work
+                      together to assist you. Your information is not being made
+                      public.
+                    </Typography>
+
+                    <Typography sx={{ mt: 1 }}>
+                      You may choose Yes or No. Choosing No does not prevent you
+                      from receiving services from Hope House Guthrie. If you
+                      choose Yes, you may later withdraw your authorization in
+                      writing, although that cannot undo information that was
+                      already shared.
+                    </Typography>
+
+                    <Typography sx={{ mt: 1 }}>
+                      The full authorization is below if you would like to
+                      review the details before making your decision.
+                    </Typography>
+                  </Box>
+
+                  <Box sx={{ mt: 3 }}>
+                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                      Authorization for Use or Disclosure of Protected Health
+                      Information
+                    </Typography>
+
+                    <Typography sx={{ mt: 0.5, fontWeight: 600 }}>
+                      HMIS / ShareLink Release of Information
+                    </Typography>
+                  </Box>
+
+                  <Typography sx={{ mt: 2, fontWeight: 600 }}>
+                    Purpose of Sharing
+                  </Typography>
+
+                  <Typography sx={{ mt: 0.5 }}>
+                    This authorization gives Neighborhood Hope Dealers, Inc.,
+                    dba Hope House Guthrie permission to share information
+                    contained in your ShareLink record with organizations using
+                    ShareLink and with other social service agencies that may
+                    assist you.
+                  </Typography>
+
+                  <Typography sx={{ mt: 1 }}>
+                    The purpose of sharing this information is to help determine
+                    services and eligibility, reduce the need to collect the
+                    same information repeatedly, and coordinate the delivery of
+                    services.
+                  </Typography>
+
+                  <Typography sx={{ mt: 2, fontWeight: 600 }}>
+                    Privacy & Your Rights
+                  </Typography>
+
+                  <Typography sx={{ mt: 0.5 }}>
+                    Information disclosed under this authorization may no longer
+                    be protected by certain federal or state privacy laws.
+                    Organizations participating in ShareLink agree to use the
+                    information only for the purpose described in this
+                    authorization.
+                  </Typography>
+
+                  <Typography sx={{ mt: 1 }}>
+                    You have the right to refuse this authorization. Refusing
+                    does not affect whether you can receive services from Hope
+                    House Guthrie or other ShareLink organizations.
+                  </Typography>
+
+                  <Typography sx={{ mt: 1 }}>
+                    You have the right to receive a copy of this authorization.
+                  </Typography>
+
+                  <Typography sx={{ mt: 2, fontWeight: 600 }}>
+                    Authorization Duration & Withdrawal
+                  </Typography>
+
+                  <Typography sx={{ mt: 0.5 }}>
+                    This authorization is valid for three years from the date
+                    you sign it, or until you obtain permanent housing and are
+                    no longer receiving support services, whichever is later.
+                  </Typography>
+
+                  <Typography sx={{ mt: 1 }}>
+                    You may withdraw this authorization at any time by
+                    submitting your request in writing. Withdrawing your
+                    authorization does not affect information that was already
+                    shared before your request was received.
+                  </Typography>
+
+                  <Typography sx={{ mt: 2, fontWeight: 600 }}>
+                    Who May Receive Your Information
+                  </Typography>
+
+                  <Typography sx={{ mt: 0.5 }}>
+                    Information may be shared with employees, contractors,
+                    consultants, and volunteers of organizations participating
+                    in ShareLink, as well as organizations that do not
+                    participate in ShareLink when they are assisting with
+                    services for you.
+                  </Typography>
+
+                  <Typography sx={{ mt: 1 }}>
+                    Additional organizations may become ShareLink participants
+                    in the future. You may request an updated list of
+                    participating organizations.
+                  </Typography>
+
+                  <Typography sx={{ mt: 2, fontWeight: 600 }}>
+                    Information That May Be Included
+                  </Typography>
+
+                  <Typography sx={{ mt: 0.5 }}>
+                    Information shared may include your name, address,
+                    employment, gender, age, and information about assistance or
+                    services you receive, including food, clothing, housing,
+                    financial assistance, medical or mental health conditions,
+                    substance abuse treatment, domestic violence, and other
+                    services received.
+                  </Typography>
+
+                  <Typography sx={{ mt: 1 }}>
+                    Certain substance abuse treatment records are specially
+                    protected under 42 CFR Part 2 and may require a separate,
+                    specific authorization before they can be disclosed.
+                  </Typography>
+
+                  <Typography sx={{ mt: 2, fontWeight: 600 }}>
+                    HMIS / Service Point
+                  </Typography>
+
+                  <Typography sx={{ mt: 0.5 }}>
+                    HMIS / Service Point is a statewide, internet-based shared
+                    management information system used to help coordinate
+                    services.
+                  </Typography>
+
+                  <Typography sx={{ mt: 1 }}>
+                    This authorization also allows your information to be
+                    entered into the HMIS Service Point system. Medical
+                    information will not be shared unless you give
+                    authorization.
+                  </Typography>
+
+                  <Box sx={{ mt: 3 }}>
+                    <Typography sx={{ fontWeight: 600 }}>
+                      Do you authorize the HMIS / ShareLink Release of
+                      Information?
+                    </Typography>
+
+                    <RadioGroup
+                      value={hmisAuthorization}
+                      onChange={(event) =>
+                        setHmisAuthorization(event.target.value)
+                      }
+                      sx={{ mt: 1 }}
+                    >
+                      <FormControlLabel
+                        value="accepted"
+                        control={<Radio />}
+                        label="YES - ACCEPTED"
+                      />
+
+                      <FormControlLabel
+                        value="denied"
+                        control={<Radio />}
+                        label="NO - DENIED"
+                      />
+                    </RadioGroup>
+
+                    <Typography sx={{ fontWeight: 600, mb: 1 }}>
+                      Client Signature
+                    </Typography>
+
+                    <SignatureCanvas
+                      onSignatureChange={setHmisSignature}
+                      width={500}
+                      height={100}
+                      showLabel={false}
+                    />
+                    <Typography sx={{ mt: 2, fontWeight: 600 }}>
+                      Date
+                    </Typography>
+
+                    <TextField
+                      type="date"
+                      value={hmisSignatureDate}
+                      onChange={(event) =>
+                        setHmisSignatureDate(event.target.value)
+                      }
+                      onFocus={() => {
+                        if (!hmisSignatureDate) {
+                          setHmisSignatureDate(
+                            new Date().toLocaleDateString("en-CA"),
+                          );
+                        }
+                      }}
+                      sx={{ mt: 1, width: 220 }}
+                    />
+                  </Box>
+                </Paper>
+              )}
+
+              {/* Final Review */}
+              {activeIntakeSection === "final-review" && (
+                <Paper sx={{ p: 3 }}>
+                  <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                    Final Review
+                  </Typography>
+
+                  <Typography sx={{ mt: 2, fontWeight: 600 }}>
+                    Final Intake Acknowledgment
+                  </Typography>
+
+                  <Typography sx={{ mt: 0.5 }}>
+                    By signing below, you acknowledge that you have received
+                    full clarification of all information contained in this
+                    intake application and agree to comply with its terms and
+                    conditions.
+                  </Typography>
+
+                  <Typography sx={{ mt: 1 }}>
+                    You understand that you may request a copy of your client
+                    file by completing and submitting the required request form
+                    (Form 48 ETA).
+                  </Typography>
+
+                  <Typography sx={{ mt: 2, fontWeight: 600 }}>
+                    Nondiscrimination
+                  </Typography>
+
+                  <Typography sx={{ mt: 0.5 }}>
+                    Neighborhood Hope Dealers, Inc., dba Hope House Guthrie,
+                    does not discriminate on the basis of race, color, religion,
+                    sex, national origin, age, disability, or any other
+                    protected status.
+                  </Typography>
+
+                  <Typography sx={{ mt: 2, fontWeight: 600 }}>
+                    Program Services & Housing Contribution
+                  </Typography>
+
+                  <Typography sx={{ mt: 0.5 }}>
+                    All services provided by Neighborhood Hope Dealers, Inc.,
+                    dba Hope House Guthrie, are provided at no cost to the
+                    client.
+                  </Typography>
+
+                  <Typography sx={{ mt: 1 }}>
+                    Clients may choose to make a voluntary contribution toward
+                    housing expenses. Any housing contribution is voluntary and
+                    is not required as a condition of receiving services.
+                  </Typography>
+                  <Box sx={{ mt: 3 }}>
+                    <Typography sx={{ fontWeight: 600, mt: 1 }}>
+                      Client Signature
+                    </Typography>
+
+                    <SignatureCanvas
+                      onSignatureChange={setFinalClientSignature}
+                      width={500}
+                      height={100}
+                      showLabel={false}
+                    />
+                  </Box>
+
+                  <Box sx={{ mt: 3 }}>
+                    <Typography sx={{ fontWeight: 600, mt: 1 }}>
+                      Administration Signature
+                    </Typography>
+
+                    <SignatureCanvas
+                      onSignatureChange={setFinalAdminSignature}
+                      width={500}
+                      height={100}
+                      showLabel={false}
+                    />
                   </Box>
                 </Paper>
               )}

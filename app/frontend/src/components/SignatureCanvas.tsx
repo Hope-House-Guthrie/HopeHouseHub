@@ -6,6 +6,7 @@ interface SignatureCanvasProps {
   width?: number;
   height?: number;
   disabled?: boolean;
+  showLabel?: boolean;
 }
 
 export default function SignatureCanvas({
@@ -13,6 +14,7 @@ export default function SignatureCanvas({
   width = 400,
   height = 150,
   disabled = false,
+  showLabel = false,
 }: SignatureCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -38,34 +40,39 @@ export default function SignatureCanvas({
   }, [width, height]);
 
   // Helper to get mouse/touch coordinates
-  const getEventCoords = useCallback((e: React.MouseEvent | React.TouchEvent): { x: number; y: number } | null => {
-    if (e.type.startsWith("touch")) {
-      const touch = (e as React.TouchEvent).touches[0];
-      if (!touch) return null;
-      const canvas = canvasRef.current;
-      const rect = canvas?.getBoundingClientRect();
-      if (!canvas || !rect) return null;
-      const scaleX = canvas.width / rect.width;
-      const scaleY = canvas.height / rect.height;
-      if (!canvas || !rect) return null;
-      return {
-        x: (touch.clientX - rect.left) * scaleX,
-        y: (touch.clientY - rect.top) * scaleY,
-      };
-    } else {
-      const mouse = e as React.MouseEvent;
-      const canvas = canvasRef.current;
-      const rect = canvas?.getBoundingClientRect();
-      if (!canvas || !rect) return null;
-      const scaleX = canvas.width / rect.width;
-      const scaleY = canvas.height / rect.height;
-      if (!canvas || !rect) return null;
-      return {
-        x: (mouse.clientX - rect.left) * scaleX,
-        y: (mouse.clientY - rect.top) * scaleY,
-      };
-    }
-  }, []);
+  const getEventCoords = useCallback(
+    (
+      e: React.MouseEvent | React.TouchEvent,
+    ): { x: number; y: number } | null => {
+      if (e.type.startsWith("touch")) {
+        const touch = (e as React.TouchEvent).touches[0];
+        if (!touch) return null;
+        const canvas = canvasRef.current;
+        const rect = canvas?.getBoundingClientRect();
+        if (!canvas || !rect) return null;
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        if (!canvas || !rect) return null;
+        return {
+          x: (touch.clientX - rect.left) * scaleX,
+          y: (touch.clientY - rect.top) * scaleY,
+        };
+      } else {
+        const mouse = e as React.MouseEvent;
+        const canvas = canvasRef.current;
+        const rect = canvas?.getBoundingClientRect();
+        if (!canvas || !rect) return null;
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        if (!canvas || !rect) return null;
+        return {
+          x: (mouse.clientX - rect.left) * scaleX,
+          y: (mouse.clientY - rect.top) * scaleY,
+        };
+      }
+    },
+    [],
+  );
 
   // Handle touch/mouse events for drawing
   const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
@@ -135,9 +142,12 @@ export default function SignatureCanvas({
 
   return (
     <Box sx={{ mb: 2 }}>
-      <Typography variant="body2" gutterBottom>
-        Signature:
-      </Typography>
+      {showLabel && (
+        <Typography variant="body2" gutterBottom>
+          Signature:
+        </Typography>
+      )}
+
       <Box
         sx={{
           border: "2px solid #ccc",
@@ -169,7 +179,10 @@ export default function SignatureCanvas({
         >
           Clear
         </Button>
-        <Typography variant="caption" color={hasSignature ? "success.main" : "text.secondary"}>
+        <Typography
+          variant="caption"
+          color={hasSignature ? "success.main" : "text.secondary"}
+        >
           {hasSignature ? "Signature captured" : "Draw signature above"}
         </Typography>
       </Box>
