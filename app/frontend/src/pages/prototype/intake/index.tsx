@@ -46,6 +46,20 @@ export default function IntakePage() {
   // State / Form Data
   // ---------------------------------------------------------------------------
   const [activeTab, setActiveTab] = useState(0);
+  const [activeDraftId, setActiveDraftId] = useState<number | null>(null);
+
+  const [draftIntakes, setDraftIntakes] = useState<
+    {
+      id: number;
+      clientName: string;
+      intakeDate: string;
+      lastUpdated: string;
+      firstName: string;
+      middleName: string;
+      lastName: string;
+      preferredName: string;
+    }[]
+  >([]);
 
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [firstName, setFirstName] = useState("");
@@ -362,6 +376,58 @@ export default function IntakePage() {
 
       {activeTab === 0 && (
         <>
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: 1,
+              mt: 2,
+            }}
+          >
+            <Button variant="outlined">Start New Intake</Button>
+
+            <Button
+              variant="contained"
+              onClick={() => {
+                const draftData = {
+                  clientName: `${firstName} ${middleName} ${lastName}`
+                    .replace(/\s+/g, " ")
+                    .trim(),
+                  intakeDate,
+                  lastUpdated: new Date().toLocaleString(),
+                  firstName,
+                  middleName,
+                  lastName,
+                  preferredName,
+                };
+
+                if (activeDraftId !== null) {
+                  setDraftIntakes(
+                    draftIntakes.map((draft) =>
+                      draft.id === activeDraftId
+                        ? { ...draft, ...draftData }
+                        : draft,
+                    ),
+                  );
+                } else {
+                  const newDraftId = Date.now();
+
+                  setDraftIntakes([
+                    ...draftIntakes,
+                    {
+                      id: newDraftId,
+                      ...draftData,
+                    },
+                  ]);
+
+                  setActiveDraftId(newDraftId);
+                }
+              }}
+            >
+              Save Draft
+            </Button>
+          </Box>
+
           <Box
             sx={{
               display: "flex",
@@ -5579,6 +5645,50 @@ export default function IntakePage() {
             </Box>
           </Box>
         </>
+      )}
+
+      {activeTab === 1 && (
+        <Paper sx={{ mt: 2, p: 3 }}>
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+            Draft Intakes
+          </Typography>
+
+          {draftIntakes.length === 0 && (
+            <Typography sx={{ mt: 1 }}>No draft intakes.</Typography>
+          )}
+
+          {draftIntakes.map((draft) => (
+            <Paper key={draft.id} variant="outlined" sx={{ mt: 2, p: 3 }}>
+              <Typography sx={{ fontWeight: 600 }}>
+                {draft.clientName || "Unnamed Client"}
+              </Typography>
+
+              <Typography variant="body2">
+                Intake Date: {draft.intakeDate || "Not entered"}
+              </Typography>
+
+              <Typography variant="body2">
+                Last Updated: {draft.lastUpdated}
+              </Typography>
+
+              <Button
+                variant="outlined"
+                sx={{ mt: 2 }}
+                onClick={() => {
+                  setActiveDraftId(draft.id);
+                  setFirstName(draft.firstName);
+                  setMiddleName(draft.middleName);
+                  setLastName(draft.lastName);
+                  setPreferredName(draft.preferredName);
+                  setIntakeDate(draft.intakeDate);
+                  setActiveTab(0);
+                }}
+              >
+                Open Intake
+              </Button>
+            </Paper>
+          ))}
+        </Paper>
       )}
     </Box>
   );
