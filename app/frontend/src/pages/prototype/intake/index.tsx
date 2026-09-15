@@ -260,6 +260,136 @@ export default function IntakePage() {
     }[]
   >([]);
 
+  const startNewIntake = () => {
+    setActiveDraftId(null);
+    setActiveIntakeSection("client-information");
+    setActiveHandbookTab("getting-started");
+    setDateOfBirth("");
+    setFirstName("");
+    setMiddleName("");
+    setLastName("");
+    setPreferredName("");
+    setPhoneNumber("");
+    setIntakeDate("");
+    setSsnFirst("");
+    setSsnMiddle("");
+    setSsnLast("");
+    setVeteranStatus("");
+    setMedicalAllergies("");
+    setNoMedicalAllergies(false);
+    setFoodAllergies("");
+    setNoFoodAllergies(false);
+    setDietaryNeeds([]);
+    setOtherDietaryNeed("");
+    setEmergencyContactName("");
+    setEmergencyContactPhoneNumber("");
+    setEmergencyContactRelationship("");
+    setRoomNumber("");
+    setMedRoomLockerNumber("");
+    setHasMinorChildren("");
+    setMinorChildren([]);
+    setGender("");
+    setRace([]);
+    setEthnicity("");
+    setHousehold("");
+    setDomesticViolence(false);
+    setFosterCare(false);
+    setHumanTrafficking(false);
+    setDomesticViolenceDate("");
+    setCurrentlyFleeing("");
+    setFirstTimeHomeless("");
+    setTotalTimesHomeless("");
+    setPriorLivingSituation("");
+    setPriorLivingStayLength("");
+    setPriorLivingStayUnit("");
+    setHomelessnessStartDate("");
+    setHomelessEpisodesPastThreeYears("");
+    setHomelessMonthsPastThreeYears("");
+    setLastPlaceStayed("");
+    setLastPlaceCity("");
+    setLastPlaceCounty("");
+    setLastPlaceState("");
+    setCurrentlyEmployed("");
+    setEmployerName("");
+    setMonthlyEmploymentIncome("");
+    setHasOtherIncome("");
+    setOtherIncomeSources([]);
+    setOtherIncomeDescription("");
+    setMonthlyOtherIncome("");
+    setHighestEducationCompleted("");
+    setSchoolName("");
+    setSnapBenefits("");
+    setSnapLoadDay("");
+    setSnapAcknowledgmentDate("");
+    setSnapMonthlyAmount("");
+    setSoonerCareBenefits("");
+    setSoonerCarePlan("");
+    setSoonerCareId("");
+    setMedicaidBenefits("");
+    setMedicareBenefits("");
+    setWicBenefits("");
+    setTanfBenefits("");
+    setEmployerInsurance("");
+    setOtherStateHealthInsurance("");
+    setHasSavingsAccount("");
+    setHasCheckingAccount("");
+    setMisdemeanorConviction("");
+    setMisdemeanorDetails("");
+    setFelonyConviction("");
+    setFelonyDetails("");
+    setOnProbation("");
+    setOnParole("");
+    setHasArrestWarrants("");
+    setHasUnpaidTickets("");
+    setChildSupportStatus("");
+    setMonthlyChildSupportAmount("");
+    setOwesLandlordMoney("");
+    setLandlordAmountOwed("");
+    setOwesUtilityMoney("");
+    setUtilityAmountOwed("");
+    setHasEvictionHistory("");
+    setHasPaidStorage("");
+    setHasSubstanceUseConcerns("");
+    setSubstancesUsed([]);
+    setOtherSubstance("");
+    setSubstanceUseDetails("");
+    setCurrentlyReceivingMedicalTreatment("");
+    setMedicalTreatmentDetails("");
+    setHealthSupportNeeds([]);
+    setHealthSupportDetails({});
+    setOtherHealthSupportNeed("");
+    setSocialFinancialSupport([]);
+    setOtherSocialFinancialSupport("");
+    setChildrenInSchoolOrChildcare("");
+    setReligiousSpiritualTraditions("");
+    setChildSupportDhsInitials("");
+    setMedicationResponsibilityInitials("");
+    setVehicleTransportationInitials("");
+    setPossessionsInitials("");
+    setProgramGuidelinesInitials("");
+    setBackgroundTestingSearchInitials("");
+    setInformationSharingInitials("");
+    setFacilityExpectationsInitials("");
+    setVolunteerWaiverInitials("");
+    setConfidentialityAgreementInitials("");
+    setCoEdAccountabilityInitials("");
+    setDressForSuccessInitials("");
+    setNondiscriminationInitials("");
+    setLifeTransformationProgramInitials("");
+    setClientProgram("");
+    setTemporaryShelterProgramInitials("");
+    setCovidVaccinated("");
+    setCovidVaccinationDate("");
+    setCovidVaccinationAppointmentDate("");
+    setCovidVaccinationProof("");
+    setCovidVaccinationProofFile(null);
+    setHmisAuthorization("");
+    setHmisSignature("");
+    setHmisSignatureDate("");
+    setFinalClientSignature("");
+    setFinalAdminSignature("");
+  };
+
   // ---------------------------------------------------------------------------
   // Client Age Calculation (primary client DOB → disabled Age field)
   // ---------------------------------------------------------------------------
@@ -384,7 +514,9 @@ export default function IntakePage() {
               mt: 2,
             }}
           >
-            <Button variant="outlined">Start New Intake</Button>
+            <Button variant="outlined" onClick={startNewIntake}>
+              Start New Intake
+            </Button>
 
             <Button
               variant="contained"
@@ -422,6 +554,8 @@ export default function IntakePage() {
 
                   setActiveDraftId(newDraftId);
                 }
+
+                startNewIntake();
               }}
             >
               Save Draft
