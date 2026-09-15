@@ -41,6 +41,153 @@ const intakeSections = [
   { id: "final-review", label: "Final Review" },
 ];
 
+type IntakeDraft = {
+  id: number;
+  clientName: string;
+  intakeDate: string;
+  lastUpdated: string;
+  formData: {
+    firstName: string;
+    middleName: string;
+    lastName: string;
+    preferredName: string;
+    dateOfBirth: string;
+    phoneNumber: string;
+    ssnFirst: string;
+    ssnMiddle: string;
+    ssnLast: string;
+    veteranStatus: string;
+    medicalAllergies: string;
+    noMedicalAllergies: boolean;
+    foodAllergies: string;
+    noFoodAllergies: boolean;
+    dietaryNeeds: string[];
+    otherDietaryNeed: string;
+    emergencyContactName: string;
+    emergencyContactPhoneNumber: string;
+    emergencyContactRelationship: string;
+    roomNumber: string;
+    medRoomLockerNumber: string;
+    hasMinorChildren: string;
+    minorChildren: {
+      firstName: string;
+      lastName: string;
+      dateOfBirth: string;
+      ssnFirst: string;
+      ssnMiddle: string;
+      ssnLast: string;
+    }[];
+    gender: string;
+    race: string[];
+    ethnicity: string;
+    household: string;
+    domesticViolence: boolean;
+    fosterCare: boolean;
+    humanTrafficking: boolean;
+    domesticViolenceDate: string;
+    currentlyFleeing: string;
+    firstTimeHomeless: string;
+    totalTimesHomeless: string;
+    priorLivingSituation: string;
+    priorLivingStayLength: string;
+    priorLivingStayUnit: string;
+    homelessnessStartDate: string;
+    homelessEpisodesPastThreeYears: string;
+    homelessMonthsPastThreeYears: string;
+    lastPlaceStayed: string;
+    lastPlaceCity: string;
+    lastPlaceCounty: string;
+    lastPlaceState: string;
+
+    currentlyEmployed: string;
+    employerName: string;
+    monthlyEmploymentIncome: string;
+    hasOtherIncome: string;
+    otherIncomeSources: string[];
+    otherIncomeDescription: string;
+    monthlyOtherIncome: string;
+    highestEducationCompleted: string;
+    schoolName: string;
+
+    snapBenefits: string;
+    snapLoadDay: string;
+    snapAcknowledgmentDate: string;
+    snapMonthlyAmount: string;
+    soonerCareBenefits: string;
+    soonerCarePlan: string;
+    soonerCareId: string;
+    medicaidBenefits: string;
+    medicareBenefits: string;
+    wicBenefits: string;
+    tanfBenefits: string;
+    employerInsurance: string;
+    otherStateHealthInsurance: string;
+    hasSavingsAccount: string;
+    hasCheckingAccount: string;
+
+    misdemeanorConviction: string;
+    misdemeanorDetails: string;
+    felonyConviction: string;
+    felonyDetails: string;
+    onProbation: string;
+    onParole: string;
+    hasArrestWarrants: string;
+    hasUnpaidTickets: string;
+    childSupportStatus: string;
+    monthlyChildSupportAmount: string;
+    owesLandlordMoney: string;
+    landlordAmountOwed: string;
+    owesUtilityMoney: string;
+    utilityAmountOwed: string;
+    hasEvictionHistory: string;
+    hasPaidStorage: string;
+
+    hasSubstanceUseConcerns: string;
+    substancesUsed: string[];
+    otherSubstance: string;
+    substanceUseDetails: string;
+    currentlyReceivingMedicalTreatment: string;
+    medicalTreatmentDetails: string;
+    healthSupportNeeds: string[];
+    otherHealthSupportNeed: string;
+    healthSupportDetails: Record<string, string>;
+    socialFinancialSupport: string[];
+    otherSocialFinancialSupport: string;
+    childrenInSchoolOrChildcare: string;
+    religiousSpiritualTraditions: string;
+
+    childSupportDhsInitials: string;
+    medicationResponsibilityInitials: string;
+    vehicleTransportationInitials: string;
+    possessionsInitials: string;
+    programGuidelinesInitials: string;
+    backgroundTestingSearchInitials: string;
+    informationSharingInitials: string;
+    facilityExpectationsInitials: string;
+    volunteerWaiverInitials: string;
+    confidentialityAgreementInitials: string;
+    coEdAccountabilityInitials: string;
+    dressForSuccessInitials: string;
+    nondiscriminationInitials: string;
+    lifeTransformationProgramInitials: string;
+
+    clientProgram: string;
+    temporaryShelterProgramInitials: string;
+
+    covidVaccinated: string;
+    covidVaccinationDate: string;
+    covidVaccinationAppointmentDate: string;
+    covidVaccinationProof: string;
+    covidVaccinationProofFile: File | null;
+
+    hmisAuthorization: string;
+    hmisSignature: string;
+    hmisSignatureDate: string;
+    finalClientSignature: string;
+    finalAdminSignature: string;
+  };
+};
+
 export default function IntakePage() {
   // ---------------------------------------------------------------------------
   // State / Form Data
@@ -48,18 +195,7 @@ export default function IntakePage() {
   const [activeTab, setActiveTab] = useState(0);
   const [activeDraftId, setActiveDraftId] = useState<number | null>(null);
 
-  const [draftIntakes, setDraftIntakes] = useState<
-    {
-      id: number;
-      clientName: string;
-      intakeDate: string;
-      lastUpdated: string;
-      firstName: string;
-      middleName: string;
-      lastName: string;
-      preferredName: string;
-    }[]
-  >([]);
+  const [draftIntakes, setDraftIntakes] = useState<IntakeDraft[]>([]);
 
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [firstName, setFirstName] = useState("");
@@ -527,10 +663,139 @@ export default function IntakePage() {
                     .trim(),
                   intakeDate,
                   lastUpdated: new Date().toLocaleString(),
-                  firstName,
-                  middleName,
-                  lastName,
-                  preferredName,
+                  formData: {
+                    firstName,
+                    middleName,
+                    lastName,
+                    preferredName,
+                    dateOfBirth,
+                    phoneNumber,
+                    ssnFirst,
+                    ssnMiddle,
+                    ssnLast,
+                    veteranStatus,
+                    medicalAllergies,
+                    noMedicalAllergies,
+                    foodAllergies,
+                    noFoodAllergies,
+                    dietaryNeeds,
+                    otherDietaryNeed,
+                    emergencyContactName,
+                    emergencyContactPhoneNumber,
+                    emergencyContactRelationship,
+                    roomNumber,
+                    medRoomLockerNumber,
+                    hasMinorChildren,
+                    minorChildren,
+                    gender,
+                    race,
+                    ethnicity,
+                    household,
+                    domesticViolence,
+                    fosterCare,
+                    humanTrafficking,
+                    domesticViolenceDate,
+                    currentlyFleeing,
+                    firstTimeHomeless,
+                    totalTimesHomeless,
+                    priorLivingSituation,
+                    priorLivingStayLength,
+                    priorLivingStayUnit,
+                    homelessnessStartDate,
+                    homelessEpisodesPastThreeYears,
+                    homelessMonthsPastThreeYears,
+                    lastPlaceStayed,
+                    lastPlaceCity,
+                    lastPlaceCounty,
+                    lastPlaceState,
+
+                    currentlyEmployed,
+                    employerName,
+                    monthlyEmploymentIncome,
+                    hasOtherIncome,
+                    otherIncomeSources,
+                    otherIncomeDescription,
+                    monthlyOtherIncome,
+                    highestEducationCompleted,
+                    schoolName,
+
+                    snapBenefits,
+                    snapLoadDay,
+                    snapAcknowledgmentDate,
+                    snapMonthlyAmount,
+                    soonerCareBenefits,
+                    soonerCarePlan,
+                    soonerCareId,
+                    medicaidBenefits,
+                    medicareBenefits,
+                    wicBenefits,
+                    tanfBenefits,
+                    employerInsurance,
+                    otherStateHealthInsurance,
+                    hasSavingsAccount,
+                    hasCheckingAccount,
+
+                    misdemeanorConviction,
+                    misdemeanorDetails,
+                    felonyConviction,
+                    felonyDetails,
+                    onProbation,
+                    onParole,
+                    hasArrestWarrants,
+                    hasUnpaidTickets,
+                    childSupportStatus,
+                    monthlyChildSupportAmount,
+                    owesLandlordMoney,
+                    landlordAmountOwed,
+                    owesUtilityMoney,
+                    utilityAmountOwed,
+                    hasEvictionHistory,
+                    hasPaidStorage,
+
+                    hasSubstanceUseConcerns,
+                    substancesUsed,
+                    otherSubstance,
+                    substanceUseDetails,
+                    currentlyReceivingMedicalTreatment,
+                    medicalTreatmentDetails,
+                    healthSupportNeeds,
+                    otherHealthSupportNeed,
+                    healthSupportDetails,
+                    socialFinancialSupport,
+                    otherSocialFinancialSupport,
+                    childrenInSchoolOrChildcare,
+                    religiousSpiritualTraditions,
+
+                    childSupportDhsInitials,
+                    medicationResponsibilityInitials,
+                    vehicleTransportationInitials,
+                    possessionsInitials,
+                    programGuidelinesInitials,
+                    backgroundTestingSearchInitials,
+                    informationSharingInitials,
+                    facilityExpectationsInitials,
+                    volunteerWaiverInitials,
+                    confidentialityAgreementInitials,
+                    coEdAccountabilityInitials,
+                    dressForSuccessInitials,
+                    nondiscriminationInitials,
+                    lifeTransformationProgramInitials,
+
+                    clientProgram,
+                    temporaryShelterProgramInitials,
+
+                    covidVaccinated,
+                    covidVaccinationDate,
+                    covidVaccinationAppointmentDate,
+                    covidVaccinationProof,
+                    covidVaccinationProofFile,
+
+                    hmisAuthorization,
+                    hmisSignature,
+                    hmisSignatureDate,
+                    finalClientSignature,
+                    finalAdminSignature,
+                  },
                 };
 
                 if (activeDraftId !== null) {
@@ -5810,10 +6075,213 @@ export default function IntakePage() {
                 sx={{ mt: 2 }}
                 onClick={() => {
                   setActiveDraftId(draft.id);
-                  setFirstName(draft.firstName);
-                  setMiddleName(draft.middleName);
-                  setLastName(draft.lastName);
-                  setPreferredName(draft.preferredName);
+                  setFirstName(draft.formData.firstName);
+                  setMiddleName(draft.formData.middleName);
+                  setLastName(draft.formData.lastName);
+                  setPreferredName(draft.formData.preferredName);
+                  setDateOfBirth(draft.formData.dateOfBirth);
+                  setPhoneNumber(draft.formData.phoneNumber);
+                  setSsnFirst(draft.formData.ssnFirst);
+                  setSsnMiddle(draft.formData.ssnMiddle);
+                  setSsnLast(draft.formData.ssnLast);
+                  setVeteranStatus(draft.formData.veteranStatus);
+                  setMedicalAllergies(draft.formData.medicalAllergies);
+                  setNoMedicalAllergies(draft.formData.noMedicalAllergies);
+                  setFoodAllergies(draft.formData.foodAllergies);
+                  setNoFoodAllergies(draft.formData.noFoodAllergies);
+                  setDietaryNeeds(draft.formData.dietaryNeeds);
+                  setOtherDietaryNeed(draft.formData.otherDietaryNeed);
+                  setEmergencyContactName(draft.formData.emergencyContactName);
+                  setEmergencyContactPhoneNumber(
+                    draft.formData.emergencyContactPhoneNumber,
+                  );
+                  setEmergencyContactRelationship(
+                    draft.formData.emergencyContactRelationship,
+                  );
+                  setRoomNumber(draft.formData.roomNumber);
+                  setMedRoomLockerNumber(draft.formData.medRoomLockerNumber);
+                  setHasMinorChildren(draft.formData.hasMinorChildren);
+                  setMinorChildren(draft.formData.minorChildren);
+                  setGender(draft.formData.gender);
+                  setRace(draft.formData.race);
+                  setEthnicity(draft.formData.ethnicity);
+                  setHousehold(draft.formData.household);
+                  setDomesticViolence(draft.formData.domesticViolence);
+                  setFosterCare(draft.formData.fosterCare);
+                  setHumanTrafficking(draft.formData.humanTrafficking);
+                  setDomesticViolenceDate(draft.formData.domesticViolenceDate);
+                  setCurrentlyFleeing(draft.formData.currentlyFleeing);
+                  setFirstTimeHomeless(draft.formData.firstTimeHomeless);
+                  setTotalTimesHomeless(draft.formData.totalTimesHomeless);
+                  setPriorLivingSituation(draft.formData.priorLivingSituation);
+                  setPriorLivingStayLength(
+                    draft.formData.priorLivingStayLength,
+                  );
+                  setPriorLivingStayUnit(draft.formData.priorLivingStayUnit);
+                  setHomelessnessStartDate(
+                    draft.formData.homelessnessStartDate,
+                  );
+                  setHomelessEpisodesPastThreeYears(
+                    draft.formData.homelessEpisodesPastThreeYears,
+                  );
+                  setHomelessMonthsPastThreeYears(
+                    draft.formData.homelessMonthsPastThreeYears,
+                  );
+                  setLastPlaceStayed(draft.formData.lastPlaceStayed);
+                  setLastPlaceCity(draft.formData.lastPlaceCity);
+                  setLastPlaceCounty(draft.formData.lastPlaceCounty);
+                  setLastPlaceState(draft.formData.lastPlaceState);
+
+                  setCurrentlyEmployed(draft.formData.currentlyEmployed);
+                  setEmployerName(draft.formData.employerName);
+                  setMonthlyEmploymentIncome(
+                    draft.formData.monthlyEmploymentIncome,
+                  );
+                  setHasOtherIncome(draft.formData.hasOtherIncome);
+                  setOtherIncomeSources(draft.formData.otherIncomeSources);
+                  setOtherIncomeDescription(
+                    draft.formData.otherIncomeDescription,
+                  );
+                  setMonthlyOtherIncome(draft.formData.monthlyOtherIncome);
+                  setHighestEducationCompleted(
+                    draft.formData.highestEducationCompleted,
+                  );
+                  setSchoolName(draft.formData.schoolName);
+
+                  setSnapBenefits(draft.formData.snapBenefits);
+                  setSnapLoadDay(draft.formData.snapLoadDay);
+                  setSnapAcknowledgmentDate(
+                    draft.formData.snapAcknowledgmentDate,
+                  );
+                  setSnapMonthlyAmount(draft.formData.snapMonthlyAmount);
+                  setSoonerCareBenefits(draft.formData.soonerCareBenefits);
+                  setSoonerCarePlan(draft.formData.soonerCarePlan);
+                  setSoonerCareId(draft.formData.soonerCareId);
+                  setMedicaidBenefits(draft.formData.medicaidBenefits);
+                  setMedicareBenefits(draft.formData.medicareBenefits);
+                  setWicBenefits(draft.formData.wicBenefits);
+                  setTanfBenefits(draft.formData.tanfBenefits);
+                  setEmployerInsurance(draft.formData.employerInsurance);
+                  setOtherStateHealthInsurance(
+                    draft.formData.otherStateHealthInsurance,
+                  );
+                  setHasSavingsAccount(draft.formData.hasSavingsAccount);
+                  setHasCheckingAccount(draft.formData.hasCheckingAccount);
+
+                  setMisdemeanorConviction(
+                    draft.formData.misdemeanorConviction,
+                  );
+                  setMisdemeanorDetails(draft.formData.misdemeanorDetails);
+                  setFelonyConviction(draft.formData.felonyConviction);
+                  setFelonyDetails(draft.formData.felonyDetails);
+                  setOnProbation(draft.formData.onProbation);
+                  setOnParole(draft.formData.onParole);
+                  setHasArrestWarrants(draft.formData.hasArrestWarrants);
+                  setHasUnpaidTickets(draft.formData.hasUnpaidTickets);
+                  setChildSupportStatus(draft.formData.childSupportStatus);
+                  setMonthlyChildSupportAmount(
+                    draft.formData.monthlyChildSupportAmount,
+                  );
+                  setOwesLandlordMoney(draft.formData.owesLandlordMoney);
+                  setLandlordAmountOwed(draft.formData.landlordAmountOwed);
+                  setOwesUtilityMoney(draft.formData.owesUtilityMoney);
+                  setUtilityAmountOwed(draft.formData.utilityAmountOwed);
+                  setHasEvictionHistory(draft.formData.hasEvictionHistory);
+                  setHasPaidStorage(draft.formData.hasPaidStorage);
+
+                  setHasSubstanceUseConcerns(
+                    draft.formData.hasSubstanceUseConcerns,
+                  );
+                  setSubstancesUsed(draft.formData.substancesUsed);
+                  setOtherSubstance(draft.formData.otherSubstance);
+                  setSubstanceUseDetails(draft.formData.substanceUseDetails);
+                  setCurrentlyReceivingMedicalTreatment(
+                    draft.formData.currentlyReceivingMedicalTreatment,
+                  );
+                  setMedicalTreatmentDetails(
+                    draft.formData.medicalTreatmentDetails,
+                  );
+                  setHealthSupportNeeds(draft.formData.healthSupportNeeds);
+                  setOtherHealthSupportNeed(
+                    draft.formData.otherHealthSupportNeed,
+                  );
+                  setHealthSupportDetails(draft.formData.healthSupportDetails);
+                  setSocialFinancialSupport(
+                    draft.formData.socialFinancialSupport,
+                  );
+                  setOtherSocialFinancialSupport(
+                    draft.formData.otherSocialFinancialSupport,
+                  );
+                  setChildrenInSchoolOrChildcare(
+                    draft.formData.childrenInSchoolOrChildcare,
+                  );
+                  setReligiousSpiritualTraditions(
+                    draft.formData.religiousSpiritualTraditions,
+                  );
+
+                  setChildSupportDhsInitials(
+                    draft.formData.childSupportDhsInitials,
+                  );
+                  setMedicationResponsibilityInitials(
+                    draft.formData.medicationResponsibilityInitials,
+                  );
+                  setVehicleTransportationInitials(
+                    draft.formData.vehicleTransportationInitials,
+                  );
+                  setPossessionsInitials(draft.formData.possessionsInitials);
+                  setProgramGuidelinesInitials(
+                    draft.formData.programGuidelinesInitials,
+                  );
+                  setBackgroundTestingSearchInitials(
+                    draft.formData.backgroundTestingSearchInitials,
+                  );
+                  setInformationSharingInitials(
+                    draft.formData.informationSharingInitials,
+                  );
+                  setFacilityExpectationsInitials(
+                    draft.formData.facilityExpectationsInitials,
+                  );
+                  setVolunteerWaiverInitials(
+                    draft.formData.volunteerWaiverInitials,
+                  );
+                  setConfidentialityAgreementInitials(
+                    draft.formData.confidentialityAgreementInitials,
+                  );
+                  setCoEdAccountabilityInitials(
+                    draft.formData.coEdAccountabilityInitials,
+                  );
+                  setDressForSuccessInitials(
+                    draft.formData.dressForSuccessInitials,
+                  );
+                  setNondiscriminationInitials(
+                    draft.formData.nondiscriminationInitials,
+                  );
+                  setLifeTransformationProgramInitials(
+                    draft.formData.lifeTransformationProgramInitials,
+                  );
+
+                  setClientProgram(draft.formData.clientProgram);
+                  setTemporaryShelterProgramInitials(
+                    draft.formData.temporaryShelterProgramInitials,
+                  );
+
+                  setCovidVaccinated(draft.formData.covidVaccinated);
+                  setCovidVaccinationDate(draft.formData.covidVaccinationDate);
+                  setCovidVaccinationAppointmentDate(
+                    draft.formData.covidVaccinationAppointmentDate,
+                  );
+                  setCovidVaccinationProof(
+                    draft.formData.covidVaccinationProof,
+                  );
+                  setCovidVaccinationProofFile(
+                    draft.formData.covidVaccinationProofFile,
+                  );
+
+                  setHmisAuthorization(draft.formData.hmisAuthorization);
+                  setHmisSignature(draft.formData.hmisSignature);
+                  setHmisSignatureDate(draft.formData.hmisSignatureDate);
+                  setFinalClientSignature(draft.formData.finalClientSignature);
+                  setFinalAdminSignature(draft.formData.finalAdminSignature);
                   setIntakeDate(draft.intakeDate);
                   setActiveTab(0);
                 }}
