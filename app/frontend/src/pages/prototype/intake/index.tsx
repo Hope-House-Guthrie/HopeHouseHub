@@ -68,6 +68,9 @@ type IntakeDraft = {
     emergencyContactRelationship: string;
     roomNumber: string;
     medRoomLockerNumber: string;
+    outDate: string;
+    hopeHouseNumber: string;
+    hmisNumber: string;
     hasMinorChildren: string;
     minorChildren: {
       firstName: string;
@@ -188,48 +191,75 @@ type IntakeDraft = {
   };
 };
 
+type CompletedIntake = IntakeDraft & {
+  hopeHouseNumber: string;
+  completedAt: string;
+  reviewStatus: "Pending Review" | "Review Complete";
+};
+
 export default function IntakePage() {
   // ---------------------------------------------------------------------------
-  // State / Form Data
+  // Workflow / Draft State
   // ---------------------------------------------------------------------------
   const [activeTab, setActiveTab] = useState(0);
   const [activeDraftId, setActiveDraftId] = useState<number | null>(null);
-
   const [draftIntakes, setDraftIntakes] = useState<IntakeDraft[]>([]);
+  const [activeCompletedIntakeId, setActiveCompletedIntakeId] = useState<
+    number | null
+  >(null);
+  const [completedIntakes, setCompletedIntakes] = useState<CompletedIntake[]>(
+    [],
+  );
+  const [activeIntakeSection, setActiveIntakeSection] =
+    useState("client-information");
+  const [activeHandbookTab, setActiveHandbookTab] = useState("getting-started");
 
-  const [dateOfBirth, setDateOfBirth] = useState("");
+  // ---------------------------------------------------------------------------
+  // Client Information
+  // ---------------------------------------------------------------------------
   const [firstName, setFirstName] = useState("");
   const [middleName, setMiddleName] = useState("");
   const [lastName, setLastName] = useState("");
   const [preferredName, setPreferredName] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [intakeDate, setIntakeDate] = useState("");
-
+  const [outDate, setOutDate] = useState("");
+  const [hopeHouseNumber, setHopeHouseNumber] = useState("");
+  const [hmisNumber, setHmisNumber] = useState("");
   const [ssnFirst, setSsnFirst] = useState("");
   const [ssnMiddle, setSsnMiddle] = useState("");
   const [ssnLast, setSsnLast] = useState("");
-
   const [veteranStatus, setVeteranStatus] = useState("");
-
   const [medicalAllergies, setMedicalAllergies] = useState("");
   const [noMedicalAllergies, setNoMedicalAllergies] = useState(false);
-
   const [foodAllergies, setFoodAllergies] = useState("");
   const [noFoodAllergies, setNoFoodAllergies] = useState(false);
-
   const [dietaryNeeds, setDietaryNeeds] = useState<string[]>([]);
   const [otherDietaryNeed, setOtherDietaryNeed] = useState("");
-
   const [emergencyContactName, setEmergencyContactName] = useState("");
   const [emergencyContactPhoneNumber, setEmergencyContactPhoneNumber] =
     useState("");
   const [emergencyContactRelationship, setEmergencyContactRelationship] =
     useState("");
-
   const [roomNumber, setRoomNumber] = useState("");
   const [medRoomLockerNumber, setMedRoomLockerNumber] = useState("");
 
+  // ---------------------------------------------------------------------------
+  // Household / Family / HMIS Demographics
+  // ---------------------------------------------------------------------------
+
   const [hasMinorChildren, setHasMinorChildren] = useState("");
+  const [minorChildren, setMinorChildren] = useState<
+    {
+      firstName: string;
+      lastName: string;
+      dateOfBirth: string;
+      ssnFirst: string;
+      ssnMiddle: string;
+      ssnLast: string;
+    }[]
+  >([]);
   const [gender, setGender] = useState("");
   const [race, setRace] = useState<string[]>([]);
   const [ethnicity, setEthnicity] = useState("");
@@ -237,9 +267,13 @@ export default function IntakePage() {
   const [domesticViolence, setDomesticViolence] = useState(false);
   const [fosterCare, setFosterCare] = useState(false);
   const [humanTrafficking, setHumanTrafficking] = useState(false);
-
   const [domesticViolenceDate, setDomesticViolenceDate] = useState("");
   const [currentlyFleeing, setCurrentlyFleeing] = useState("");
+
+  // ---------------------------------------------------------------------------
+  // Homelessness
+  // ---------------------------------------------------------------------------
+
   const [firstTimeHomeless, setFirstTimeHomeless] = useState("");
   const [totalTimesHomeless, setTotalTimesHomeless] = useState("");
   const [priorLivingSituation, setPriorLivingSituation] = useState("");
@@ -254,27 +288,33 @@ export default function IntakePage() {
   const [lastPlaceCity, setLastPlaceCity] = useState("");
   const [lastPlaceCounty, setLastPlaceCounty] = useState("");
   const [lastPlaceState, setLastPlaceState] = useState("");
+
+  // ---------------------------------------------------------------------------
+  // Employment / Income / Education
+  // ---------------------------------------------------------------------------
+
   const [currentlyEmployed, setCurrentlyEmployed] = useState("");
   const [employerName, setEmployerName] = useState("");
   const [monthlyEmploymentIncome, setMonthlyEmploymentIncome] = useState("");
-
   const [hasOtherIncome, setHasOtherIncome] = useState("");
   const [otherIncomeSources, setOtherIncomeSources] = useState<string[]>([]);
   const [otherIncomeDescription, setOtherIncomeDescription] = useState("");
   const [monthlyOtherIncome, setMonthlyOtherIncome] = useState("");
-
   const [highestEducationCompleted, setHighestEducationCompleted] =
     useState("");
   const [schoolName, setSchoolName] = useState("");
+
+  // ---------------------------------------------------------------------------
+  // Benefits / Insurance
+  // ---------------------------------------------------------------------------
+
   const [snapBenefits, setSnapBenefits] = useState("");
   const [snapLoadDay, setSnapLoadDay] = useState("");
   const [snapAcknowledgmentDate, setSnapAcknowledgmentDate] = useState("");
   const [snapMonthlyAmount, setSnapMonthlyAmount] = useState("");
-
   const [soonerCareBenefits, setSoonerCareBenefits] = useState("");
   const [soonerCarePlan, setSoonerCarePlan] = useState("");
   const [soonerCareId, setSoonerCareId] = useState("");
-
   const [medicaidBenefits, setMedicaidBenefits] = useState("");
   const [medicareBenefits, setMedicareBenefits] = useState("");
   const [wicBenefits, setWicBenefits] = useState("");
@@ -282,32 +322,35 @@ export default function IntakePage() {
   const [employerInsurance, setEmployerInsurance] = useState("");
   const [otherStateHealthInsurance, setOtherStateHealthInsurance] =
     useState("");
-
   const [hasSavingsAccount, setHasSavingsAccount] = useState("");
   const [hasCheckingAccount, setHasCheckingAccount] = useState("");
+
+  // ---------------------------------------------------------------------------
+  // Legal / Housing
+  // ---------------------------------------------------------------------------
+
   const [misdemeanorConviction, setMisdemeanorConviction] = useState("");
   const [misdemeanorDetails, setMisdemeanorDetails] = useState("");
-
   const [felonyConviction, setFelonyConviction] = useState("");
   const [felonyDetails, setFelonyDetails] = useState("");
-
   const [onProbation, setOnProbation] = useState("");
   const [onParole, setOnParole] = useState("");
   const [hasArrestWarrants, setHasArrestWarrants] = useState("");
   const [hasUnpaidTickets, setHasUnpaidTickets] = useState("");
-
   const [childSupportStatus, setChildSupportStatus] = useState("");
   const [monthlyChildSupportAmount, setMonthlyChildSupportAmount] =
     useState("");
-
   const [owesLandlordMoney, setOwesLandlordMoney] = useState("");
   const [landlordAmountOwed, setLandlordAmountOwed] = useState("");
-
   const [owesUtilityMoney, setOwesUtilityMoney] = useState("");
   const [utilityAmountOwed, setUtilityAmountOwed] = useState("");
-
   const [hasEvictionHistory, setHasEvictionHistory] = useState("");
   const [hasPaidStorage, setHasPaidStorage] = useState("");
+
+  // ---------------------------------------------------------------------------
+  // Health / Support
+  // ---------------------------------------------------------------------------
+
   const [hasSubstanceUseConcerns, setHasSubstanceUseConcerns] = useState("");
   const [substancesUsed, setSubstancesUsed] = useState<string[]>([]);
   const [otherSubstance, setOtherSubstance] = useState("");
@@ -331,28 +374,27 @@ export default function IntakePage() {
     useState("");
   const [religiousSpiritualTraditions, setReligiousSpiritualTraditions] =
     useState("");
+
+  // ---------------------------------------------------------------------------
+  // Agreements / Waivers
+  // ---------------------------------------------------------------------------
+
   const [childSupportDhsInitials, setChildSupportDhsInitials] = useState("");
   const [
     medicationResponsibilityInitials,
     setMedicationResponsibilityInitials,
   ] = useState("");
-
   const [vehicleTransportationInitials, setVehicleTransportationInitials] =
     useState("");
-
   const [possessionsInitials, setPossessionsInitials] = useState("");
-
   const [programGuidelinesInitials, setProgramGuidelinesInitials] =
     useState("");
-
   const [backgroundTestingSearchInitials, setBackgroundTestingSearchInitials] =
     useState("");
-
   const [informationSharingInitials, setInformationSharingInitials] =
     useState("");
   const [facilityExpectationsInitials, setFacilityExpectationsInitials] =
     useState("");
-
   const [volunteerWaiverInitials, setVolunteerWaiverInitials] = useState("");
   const [
     confidentialityAgreementInitials,
@@ -363,6 +405,11 @@ export default function IntakePage() {
   const [dressForSuccessInitials, setDressForSuccessInitials] = useState("");
   const [nondiscriminationInitials, setNondiscriminationInitials] =
     useState("");
+
+  // ---------------------------------------------------------------------------
+  // Program Assignment
+  // ---------------------------------------------------------------------------
+
   const [
     lifeTransformationProgramInitials,
     setLifeTransformationProgramInitials,
@@ -370,6 +417,11 @@ export default function IntakePage() {
   const [clientProgram, setClientProgram] = useState("");
   const [temporaryShelterProgramInitials, setTemporaryShelterProgramInitials] =
     useState("");
+
+  // ---------------------------------------------------------------------------
+  // COVID / Health
+  // ---------------------------------------------------------------------------
+
   const [covidVaccinated, setCovidVaccinated] = useState("");
   const [covidVaccinationDate, setCovidVaccinationDate] = useState("");
   const [covidVaccinationAppointmentDate, setCovidVaccinationAppointmentDate] =
@@ -377,24 +429,21 @@ export default function IntakePage() {
   const [covidVaccinationProof, setCovidVaccinationProof] = useState("");
   const [covidVaccinationProofFile, setCovidVaccinationProofFile] =
     useState<File | null>(null);
-  const [activeIntakeSection, setActiveIntakeSection] =
-    useState("client-information");
-  const [activeHandbookTab, setActiveHandbookTab] = useState("getting-started");
+
+  // ---------------------------------------------------------------------------
+  // HMIS Authorization
+  // ---------------------------------------------------------------------------
+
   const [hmisAuthorization, setHmisAuthorization] = useState("");
   const [hmisSignature, setHmisSignature] = useState("");
   const [hmisSignatureDate, setHmisSignatureDate] = useState("");
+
+  // ---------------------------------------------------------------------------
+  // Final Review
+  // ---------------------------------------------------------------------------
+
   const [finalClientSignature, setFinalClientSignature] = useState("");
   const [finalAdminSignature, setFinalAdminSignature] = useState("");
-  const [minorChildren, setMinorChildren] = useState<
-    {
-      firstName: string;
-      lastName: string;
-      dateOfBirth: string;
-      ssnFirst: string;
-      ssnMiddle: string;
-      ssnLast: string;
-    }[]
-  >([]);
 
   const startNewIntake = () => {
     setActiveDraftId(null);
@@ -407,6 +456,9 @@ export default function IntakePage() {
     setPreferredName("");
     setPhoneNumber("");
     setIntakeDate("");
+    setOutDate("");
+    setHopeHouseNumber("");
+    setHmisNumber("");
     setSsnFirst("");
     setSsnMiddle("");
     setSsnLast("");
@@ -524,6 +576,336 @@ export default function IntakePage() {
     setHmisSignatureDate("");
     setFinalClientSignature("");
     setFinalAdminSignature("");
+  };
+
+  const buildIntakeData = () => {
+    return {
+      clientName: `${firstName} ${middleName} ${lastName}`
+        .replace(/\s+/g, " ")
+        .trim(),
+      intakeDate,
+      lastUpdated: new Date().toLocaleString(),
+      formData: {
+        firstName,
+        middleName,
+        lastName,
+        preferredName,
+        dateOfBirth,
+        phoneNumber,
+        ssnFirst,
+        ssnMiddle,
+        ssnLast,
+        veteranStatus,
+        medicalAllergies,
+        noMedicalAllergies,
+        foodAllergies,
+        noFoodAllergies,
+        dietaryNeeds,
+        otherDietaryNeed,
+        emergencyContactName,
+        emergencyContactPhoneNumber,
+        emergencyContactRelationship,
+        roomNumber,
+        medRoomLockerNumber,
+        outDate,
+        hopeHouseNumber,
+        hmisNumber,
+        hasMinorChildren,
+        minorChildren,
+        gender,
+        race,
+        ethnicity,
+        household,
+        domesticViolence,
+        fosterCare,
+        humanTrafficking,
+        domesticViolenceDate,
+        currentlyFleeing,
+        firstTimeHomeless,
+        totalTimesHomeless,
+        priorLivingSituation,
+        priorLivingStayLength,
+        priorLivingStayUnit,
+        homelessnessStartDate,
+        homelessEpisodesPastThreeYears,
+        homelessMonthsPastThreeYears,
+        lastPlaceStayed,
+        lastPlaceCity,
+        lastPlaceCounty,
+        lastPlaceState,
+
+        currentlyEmployed,
+        employerName,
+        monthlyEmploymentIncome,
+        hasOtherIncome,
+        otherIncomeSources,
+        otherIncomeDescription,
+        monthlyOtherIncome,
+        highestEducationCompleted,
+        schoolName,
+
+        snapBenefits,
+        snapLoadDay,
+        snapAcknowledgmentDate,
+        snapMonthlyAmount,
+        soonerCareBenefits,
+        soonerCarePlan,
+        soonerCareId,
+        medicaidBenefits,
+        medicareBenefits,
+        wicBenefits,
+        tanfBenefits,
+        employerInsurance,
+        otherStateHealthInsurance,
+        hasSavingsAccount,
+        hasCheckingAccount,
+
+        misdemeanorConviction,
+        misdemeanorDetails,
+        felonyConviction,
+        felonyDetails,
+        onProbation,
+        onParole,
+        hasArrestWarrants,
+        hasUnpaidTickets,
+        childSupportStatus,
+        monthlyChildSupportAmount,
+        owesLandlordMoney,
+        landlordAmountOwed,
+        owesUtilityMoney,
+        utilityAmountOwed,
+        hasEvictionHistory,
+        hasPaidStorage,
+
+        hasSubstanceUseConcerns,
+        substancesUsed,
+        otherSubstance,
+        substanceUseDetails,
+        currentlyReceivingMedicalTreatment,
+        medicalTreatmentDetails,
+        healthSupportNeeds,
+        otherHealthSupportNeed,
+        healthSupportDetails,
+        socialFinancialSupport,
+        otherSocialFinancialSupport,
+        childrenInSchoolOrChildcare,
+        religiousSpiritualTraditions,
+
+        childSupportDhsInitials,
+        medicationResponsibilityInitials,
+        vehicleTransportationInitials,
+        possessionsInitials,
+        programGuidelinesInitials,
+        backgroundTestingSearchInitials,
+        informationSharingInitials,
+        facilityExpectationsInitials,
+        volunteerWaiverInitials,
+        confidentialityAgreementInitials,
+        coEdAccountabilityInitials,
+        dressForSuccessInitials,
+        nondiscriminationInitials,
+        lifeTransformationProgramInitials,
+
+        clientProgram,
+        temporaryShelterProgramInitials,
+
+        covidVaccinated,
+        covidVaccinationDate,
+        covidVaccinationAppointmentDate,
+        covidVaccinationProof,
+        covidVaccinationProofFile,
+
+        hmisAuthorization,
+        hmisSignature,
+        hmisSignatureDate,
+        finalClientSignature,
+        finalAdminSignature,
+      },
+    };
+  };
+
+  const loadIntakeData = (intake: IntakeDraft) => {
+    setFirstName(intake.formData.firstName);
+    setMiddleName(intake.formData.middleName);
+    setLastName(intake.formData.lastName);
+    setPreferredName(intake.formData.preferredName);
+    setDateOfBirth(intake.formData.dateOfBirth);
+    setPhoneNumber(intake.formData.phoneNumber);
+    setSsnFirst(intake.formData.ssnFirst);
+    setSsnMiddle(intake.formData.ssnMiddle);
+    setSsnLast(intake.formData.ssnLast);
+    setVeteranStatus(intake.formData.veteranStatus);
+    setMedicalAllergies(intake.formData.medicalAllergies);
+    setNoMedicalAllergies(intake.formData.noMedicalAllergies);
+    setFoodAllergies(intake.formData.foodAllergies);
+    setNoFoodAllergies(intake.formData.noFoodAllergies);
+    setDietaryNeeds(intake.formData.dietaryNeeds);
+    setOtherDietaryNeed(intake.formData.otherDietaryNeed);
+    setEmergencyContactName(intake.formData.emergencyContactName);
+    setEmergencyContactPhoneNumber(intake.formData.emergencyContactPhoneNumber);
+    setEmergencyContactRelationship(
+      intake.formData.emergencyContactRelationship,
+    );
+    setRoomNumber(intake.formData.roomNumber);
+    setMedRoomLockerNumber(intake.formData.medRoomLockerNumber);
+    setOutDate(intake.formData.outDate);
+    setHopeHouseNumber(intake.formData.hopeHouseNumber);
+    setHmisNumber(intake.formData.hmisNumber);
+    setHasMinorChildren(intake.formData.hasMinorChildren);
+    setMinorChildren(intake.formData.minorChildren);
+    setGender(intake.formData.gender);
+    setRace(intake.formData.race);
+    setEthnicity(intake.formData.ethnicity);
+    setHousehold(intake.formData.household);
+    setDomesticViolence(intake.formData.domesticViolence);
+    setFosterCare(intake.formData.fosterCare);
+    setHumanTrafficking(intake.formData.humanTrafficking);
+    setDomesticViolenceDate(intake.formData.domesticViolenceDate);
+    setCurrentlyFleeing(intake.formData.currentlyFleeing);
+    setFirstTimeHomeless(intake.formData.firstTimeHomeless);
+    setTotalTimesHomeless(intake.formData.totalTimesHomeless);
+    setPriorLivingSituation(intake.formData.priorLivingSituation);
+    setPriorLivingStayLength(intake.formData.priorLivingStayLength);
+    setPriorLivingStayUnit(intake.formData.priorLivingStayUnit);
+    setHomelessnessStartDate(intake.formData.homelessnessStartDate);
+    setHomelessEpisodesPastThreeYears(
+      intake.formData.homelessEpisodesPastThreeYears,
+    );
+    setHomelessMonthsPastThreeYears(
+      intake.formData.homelessMonthsPastThreeYears,
+    );
+    setLastPlaceStayed(intake.formData.lastPlaceStayed);
+    setLastPlaceCity(intake.formData.lastPlaceCity);
+    setLastPlaceCounty(intake.formData.lastPlaceCounty);
+    setLastPlaceState(intake.formData.lastPlaceState);
+    setCurrentlyEmployed(intake.formData.currentlyEmployed);
+    setEmployerName(intake.formData.employerName);
+    setMonthlyEmploymentIncome(intake.formData.monthlyEmploymentIncome);
+    setHasOtherIncome(intake.formData.hasOtherIncome);
+    setOtherIncomeSources(intake.formData.otherIncomeSources);
+    setOtherIncomeDescription(intake.formData.otherIncomeDescription);
+    setMonthlyOtherIncome(intake.formData.monthlyOtherIncome);
+    setHighestEducationCompleted(intake.formData.highestEducationCompleted);
+    setSchoolName(intake.formData.schoolName);
+    setSnapBenefits(intake.formData.snapBenefits);
+    setSnapLoadDay(intake.formData.snapLoadDay);
+    setSnapAcknowledgmentDate(intake.formData.snapAcknowledgmentDate);
+    setSnapMonthlyAmount(intake.formData.snapMonthlyAmount);
+    setSoonerCareBenefits(intake.formData.soonerCareBenefits);
+    setSoonerCarePlan(intake.formData.soonerCarePlan);
+    setSoonerCareId(intake.formData.soonerCareId);
+    setMedicaidBenefits(intake.formData.medicaidBenefits);
+    setMedicareBenefits(intake.formData.medicareBenefits);
+    setWicBenefits(intake.formData.wicBenefits);
+    setTanfBenefits(intake.formData.tanfBenefits);
+    setEmployerInsurance(intake.formData.employerInsurance);
+    setOtherStateHealthInsurance(intake.formData.otherStateHealthInsurance);
+    setHasSavingsAccount(intake.formData.hasSavingsAccount);
+    setHasCheckingAccount(intake.formData.hasCheckingAccount);
+    setMisdemeanorConviction(intake.formData.misdemeanorConviction);
+    setMisdemeanorDetails(intake.formData.misdemeanorDetails);
+    setFelonyConviction(intake.formData.felonyConviction);
+    setFelonyDetails(intake.formData.felonyDetails);
+    setOnProbation(intake.formData.onProbation);
+    setOnParole(intake.formData.onParole);
+    setHasArrestWarrants(intake.formData.hasArrestWarrants);
+    setHasUnpaidTickets(intake.formData.hasUnpaidTickets);
+    setChildSupportStatus(intake.formData.childSupportStatus);
+    setMonthlyChildSupportAmount(intake.formData.monthlyChildSupportAmount);
+    setOwesLandlordMoney(intake.formData.owesLandlordMoney);
+    setLandlordAmountOwed(intake.formData.landlordAmountOwed);
+    setOwesUtilityMoney(intake.formData.owesUtilityMoney);
+    setUtilityAmountOwed(intake.formData.utilityAmountOwed);
+    setHasEvictionHistory(intake.formData.hasEvictionHistory);
+    setHasPaidStorage(intake.formData.hasPaidStorage);
+    setHasSubstanceUseConcerns(intake.formData.hasSubstanceUseConcerns);
+    setSubstancesUsed(intake.formData.substancesUsed);
+    setOtherSubstance(intake.formData.otherSubstance);
+    setSubstanceUseDetails(intake.formData.substanceUseDetails);
+    setCurrentlyReceivingMedicalTreatment(
+      intake.formData.currentlyReceivingMedicalTreatment,
+    );
+    setMedicalTreatmentDetails(intake.formData.medicalTreatmentDetails);
+    setHealthSupportNeeds(intake.formData.healthSupportNeeds);
+    setOtherHealthSupportNeed(intake.formData.otherHealthSupportNeed);
+    setHealthSupportDetails(intake.formData.healthSupportDetails);
+    setSocialFinancialSupport(intake.formData.socialFinancialSupport);
+    setOtherSocialFinancialSupport(intake.formData.otherSocialFinancialSupport);
+    setChildrenInSchoolOrChildcare(intake.formData.childrenInSchoolOrChildcare);
+    setReligiousSpiritualTraditions(
+      intake.formData.religiousSpiritualTraditions,
+    );
+    setChildSupportDhsInitials(intake.formData.childSupportDhsInitials);
+    setMedicationResponsibilityInitials(
+      intake.formData.medicationResponsibilityInitials,
+    );
+    setVehicleTransportationInitials(
+      intake.formData.vehicleTransportationInitials,
+    );
+    setPossessionsInitials(intake.formData.possessionsInitials);
+    setProgramGuidelinesInitials(intake.formData.programGuidelinesInitials);
+    setBackgroundTestingSearchInitials(
+      intake.formData.backgroundTestingSearchInitials,
+    );
+    setInformationSharingInitials(intake.formData.informationSharingInitials);
+    setFacilityExpectationsInitials(
+      intake.formData.facilityExpectationsInitials,
+    );
+    setVolunteerWaiverInitials(intake.formData.volunteerWaiverInitials);
+    setConfidentialityAgreementInitials(
+      intake.formData.confidentialityAgreementInitials,
+    );
+    setCoEdAccountabilityInitials(intake.formData.coEdAccountabilityInitials);
+    setDressForSuccessInitials(intake.formData.dressForSuccessInitials);
+    setNondiscriminationInitials(intake.formData.nondiscriminationInitials);
+    setLifeTransformationProgramInitials(
+      intake.formData.lifeTransformationProgramInitials,
+    );
+    setClientProgram(intake.formData.clientProgram);
+    setTemporaryShelterProgramInitials(
+      intake.formData.temporaryShelterProgramInitials,
+    );
+    setCovidVaccinated(intake.formData.covidVaccinated);
+    setCovidVaccinationDate(intake.formData.covidVaccinationDate);
+    setCovidVaccinationAppointmentDate(
+      intake.formData.covidVaccinationAppointmentDate,
+    );
+    setCovidVaccinationProof(intake.formData.covidVaccinationProof);
+    setCovidVaccinationProofFile(intake.formData.covidVaccinationProofFile);
+    setHmisAuthorization(intake.formData.hmisAuthorization);
+    setHmisSignature(intake.formData.hmisSignature);
+    setHmisSignatureDate(intake.formData.hmisSignatureDate);
+    setFinalClientSignature(intake.formData.finalClientSignature);
+    setFinalAdminSignature(intake.formData.finalAdminSignature);
+    setIntakeDate(intake.intakeDate);
+  };
+
+  const completeIntake = () => {
+    const nextHopeHouseNumber = `HH-${new Date().getFullYear()}-${String(completedIntakes.length + 1).padStart(4, "0")}`;
+    const completedAt = new Date().toISOString();
+    const intakeData = buildIntakeData();
+    const completedIntake: CompletedIntake = {
+      id: Date.now(),
+      ...intakeData,
+      hopeHouseNumber: nextHopeHouseNumber,
+      completedAt,
+      reviewStatus: "Pending Review",
+      formData: {
+        ...intakeData.formData,
+        hopeHouseNumber: nextHopeHouseNumber,
+      },
+    };
+
+    setCompletedIntakes([...completedIntakes, completedIntake]);
+
+    if (activeDraftId !== null) {
+      setDraftIntakes(
+        draftIntakes.filter((draft) => draft.id !== activeDraftId),
+      );
+    }
+
+    startNewIntake();
+    setActiveTab(2);
   };
 
   // ---------------------------------------------------------------------------
@@ -657,146 +1039,7 @@ export default function IntakePage() {
             <Button
               variant="contained"
               onClick={() => {
-                const draftData = {
-                  clientName: `${firstName} ${middleName} ${lastName}`
-                    .replace(/\s+/g, " ")
-                    .trim(),
-                  intakeDate,
-                  lastUpdated: new Date().toLocaleString(),
-                  formData: {
-                    firstName,
-                    middleName,
-                    lastName,
-                    preferredName,
-                    dateOfBirth,
-                    phoneNumber,
-                    ssnFirst,
-                    ssnMiddle,
-                    ssnLast,
-                    veteranStatus,
-                    medicalAllergies,
-                    noMedicalAllergies,
-                    foodAllergies,
-                    noFoodAllergies,
-                    dietaryNeeds,
-                    otherDietaryNeed,
-                    emergencyContactName,
-                    emergencyContactPhoneNumber,
-                    emergencyContactRelationship,
-                    roomNumber,
-                    medRoomLockerNumber,
-                    hasMinorChildren,
-                    minorChildren,
-                    gender,
-                    race,
-                    ethnicity,
-                    household,
-                    domesticViolence,
-                    fosterCare,
-                    humanTrafficking,
-                    domesticViolenceDate,
-                    currentlyFleeing,
-                    firstTimeHomeless,
-                    totalTimesHomeless,
-                    priorLivingSituation,
-                    priorLivingStayLength,
-                    priorLivingStayUnit,
-                    homelessnessStartDate,
-                    homelessEpisodesPastThreeYears,
-                    homelessMonthsPastThreeYears,
-                    lastPlaceStayed,
-                    lastPlaceCity,
-                    lastPlaceCounty,
-                    lastPlaceState,
-
-                    currentlyEmployed,
-                    employerName,
-                    monthlyEmploymentIncome,
-                    hasOtherIncome,
-                    otherIncomeSources,
-                    otherIncomeDescription,
-                    monthlyOtherIncome,
-                    highestEducationCompleted,
-                    schoolName,
-
-                    snapBenefits,
-                    snapLoadDay,
-                    snapAcknowledgmentDate,
-                    snapMonthlyAmount,
-                    soonerCareBenefits,
-                    soonerCarePlan,
-                    soonerCareId,
-                    medicaidBenefits,
-                    medicareBenefits,
-                    wicBenefits,
-                    tanfBenefits,
-                    employerInsurance,
-                    otherStateHealthInsurance,
-                    hasSavingsAccount,
-                    hasCheckingAccount,
-
-                    misdemeanorConviction,
-                    misdemeanorDetails,
-                    felonyConviction,
-                    felonyDetails,
-                    onProbation,
-                    onParole,
-                    hasArrestWarrants,
-                    hasUnpaidTickets,
-                    childSupportStatus,
-                    monthlyChildSupportAmount,
-                    owesLandlordMoney,
-                    landlordAmountOwed,
-                    owesUtilityMoney,
-                    utilityAmountOwed,
-                    hasEvictionHistory,
-                    hasPaidStorage,
-
-                    hasSubstanceUseConcerns,
-                    substancesUsed,
-                    otherSubstance,
-                    substanceUseDetails,
-                    currentlyReceivingMedicalTreatment,
-                    medicalTreatmentDetails,
-                    healthSupportNeeds,
-                    otherHealthSupportNeed,
-                    healthSupportDetails,
-                    socialFinancialSupport,
-                    otherSocialFinancialSupport,
-                    childrenInSchoolOrChildcare,
-                    religiousSpiritualTraditions,
-
-                    childSupportDhsInitials,
-                    medicationResponsibilityInitials,
-                    vehicleTransportationInitials,
-                    possessionsInitials,
-                    programGuidelinesInitials,
-                    backgroundTestingSearchInitials,
-                    informationSharingInitials,
-                    facilityExpectationsInitials,
-                    volunteerWaiverInitials,
-                    confidentialityAgreementInitials,
-                    coEdAccountabilityInitials,
-                    dressForSuccessInitials,
-                    nondiscriminationInitials,
-                    lifeTransformationProgramInitials,
-
-                    clientProgram,
-                    temporaryShelterProgramInitials,
-
-                    covidVaccinated,
-                    covidVaccinationDate,
-                    covidVaccinationAppointmentDate,
-                    covidVaccinationProof,
-                    covidVaccinationProofFile,
-
-                    hmisAuthorization,
-                    hmisSignature,
-                    hmisSignatureDate,
-                    finalClientSignature,
-                    finalAdminSignature,
-                  },
-                };
+                const draftData = buildIntakeData();
 
                 if (activeDraftId !== null) {
                   setDraftIntakes(
@@ -862,6 +1105,109 @@ export default function IntakePage() {
                   {/* -------------------------------------------------------------- */}
                   {/* Client Information                                            */}
                   {/* -------------------------------------------------------------- */}
+
+                  <Box
+                    sx={{
+                      backgroundColor: "#D3ECF8",
+                      border: "9px solid #93C9E2",
+                      borderRadius: 1,
+                      p: 2,
+                      mb: 3,
+                    }}
+                  >
+                    <Typography
+                      variant="subtitle2"
+                      sx={{
+                        textAlign: "center",
+                        fontWeight: 500,
+                        color: "rgba(54, 75, 112, 0.55)",
+                      }}
+                    >
+                      ADMINISTRATION USE ONLY
+                    </Typography>
+                    <Box
+                      sx={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(5, minmax(120px, 1fr))",
+                        gap: 2,
+                        width: "100%",
+                        maxWidth: 1100,
+                        margin: "32px auto 0",
+                      }}
+                    >
+                      <TextField
+                        label="IN DATE"
+                        type="date"
+                        value={intakeDate}
+                        onChange={(event) => setIntakeDate(event.target.value)}
+                        sx={{
+                          "& .MuiOutlinedInput-root": {
+                            backgroundColor: "#FFFFFF",
+                          },
+                        }}
+                        slotProps={{
+                          inputLabel: { shrink: true },
+                        }}
+                      />
+
+                      <TextField
+                        label="OUT DATE"
+                        type="date"
+                        value={outDate}
+                        onChange={(event) => setOutDate(event.target.value)}
+                        slotProps={{
+                          inputLabel: { shrink: true },
+                        }}
+                        sx={{
+                          "& .MuiOutlinedInput-root": {
+                            backgroundColor: "#FFFFFF",
+                          },
+                        }}
+                      />
+
+                      <TextField
+                        label="PROGRAM"
+                        value={clientProgram}
+                        slotProps={{
+                          input: {
+                            readOnly: true,
+                          },
+                        }}
+                        sx={{
+                          "& .MuiOutlinedInput-root": {
+                            backgroundColor: "#FFFFFF",
+                          },
+                        }}
+                      />
+
+                      <TextField
+                        label="HOPE HOUSE #"
+                        value={hopeHouseNumber}
+                        slotProps={{
+                          input: {
+                            readOnly: true,
+                          },
+                        }}
+                        sx={{
+                          "& .MuiOutlinedInput-root": {
+                            backgroundColor: "#FFFFFF",
+                          },
+                        }}
+                      />
+
+                      <TextField
+                        label="HMIS #"
+                        value={hmisNumber}
+                        onChange={(event) => setHmisNumber(event.target.value)}
+                        sx={{
+                          "& .MuiOutlinedInput-root": {
+                            backgroundColor: "#FFFFFF",
+                          },
+                        }}
+                      />
+                    </Box>
+                  </Box>
+
                   <Typography variant="h6">Client Information</Typography>
                   <Box
                     sx={{
@@ -6039,6 +6385,13 @@ export default function IntakePage() {
                       showLabel={false}
                     />
                   </Box>
+                  <Box
+                    sx={{ mt: 4, display: "flex", justifyContent: "flex-end" }}
+                  >
+                    <Button variant="contained" onClick={completeIntake}>
+                      Complete Intake
+                    </Button>
+                  </Box>
                 </Paper>
               )}
             </Box>
@@ -6075,219 +6428,55 @@ export default function IntakePage() {
                 sx={{ mt: 2 }}
                 onClick={() => {
                   setActiveDraftId(draft.id);
-                  setFirstName(draft.formData.firstName);
-                  setMiddleName(draft.formData.middleName);
-                  setLastName(draft.formData.lastName);
-                  setPreferredName(draft.formData.preferredName);
-                  setDateOfBirth(draft.formData.dateOfBirth);
-                  setPhoneNumber(draft.formData.phoneNumber);
-                  setSsnFirst(draft.formData.ssnFirst);
-                  setSsnMiddle(draft.formData.ssnMiddle);
-                  setSsnLast(draft.formData.ssnLast);
-                  setVeteranStatus(draft.formData.veteranStatus);
-                  setMedicalAllergies(draft.formData.medicalAllergies);
-                  setNoMedicalAllergies(draft.formData.noMedicalAllergies);
-                  setFoodAllergies(draft.formData.foodAllergies);
-                  setNoFoodAllergies(draft.formData.noFoodAllergies);
-                  setDietaryNeeds(draft.formData.dietaryNeeds);
-                  setOtherDietaryNeed(draft.formData.otherDietaryNeed);
-                  setEmergencyContactName(draft.formData.emergencyContactName);
-                  setEmergencyContactPhoneNumber(
-                    draft.formData.emergencyContactPhoneNumber,
-                  );
-                  setEmergencyContactRelationship(
-                    draft.formData.emergencyContactRelationship,
-                  );
-                  setRoomNumber(draft.formData.roomNumber);
-                  setMedRoomLockerNumber(draft.formData.medRoomLockerNumber);
-                  setHasMinorChildren(draft.formData.hasMinorChildren);
-                  setMinorChildren(draft.formData.minorChildren);
-                  setGender(draft.formData.gender);
-                  setRace(draft.formData.race);
-                  setEthnicity(draft.formData.ethnicity);
-                  setHousehold(draft.formData.household);
-                  setDomesticViolence(draft.formData.domesticViolence);
-                  setFosterCare(draft.formData.fosterCare);
-                  setHumanTrafficking(draft.formData.humanTrafficking);
-                  setDomesticViolenceDate(draft.formData.domesticViolenceDate);
-                  setCurrentlyFleeing(draft.formData.currentlyFleeing);
-                  setFirstTimeHomeless(draft.formData.firstTimeHomeless);
-                  setTotalTimesHomeless(draft.formData.totalTimesHomeless);
-                  setPriorLivingSituation(draft.formData.priorLivingSituation);
-                  setPriorLivingStayLength(
-                    draft.formData.priorLivingStayLength,
-                  );
-                  setPriorLivingStayUnit(draft.formData.priorLivingStayUnit);
-                  setHomelessnessStartDate(
-                    draft.formData.homelessnessStartDate,
-                  );
-                  setHomelessEpisodesPastThreeYears(
-                    draft.formData.homelessEpisodesPastThreeYears,
-                  );
-                  setHomelessMonthsPastThreeYears(
-                    draft.formData.homelessMonthsPastThreeYears,
-                  );
-                  setLastPlaceStayed(draft.formData.lastPlaceStayed);
-                  setLastPlaceCity(draft.formData.lastPlaceCity);
-                  setLastPlaceCounty(draft.formData.lastPlaceCounty);
-                  setLastPlaceState(draft.formData.lastPlaceState);
-
-                  setCurrentlyEmployed(draft.formData.currentlyEmployed);
-                  setEmployerName(draft.formData.employerName);
-                  setMonthlyEmploymentIncome(
-                    draft.formData.monthlyEmploymentIncome,
-                  );
-                  setHasOtherIncome(draft.formData.hasOtherIncome);
-                  setOtherIncomeSources(draft.formData.otherIncomeSources);
-                  setOtherIncomeDescription(
-                    draft.formData.otherIncomeDescription,
-                  );
-                  setMonthlyOtherIncome(draft.formData.monthlyOtherIncome);
-                  setHighestEducationCompleted(
-                    draft.formData.highestEducationCompleted,
-                  );
-                  setSchoolName(draft.formData.schoolName);
-
-                  setSnapBenefits(draft.formData.snapBenefits);
-                  setSnapLoadDay(draft.formData.snapLoadDay);
-                  setSnapAcknowledgmentDate(
-                    draft.formData.snapAcknowledgmentDate,
-                  );
-                  setSnapMonthlyAmount(draft.formData.snapMonthlyAmount);
-                  setSoonerCareBenefits(draft.formData.soonerCareBenefits);
-                  setSoonerCarePlan(draft.formData.soonerCarePlan);
-                  setSoonerCareId(draft.formData.soonerCareId);
-                  setMedicaidBenefits(draft.formData.medicaidBenefits);
-                  setMedicareBenefits(draft.formData.medicareBenefits);
-                  setWicBenefits(draft.formData.wicBenefits);
-                  setTanfBenefits(draft.formData.tanfBenefits);
-                  setEmployerInsurance(draft.formData.employerInsurance);
-                  setOtherStateHealthInsurance(
-                    draft.formData.otherStateHealthInsurance,
-                  );
-                  setHasSavingsAccount(draft.formData.hasSavingsAccount);
-                  setHasCheckingAccount(draft.formData.hasCheckingAccount);
-
-                  setMisdemeanorConviction(
-                    draft.formData.misdemeanorConviction,
-                  );
-                  setMisdemeanorDetails(draft.formData.misdemeanorDetails);
-                  setFelonyConviction(draft.formData.felonyConviction);
-                  setFelonyDetails(draft.formData.felonyDetails);
-                  setOnProbation(draft.formData.onProbation);
-                  setOnParole(draft.formData.onParole);
-                  setHasArrestWarrants(draft.formData.hasArrestWarrants);
-                  setHasUnpaidTickets(draft.formData.hasUnpaidTickets);
-                  setChildSupportStatus(draft.formData.childSupportStatus);
-                  setMonthlyChildSupportAmount(
-                    draft.formData.monthlyChildSupportAmount,
-                  );
-                  setOwesLandlordMoney(draft.formData.owesLandlordMoney);
-                  setLandlordAmountOwed(draft.formData.landlordAmountOwed);
-                  setOwesUtilityMoney(draft.formData.owesUtilityMoney);
-                  setUtilityAmountOwed(draft.formData.utilityAmountOwed);
-                  setHasEvictionHistory(draft.formData.hasEvictionHistory);
-                  setHasPaidStorage(draft.formData.hasPaidStorage);
-
-                  setHasSubstanceUseConcerns(
-                    draft.formData.hasSubstanceUseConcerns,
-                  );
-                  setSubstancesUsed(draft.formData.substancesUsed);
-                  setOtherSubstance(draft.formData.otherSubstance);
-                  setSubstanceUseDetails(draft.formData.substanceUseDetails);
-                  setCurrentlyReceivingMedicalTreatment(
-                    draft.formData.currentlyReceivingMedicalTreatment,
-                  );
-                  setMedicalTreatmentDetails(
-                    draft.formData.medicalTreatmentDetails,
-                  );
-                  setHealthSupportNeeds(draft.formData.healthSupportNeeds);
-                  setOtherHealthSupportNeed(
-                    draft.formData.otherHealthSupportNeed,
-                  );
-                  setHealthSupportDetails(draft.formData.healthSupportDetails);
-                  setSocialFinancialSupport(
-                    draft.formData.socialFinancialSupport,
-                  );
-                  setOtherSocialFinancialSupport(
-                    draft.formData.otherSocialFinancialSupport,
-                  );
-                  setChildrenInSchoolOrChildcare(
-                    draft.formData.childrenInSchoolOrChildcare,
-                  );
-                  setReligiousSpiritualTraditions(
-                    draft.formData.religiousSpiritualTraditions,
-                  );
-
-                  setChildSupportDhsInitials(
-                    draft.formData.childSupportDhsInitials,
-                  );
-                  setMedicationResponsibilityInitials(
-                    draft.formData.medicationResponsibilityInitials,
-                  );
-                  setVehicleTransportationInitials(
-                    draft.formData.vehicleTransportationInitials,
-                  );
-                  setPossessionsInitials(draft.formData.possessionsInitials);
-                  setProgramGuidelinesInitials(
-                    draft.formData.programGuidelinesInitials,
-                  );
-                  setBackgroundTestingSearchInitials(
-                    draft.formData.backgroundTestingSearchInitials,
-                  );
-                  setInformationSharingInitials(
-                    draft.formData.informationSharingInitials,
-                  );
-                  setFacilityExpectationsInitials(
-                    draft.formData.facilityExpectationsInitials,
-                  );
-                  setVolunteerWaiverInitials(
-                    draft.formData.volunteerWaiverInitials,
-                  );
-                  setConfidentialityAgreementInitials(
-                    draft.formData.confidentialityAgreementInitials,
-                  );
-                  setCoEdAccountabilityInitials(
-                    draft.formData.coEdAccountabilityInitials,
-                  );
-                  setDressForSuccessInitials(
-                    draft.formData.dressForSuccessInitials,
-                  );
-                  setNondiscriminationInitials(
-                    draft.formData.nondiscriminationInitials,
-                  );
-                  setLifeTransformationProgramInitials(
-                    draft.formData.lifeTransformationProgramInitials,
-                  );
-
-                  setClientProgram(draft.formData.clientProgram);
-                  setTemporaryShelterProgramInitials(
-                    draft.formData.temporaryShelterProgramInitials,
-                  );
-
-                  setCovidVaccinated(draft.formData.covidVaccinated);
-                  setCovidVaccinationDate(draft.formData.covidVaccinationDate);
-                  setCovidVaccinationAppointmentDate(
-                    draft.formData.covidVaccinationAppointmentDate,
-                  );
-                  setCovidVaccinationProof(
-                    draft.formData.covidVaccinationProof,
-                  );
-                  setCovidVaccinationProofFile(
-                    draft.formData.covidVaccinationProofFile,
-                  );
-
-                  setHmisAuthorization(draft.formData.hmisAuthorization);
-                  setHmisSignature(draft.formData.hmisSignature);
-                  setHmisSignatureDate(draft.formData.hmisSignatureDate);
-                  setFinalClientSignature(draft.formData.finalClientSignature);
-                  setFinalAdminSignature(draft.formData.finalAdminSignature);
-                  setIntakeDate(draft.intakeDate);
+                  loadIntakeData(draft);
                   setActiveTab(0);
                 }}
               >
                 Open Intake
               </Button>
+            </Paper>
+          ))}
+        </Paper>
+      )}
+
+      {activeTab === 2 && (
+        <Paper sx={{ mt: 2, p: 3 }}>
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+            Completed Intakes
+          </Typography>
+
+          {completedIntakes.length === 0 && (
+            <Typography sx={{ mt: 1 }}>No completed intakes.</Typography>
+          )}
+
+          {completedIntakes.map((intake) => (
+            <Paper key={intake.id} variant="outlined" sx={{ mt: 2, p: 3 }}>
+              <Typography sx={{ fontWeight: 600 }}>
+                {intake.clientName || "Unnamed Client"}
+                <Typography variant="body2">
+                  Hope House #: {intake.hopeHouseNumber}
+                </Typography>
+                <Typography variant="body2">
+                  Program: {intake.formData.clientProgram || "Not assigned"}
+                </Typography>
+                <Typography variant="body2">
+                  Review Status: {intake.reviewStatus}
+                </Typography>
+                <Typography variant="body2">
+                  Completed: {new Date(intake.completedAt).toLocaleString()}
+                </Typography>
+                <Button
+                  variant="outlined"
+                  sx={{ mt: 2 }}
+                  onClick={() => {
+                    setActiveCompletedIntakeId(intake.id);
+                    loadIntakeData(intake);
+                    setActiveTab(0);
+                  }}
+                >
+                  Open for Review
+                </Button>
+              </Typography>
             </Paper>
           ))}
         </Paper>
