@@ -1,4 +1,5 @@
 import {
+  Alert,
   Box,
   Button,
   Checkbox,
@@ -20,11 +21,13 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import SignatureCanvas from "../../../components/SignatureCanvas";
+import { MOCK_CURRENT_USER } from "../../../features/prototype/mockCurrentUser";
 
 const intakeSections = [
   { id: "client-information", label: "Client Information" },
+  { id: "suicide-risk-screening", label: "Suicide Risk Screening" },
   { id: "household-family", label: "Household / Family" },
   { id: "hmis-demographics", label: "HMIS / Demographics" },
   { id: "homelessness", label: "Homelessness / Prior Living" },
@@ -46,6 +49,9 @@ type IntakeDraft = {
   clientName: string;
   intakeDate: string;
   lastUpdated: string;
+  startedBy: string;
+  lastUpdatedBy: string;
+
   formData: {
     firstName: string;
     middleName: string;
@@ -56,6 +62,7 @@ type IntakeDraft = {
     ssnFirst: string;
     ssnMiddle: string;
     ssnLast: string;
+    ssnStatus: string;
     veteranStatus: string;
     medicalAllergies: string;
     noMedicalAllergies: boolean;
@@ -68,6 +75,14 @@ type IntakeDraft = {
     emergencyContactRelationship: string;
     roomNumber: string;
     medRoomLockerNumber: string;
+    suicideWishDead: string;
+    suicideBetterOffDead: string;
+    suicideThoughts: string;
+    suicideAttemptHistory: string;
+    suicideAttemptHow: string;
+    suicideAttemptWhen: string;
+    suicideCurrentThoughts: string;
+    suicideCurrentThoughtsDescription: string;
     outDate: string;
     hopeHouseNumber: string;
     hmisNumber: string;
@@ -173,6 +188,7 @@ type IntakeDraft = {
     dressForSuccessInitials: string;
     nondiscriminationInitials: string;
     lifeTransformationProgramInitials: string;
+    overnightProgramInitials: string;
 
     clientProgram: string;
     temporaryShelterProgramInitials: string;
@@ -194,6 +210,11 @@ type IntakeDraft = {
 type CompletedIntake = IntakeDraft & {
   hopeHouseNumber: string;
   completedAt: string;
+  completedBy: string;
+  reviewedBy: string;
+  reviewedAt: string;
+  lastEditedBy: string;
+  lastEditedAt: string;
   reviewStatus: "Pending Review" | "Review Complete";
 };
 
@@ -207,6 +228,8 @@ export default function IntakePage() {
   const [activeCompletedIntakeId, setActiveCompletedIntakeId] = useState<
     number | null
   >(null);
+  const [isEditingCompletedIntake, setIsEditingCompletedIntake] =
+    useState(false);
   const [completedIntakes, setCompletedIntakes] = useState<CompletedIntake[]>(
     [],
   );
@@ -230,6 +253,7 @@ export default function IntakePage() {
   const [ssnFirst, setSsnFirst] = useState("");
   const [ssnMiddle, setSsnMiddle] = useState("");
   const [ssnLast, setSsnLast] = useState("");
+  const [ssnStatus, setSsnStatus] = useState("");
   const [veteranStatus, setVeteranStatus] = useState("");
   const [medicalAllergies, setMedicalAllergies] = useState("");
   const [noMedicalAllergies, setNoMedicalAllergies] = useState(false);
@@ -244,6 +268,34 @@ export default function IntakePage() {
     useState("");
   const [roomNumber, setRoomNumber] = useState("");
   const [medRoomLockerNumber, setMedRoomLockerNumber] = useState("");
+  const [suicideWishDead, setSuicideWishDead] = useState("");
+  const [suicideBetterOffDead, setSuicideBetterOffDead] = useState("");
+  const [suicideThoughts, setSuicideThoughts] = useState("");
+  const [suicideAttemptHistory, setSuicideAttemptHistory] = useState("");
+  const [suicideAttemptHow, setSuicideAttemptHow] = useState("");
+  const [suicideAttemptWhen, setSuicideAttemptWhen] = useState("");
+  const [suicideCurrentThoughts, setSuicideCurrentThoughts] = useState("");
+  const [
+    suicideCurrentThoughtsDescription,
+    setSuicideCurrentThoughtsDescription,
+  ] = useState("");
+
+  useEffect(() => {
+    if (
+      suicideWishDead === "No" &&
+      suicideBetterOffDead === "No" &&
+      suicideThoughts === "No" &&
+      suicideAttemptHistory === "No"
+    ) {
+      setSuicideCurrentThoughts("");
+      setSuicideCurrentThoughtsDescription("");
+    }
+  }, [
+    suicideWishDead,
+    suicideBetterOffDead,
+    suicideThoughts,
+    suicideAttemptHistory,
+  ]);
 
   // ---------------------------------------------------------------------------
   // Household / Family / HMIS Demographics
@@ -414,7 +466,11 @@ export default function IntakePage() {
     lifeTransformationProgramInitials,
     setLifeTransformationProgramInitials,
   ] = useState("");
+
+  const [overnightProgramInitials, setOvernightProgramInitials] = useState("");
+
   const [clientProgram, setClientProgram] = useState("");
+
   const [temporaryShelterProgramInitials, setTemporaryShelterProgramInitials] =
     useState("");
 
@@ -462,6 +518,7 @@ export default function IntakePage() {
     setSsnFirst("");
     setSsnMiddle("");
     setSsnLast("");
+    setSsnStatus("");
     setVeteranStatus("");
     setMedicalAllergies("");
     setNoMedicalAllergies(false);
@@ -474,6 +531,14 @@ export default function IntakePage() {
     setEmergencyContactRelationship("");
     setRoomNumber("");
     setMedRoomLockerNumber("");
+    setSuicideWishDead("");
+    setSuicideBetterOffDead("");
+    setSuicideThoughts("");
+    setSuicideAttemptHistory("");
+    setSuicideAttemptHow("");
+    setSuicideAttemptWhen("");
+    setSuicideCurrentThoughts("");
+    setSuicideCurrentThoughtsDescription("");
     setHasMinorChildren("");
     setMinorChildren([]);
     setGender("");
@@ -564,6 +629,7 @@ export default function IntakePage() {
     setDressForSuccessInitials("");
     setNondiscriminationInitials("");
     setLifeTransformationProgramInitials("");
+    setOvernightProgramInitials("");
     setClientProgram("");
     setTemporaryShelterProgramInitials("");
     setCovidVaccinated("");
@@ -585,6 +651,9 @@ export default function IntakePage() {
         .trim(),
       intakeDate,
       lastUpdated: new Date().toLocaleString(),
+      startedBy: MOCK_CURRENT_USER.displayName,
+      lastUpdatedBy: MOCK_CURRENT_USER.displayName,
+
       formData: {
         firstName,
         middleName,
@@ -595,6 +664,7 @@ export default function IntakePage() {
         ssnFirst,
         ssnMiddle,
         ssnLast,
+        ssnStatus,
         veteranStatus,
         medicalAllergies,
         noMedicalAllergies,
@@ -607,6 +677,14 @@ export default function IntakePage() {
         emergencyContactRelationship,
         roomNumber,
         medRoomLockerNumber,
+        suicideWishDead,
+        suicideBetterOffDead,
+        suicideThoughts,
+        suicideAttemptHistory,
+        suicideAttemptHow,
+        suicideAttemptWhen,
+        suicideCurrentThoughts,
+        suicideCurrentThoughtsDescription,
         outDate,
         hopeHouseNumber,
         hmisNumber,
@@ -705,6 +783,7 @@ export default function IntakePage() {
         dressForSuccessInitials,
         nondiscriminationInitials,
         lifeTransformationProgramInitials,
+        overnightProgramInitials,
 
         clientProgram,
         temporaryShelterProgramInitials,
@@ -734,6 +813,7 @@ export default function IntakePage() {
     setSsnFirst(intake.formData.ssnFirst);
     setSsnMiddle(intake.formData.ssnMiddle);
     setSsnLast(intake.formData.ssnLast);
+    setSsnStatus(intake.formData.ssnStatus);
     setVeteranStatus(intake.formData.veteranStatus);
     setMedicalAllergies(intake.formData.medicalAllergies);
     setNoMedicalAllergies(intake.formData.noMedicalAllergies);
@@ -748,6 +828,16 @@ export default function IntakePage() {
     );
     setRoomNumber(intake.formData.roomNumber);
     setMedRoomLockerNumber(intake.formData.medRoomLockerNumber);
+    setSuicideWishDead(intake.formData.suicideWishDead);
+    setSuicideBetterOffDead(intake.formData.suicideBetterOffDead);
+    setSuicideThoughts(intake.formData.suicideThoughts);
+    setSuicideAttemptHistory(intake.formData.suicideAttemptHistory);
+    setSuicideAttemptHow(intake.formData.suicideAttemptHow);
+    setSuicideAttemptWhen(intake.formData.suicideAttemptWhen);
+    setSuicideCurrentThoughts(intake.formData.suicideCurrentThoughts);
+    setSuicideCurrentThoughtsDescription(
+      intake.formData.suicideCurrentThoughtsDescription,
+    );
     setOutDate(intake.formData.outDate);
     setHopeHouseNumber(intake.formData.hopeHouseNumber);
     setHmisNumber(intake.formData.hmisNumber);
@@ -861,6 +951,7 @@ export default function IntakePage() {
     setLifeTransformationProgramInitials(
       intake.formData.lifeTransformationProgramInitials,
     );
+    setOvernightProgramInitials(intake.formData.overnightProgramInitials);
     setClientProgram(intake.formData.clientProgram);
     setTemporaryShelterProgramInitials(
       intake.formData.temporaryShelterProgramInitials,
@@ -881,6 +972,12 @@ export default function IntakePage() {
   };
 
   const completeIntake = () => {
+    if (!clientProgram) {
+      alert("Please select a program before completing the intake.");
+      setActiveIntakeSection("program-assignment");
+      return;
+    }
+
     const nextHopeHouseNumber = `HH-${new Date().getFullYear()}-${String(completedIntakes.length + 1).padStart(4, "0")}`;
     const completedAt = new Date().toISOString();
     const intakeData = buildIntakeData();
@@ -889,7 +986,12 @@ export default function IntakePage() {
       ...intakeData,
       hopeHouseNumber: nextHopeHouseNumber,
       completedAt,
+      completedBy: MOCK_CURRENT_USER.displayName,
+      reviewedBy: "",
+      reviewedAt: "",
       reviewStatus: "Pending Review",
+      lastEditedBy: "",
+      lastEditedAt: "",
       formData: {
         ...intakeData.formData,
         hopeHouseNumber: nextHopeHouseNumber,
@@ -906,6 +1008,69 @@ export default function IntakePage() {
 
     startNewIntake();
     setActiveTab(2);
+  };
+
+  const completeReview = () => {
+    if (activeCompletedIntakeId === null) return;
+
+    setCompletedIntakes(
+      completedIntakes.map((intake) =>
+        intake.id === activeCompletedIntakeId
+          ? {
+              ...intake,
+              reviewedBy: MOCK_CURRENT_USER.displayName,
+              reviewedAt: new Date().toISOString(),
+              reviewStatus: "Review Complete",
+            }
+          : intake,
+      ),
+    );
+
+    setActiveCompletedIntakeId(null);
+    setActiveTab(2);
+  };
+
+  const saveCompletedIntakeChanges = () => {
+    if (activeCompletedIntakeId === null) return;
+
+    const updatedData = buildIntakeData();
+
+    setCompletedIntakes(
+      completedIntakes.map((intake) =>
+        intake.id === activeCompletedIntakeId
+          ? {
+              ...intake,
+              ...updatedData,
+              startedBy: intake.startedBy,
+              completedBy: intake.completedBy,
+              completedAt: intake.completedAt,
+              reviewedBy: intake.reviewedBy,
+              reviewedAt: intake.reviewedAt,
+              reviewStatus: intake.reviewStatus,
+              hopeHouseNumber: intake.hopeHouseNumber,
+              lastEditedBy: MOCK_CURRENT_USER.displayName,
+              lastEditedAt: new Date().toISOString(),
+            }
+          : intake,
+      ),
+    );
+
+    setIsEditingCompletedIntake(false);
+    setActiveCompletedIntakeId(null);
+    setActiveTab(2);
+  };
+
+  const cancelCompletedIntakeEdit = () => {
+    if (activeCompletedIntakeId === null) return;
+
+    const originalIntake = completedIntakes.find(
+      (intake) => intake.id === activeCompletedIntakeId,
+    );
+
+    if (!originalIntake) return;
+
+    loadIntakeData(originalIntake);
+    setIsEditingCompletedIntake(false);
   };
 
   // ---------------------------------------------------------------------------
@@ -1024,51 +1189,106 @@ export default function IntakePage() {
 
       {activeTab === 0 && (
         <>
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "flex-end",
-              gap: 1,
-              mt: 2,
-            }}
-          >
-            <Button variant="outlined" onClick={startNewIntake}>
-              Start New Intake
-            </Button>
+          {activeCompletedIntakeId !== null && (
+            <Paper sx={{ mt: 2, p: 2 }}>
+              <Typography
+                variant="h6"
+                sx={{ fontWeight: 600, textAlign: "center" }}
+              >
+                {isEditingCompletedIntake
+                  ? "Editing Completed Intake"
+                  : "Completed Intake Review"}
+              </Typography>
+              <Typography variant="body2" sx={{ textAlign: "center" }}>
+                {isEditingCompletedIntake
+                  ? "Make the necessary corrections, then save the updated intake."
+                  : "Review and confirm the client's completed intake information."}
+              </Typography>
+              {completedIntakes.find(
+                (intake) => intake.id === activeCompletedIntakeId,
+              )?.reviewStatus === "Review Complete" && (
+                <Box sx={{ mt: 2, display: "flex", justifyContent: "center" }}>
+                  {isEditingCompletedIntake ? (
+                    <>
+                      <Button
+                        variant="contained"
+                        onClick={saveCompletedIntakeChanges}
+                      >
+                        Save Changes
+                      </Button>
 
-            <Button
-              variant="contained"
-              onClick={() => {
-                const draftData = buildIntakeData();
+                      <Button
+                        variant="outlined"
+                        onClick={cancelCompletedIntakeEdit}
+                        sx={{ ml: 1 }}
+                      >
+                        Cancel
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      variant="outlined"
+                      onClick={() => setIsEditingCompletedIntake(true)}
+                    >
+                      Edit Intake
+                    </Button>
+                  )}
+                </Box>
+              )}
+            </Paper>
+          )}
 
-                if (activeDraftId !== null) {
-                  setDraftIntakes(
-                    draftIntakes.map((draft) =>
-                      draft.id === activeDraftId
-                        ? { ...draft, ...draftData }
-                        : draft,
-                    ),
-                  );
-                } else {
-                  const newDraftId = Date.now();
-
-                  setDraftIntakes([
-                    ...draftIntakes,
-                    {
-                      id: newDraftId,
-                      ...draftData,
-                    },
-                  ]);
-
-                  setActiveDraftId(newDraftId);
-                }
-
-                startNewIntake();
+          {activeCompletedIntakeId === null && (
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: 1,
+                mt: 2,
               }}
             >
-              Save Draft
-            </Button>
-          </Box>
+              <Button variant="outlined" onClick={startNewIntake}>
+                Start New Intake
+              </Button>
+
+              <Button
+                variant="contained"
+                onClick={() => {
+                  const draftData = buildIntakeData();
+
+                  if (activeDraftId !== null) {
+                    setDraftIntakes(
+                      draftIntakes.map((draft) =>
+                        draft.id === activeDraftId
+                          ? {
+                              ...draft,
+                              ...draftData,
+                              startedBy: draft.startedBy,
+                            }
+                          : draft,
+                      ),
+                    );
+                  } else {
+                    const newDraftId = Date.now();
+
+                    setDraftIntakes([
+                      ...draftIntakes,
+                      {
+                        id: newDraftId,
+                        ...draftData,
+                      },
+                    ]);
+
+                    setActiveDraftId(newDraftId);
+                  }
+
+                  startNewIntake();
+                }}
+              >
+                Save Draft
+              </Button>
+            </Box>
+          )}
 
           <Box
             sx={{
@@ -1316,9 +1536,17 @@ export default function IntakePage() {
                       >
                         <TextField
                           value={ssnFirst}
-                          onChange={(event) =>
-                            setSsnFirst(event.target.value.replace(/\D/g, ""))
+                          disabled={
+                            ssnStatus === "dont-know" || ssnStatus === "refused"
                           }
+                          onChange={(event) => {
+                            const value = event.target.value.replace(/\D/g, "");
+                            setSsnFirst(value);
+
+                            if (value) {
+                              setSsnStatus("provided");
+                            }
+                          }}
                           slotProps={{ htmlInput: { maxLength: 3 } }}
                           sx={{ width: 80 }}
                         />
@@ -1327,9 +1555,17 @@ export default function IntakePage() {
 
                         <TextField
                           value={ssnMiddle}
-                          onChange={(event) =>
-                            setSsnMiddle(event.target.value.replace(/\D/g, ""))
+                          disabled={
+                            ssnStatus === "dont-know" || ssnStatus === "refused"
                           }
+                          onChange={(event) => {
+                            const value = event.target.value.replace(/\D/g, "");
+                            setSsnMiddle(value);
+
+                            if (value) {
+                              setSsnStatus("provided");
+                            }
+                          }}
                           slotProps={{ htmlInput: { maxLength: 2 } }}
                           sx={{ width: 70 }}
                         />
@@ -1338,13 +1574,56 @@ export default function IntakePage() {
 
                         <TextField
                           value={ssnLast}
-                          onChange={(event) =>
-                            setSsnLast(event.target.value.replace(/\D/g, ""))
+                          disabled={
+                            ssnStatus === "dont-know" || ssnStatus === "refused"
                           }
+                          onChange={(event) => {
+                            const value = event.target.value.replace(/\D/g, "");
+                            setSsnLast(value);
+
+                            if (value) {
+                              setSsnStatus("provided");
+                            }
+                          }}
                           slotProps={{ htmlInput: { maxLength: 4 } }}
                           sx={{ width: 70 }}
                         />
                       </Box>
+
+                      <FormControl>
+                        <RadioGroup
+                          row
+                          value={ssnStatus}
+                          onChange={(event) => {
+                            const value = event.target.value;
+                            setSsnStatus(value);
+
+                            if (value === "dont-know" || value === "refused") {
+                              setSsnFirst("");
+                              setSsnMiddle("");
+                              setSsnLast("");
+                            }
+                          }}
+                        >
+                          <FormControlLabel
+                            value="provided"
+                            control={<Radio />}
+                            label="Provided"
+                          />
+
+                          <FormControlLabel
+                            value="dont-know"
+                            control={<Radio />}
+                            label="Don't Know"
+                          />
+
+                          <FormControlLabel
+                            value="refused"
+                            control={<Radio />}
+                            label="Refused"
+                          />
+                        </RadioGroup>
+                      </FormControl>
                     </Box>
 
                     {/* ------------------------------------------------------------ */}
@@ -1620,6 +1899,260 @@ export default function IntakePage() {
                       }
                     />
                   </Box>
+                </Paper>
+              )}
+
+              {/* ---------------------------------------------------------------- */}
+              {/* Suicide Risk Screening                                          */}
+              {/* ---------------------------------------------------------------- */}
+              {activeIntakeSection === "suicide-risk-screening" && (
+                <Paper sx={{ mt: 2, p: 3 }}>
+                  <Typography variant="h6">Suicide Risk Screening</Typography>
+                  <FormControl fullWidth sx={{ mt: 3 }}>
+                    <Typography>
+                      1. In the past few weeks, have you wished you were dead?
+                    </Typography>
+
+                    <RadioGroup
+                      row
+                      value={suicideWishDead}
+                      onChange={(event) =>
+                        setSuicideWishDead(event.target.value)
+                      }
+                    >
+                      <FormControlLabel
+                        value="Yes"
+                        control={<Radio />}
+                        label="Yes"
+                      />
+                      <FormControlLabel
+                        value="No"
+                        control={<Radio />}
+                        label="No"
+                      />
+                    </RadioGroup>
+                  </FormControl>
+
+                  <FormControl fullWidth sx={{ mt: 3 }}>
+                    <Typography>
+                      2. In the past few weeks, have you felt that you or your
+                      family would be better off if you were dead?
+                    </Typography>
+
+                    <RadioGroup
+                      row
+                      value={suicideBetterOffDead}
+                      onChange={(event) =>
+                        setSuicideBetterOffDead(event.target.value)
+                      }
+                    >
+                      <FormControlLabel
+                        value="Yes"
+                        control={<Radio />}
+                        label="Yes"
+                      />
+                      <FormControlLabel
+                        value="No"
+                        control={<Radio />}
+                        label="No"
+                      />
+                    </RadioGroup>
+                  </FormControl>
+
+                  <FormControl fullWidth sx={{ mt: 3 }}>
+                    <Typography>
+                      3. In the past week, have you been having thoughts about
+                      killing yourself?
+                    </Typography>
+
+                    <RadioGroup
+                      row
+                      value={suicideThoughts}
+                      onChange={(event) =>
+                        setSuicideThoughts(event.target.value)
+                      }
+                    >
+                      <FormControlLabel
+                        value="Yes"
+                        control={<Radio />}
+                        label="Yes"
+                      />
+                      <FormControlLabel
+                        value="No"
+                        control={<Radio />}
+                        label="No"
+                      />
+                    </RadioGroup>
+                  </FormControl>
+
+                  <FormControl fullWidth sx={{ mt: 3 }}>
+                    <Typography>
+                      4. Have you ever tried to kill yourself?
+                    </Typography>
+
+                    <RadioGroup
+                      row
+                      value={suicideAttemptHistory}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        setSuicideAttemptHistory(value);
+
+                        if (value === "No") {
+                          setSuicideAttemptHow("");
+                          setSuicideAttemptWhen("");
+                        }
+                      }}
+                    >
+                      <FormControlLabel
+                        value="Yes"
+                        control={<Radio />}
+                        label="Yes"
+                      />
+                      <FormControlLabel
+                        value="No"
+                        control={<Radio />}
+                        label="No"
+                      />
+                    </RadioGroup>
+                  </FormControl>
+
+                  {suicideAttemptHistory === "Yes" && (
+                    <Box
+                      sx={{
+                        display: "grid",
+                        gridTemplateColumns: "2fr 1fr",
+                        gap: 2,
+                        mt: 1,
+                      }}
+                    >
+                      <TextField
+                        label="If yes, how?"
+                        value={suicideAttemptHow}
+                        onChange={(event) =>
+                          setSuicideAttemptHow(event.target.value)
+                        }
+                        multiline
+                        minRows={2}
+                      />
+
+                      <TextField
+                        label="When?"
+                        value={suicideAttemptWhen}
+                        onChange={(event) =>
+                          setSuicideAttemptWhen(event.target.value)
+                        }
+                      />
+                    </Box>
+                  )}
+
+                  {suicideWishDead === "No" &&
+                    suicideBetterOffDead === "No" &&
+                    suicideThoughts === "No" &&
+                    suicideAttemptHistory === "No" && (
+                      <Alert
+                        severity="success"
+                        sx={{
+                          mt: 2,
+                          py: 3,
+                          fontSize: "1.5rem",
+                          "& .MuiAlert-icon": {
+                            fontSize: "2.5rem",
+                          },
+                        }}
+                      >
+                        <strong>Negative Screen:</strong> No positive responses
+                        were reported on Questions 1-4.
+                      </Alert>
+                    )}
+
+                  {(suicideWishDead === "Yes" ||
+                    suicideBetterOffDead === "Yes" ||
+                    suicideThoughts === "Yes" ||
+                    suicideAttemptHistory === "Yes") && (
+                    <>
+                      <FormControl fullWidth sx={{ mt: 3 }}>
+                        <Typography>
+                          5. Are you having thoughts of killing yourself right
+                          now?
+                        </Typography>
+
+                        <RadioGroup
+                          row
+                          value={suicideCurrentThoughts}
+                          onChange={(event) => {
+                            const value = event.target.value;
+                            setSuicideCurrentThoughts(value);
+
+                            if (value === "No") {
+                              setSuicideCurrentThoughtsDescription("");
+                            }
+                          }}
+                        >
+                          <FormControlLabel
+                            value="Yes"
+                            control={<Radio />}
+                            label="Yes"
+                          />
+                          <FormControlLabel
+                            value="No"
+                            control={<Radio />}
+                            label="No"
+                          />
+                        </RadioGroup>
+                      </FormControl>
+
+                      {suicideCurrentThoughts === "Yes" && (
+                        <TextField
+                          fullWidth
+                          sx={{ mt: 1 }}
+                          label="Please describe"
+                          value={suicideCurrentThoughtsDescription}
+                          onChange={(event) =>
+                            setSuicideCurrentThoughtsDescription(
+                              event.target.value,
+                            )
+                          }
+                          multiline
+                          minRows={3}
+                        />
+                      )}
+
+                      {suicideCurrentThoughts === "Yes" && (
+                        <Alert
+                          severity="error"
+                          sx={{
+                            mt: 2,
+                            py: 3,
+                            fontSize: "1.5rem",
+                            "& .MuiAlert-icon": {
+                              fontSize: "2.5rem",
+                            },
+                          }}
+                        >
+                          <strong>Acute Positive Screen:</strong> Keep the
+                          client in sight and remove dangerous objects from the
+                          room.
+                        </Alert>
+                      )}
+
+                      {suicideCurrentThoughts === "No" && (
+                        <Alert
+                          severity="warning"
+                          sx={{
+                            mt: 2,
+                            py: 3,
+                            fontSize: "1.5rem",
+                            "& .MuiAlert-icon": {
+                              fontSize: "2.5rem",
+                            },
+                          }}
+                        >
+                          <strong>Non-Acute Positive Screen:</strong> Arrange a
+                          brief suicide safety assessment as soon as possible.
+                        </Alert>
+                      )}
+                    </>
+                  )}
                 </Paper>
               )}
 
@@ -4513,6 +5046,11 @@ export default function IntakePage() {
                         onChange={(e) => setClientProgram(e.target.value)}
                       >
                         <FormControlLabel
+                          value="OVN"
+                          control={<Radio />}
+                          label="Overnight (OVN)"
+                        />
+                        <FormControlLabel
                           value="LTP"
                           control={<Radio />}
                           label="Life Transformation Program (LTP)"
@@ -4525,6 +5063,47 @@ export default function IntakePage() {
                       </RadioGroup>
                     </FormControl>
                   </Box>
+
+                  {clientProgram === "OVN" && (
+                    <Box sx={{ mt: 3 }}>
+                      <Typography
+                        variant="subtitle1"
+                        sx={{ fontWeight: 600, mb: 1 }}
+                      >
+                        Overnight Program (OVN)
+                      </Typography>
+
+                      <Typography>
+                        The Overnight Program is a short-term program of up to{" "}
+                        <strong>2 days</strong> that provides temporary shelter
+                        while Hope House staff and the client determine the most
+                        appropriate next steps.
+                      </Typography>
+
+                      <Typography sx={{ mt: 2 }}>
+                        During this time, the client's situation and needs will
+                        be reviewed. Based on the client's circumstances,
+                        program requirements, and availability, the client may
+                        have the opportunity to transition into another Hope
+                        House program.
+                      </Typography>
+
+                      <Typography sx={{ mt: 2 }}>
+                        Placement into another program is not guaranteed and
+                        will be determined based on individual circumstances and
+                        available program options.
+                      </Typography>
+
+                      <TextField
+                        label="Client Initials"
+                        value={overnightProgramInitials}
+                        onChange={(e) =>
+                          setOvernightProgramInitials(e.target.value)
+                        }
+                        sx={{ mt: 2, maxWidth: 200 }}
+                      />
+                    </Box>
+                  )}
 
                   {clientProgram === "LTP" && (
                     <>
@@ -6360,6 +6939,23 @@ export default function IntakePage() {
                     housing expenses. Any housing contribution is voluntary and
                     is not required as a condition of receiving services.
                   </Typography>
+
+                  <Box sx={{ mt: 3 }}>
+                    <Typography sx={{ fontWeight: 600 }}>
+                      Program Assignment
+                    </Typography>
+
+                    <Typography sx={{ mt: 0.5 }}>
+                      {clientProgram === "OVN"
+                        ? "Overnight Program (OVN)"
+                        : clientProgram === "LTP"
+                          ? "Life Transformation Program (LTP)"
+                          : clientProgram === "TEMP"
+                            ? "Emergency Temporary Shelter (TEMP)"
+                            : "Not assigned"}
+                    </Typography>
+                  </Box>
+
                   <Box sx={{ mt: 3 }}>
                     <Typography sx={{ fontWeight: 600, mt: 1 }}>
                       Client Signature
@@ -6388,9 +6984,17 @@ export default function IntakePage() {
                   <Box
                     sx={{ mt: 4, display: "flex", justifyContent: "flex-end" }}
                   >
-                    <Button variant="contained" onClick={completeIntake}>
-                      Complete Intake
-                    </Button>
+                    {activeCompletedIntakeId === null ? (
+                      <Button variant="contained" onClick={completeIntake}>
+                        Complete Intake
+                      </Button>
+                    ) : completedIntakes.find(
+                        (intake) => intake.id === activeCompletedIntakeId,
+                      )?.reviewStatus === "Pending Review" ? (
+                      <Button variant="contained" onClick={completeReview}>
+                        Complete Review
+                      </Button>
+                    ) : null}
                   </Box>
                 </Paper>
               )}
@@ -6415,8 +7019,47 @@ export default function IntakePage() {
                 {draft.clientName || "Unnamed Client"}
               </Typography>
 
+              <Typography
+                variant="body2"
+                sx={{ fontWeight: 600, color: "#364B70" }}
+              >
+                DRAFT
+              </Typography>
+
               <Typography variant="body2">
-                Intake Date: {draft.intakeDate || "Not entered"}
+                Program:{" "}
+                {draft.formData.clientProgram === "OVN"
+                  ? "Overnight Program (OVN)"
+                  : draft.formData.clientProgram === "LTP"
+                    ? "Life Transformation Program (LTP)"
+                    : draft.formData.clientProgram === "TEMP"
+                      ? "Emergency Temporary Shelter (TEMP)"
+                      : "Not assigned"}
+              </Typography>
+
+              <Typography variant="body2">
+                Started By: {draft.startedBy}
+              </Typography>
+
+              <Typography variant="body2">
+                Intake Date:{" "}
+                {draft.intakeDate
+                  ? new Date(`${draft.intakeDate}T00:00:00`)
+                      .toLocaleDateString("en-US", {
+                        month: "2-digit",
+                        day: "2-digit",
+                        year: "numeric",
+                      })
+                      .replaceAll("/", "-")
+                  : "Not entered"}
+              </Typography>
+
+              <Typography variant="body2">
+                HMIS #: {draft.formData.hmisNumber || "Pending"}
+              </Typography>
+
+              <Typography variant="body2">
+                Last Updated By: {draft.lastUpdatedBy}
               </Typography>
 
               <Typography variant="body2">
@@ -6453,28 +7096,93 @@ export default function IntakePage() {
             <Paper key={intake.id} variant="outlined" sx={{ mt: 2, p: 3 }}>
               <Typography sx={{ fontWeight: 600 }}>
                 {intake.clientName || "Unnamed Client"}
+
                 <Typography variant="body2">
                   Hope House #: {intake.hopeHouseNumber}
                 </Typography>
+
                 <Typography variant="body2">
-                  Program: {intake.formData.clientProgram || "Not assigned"}
+                  Program:{" "}
+                  {intake.formData.clientProgram === "OVN"
+                    ? "Overnight Program (OVN)"
+                    : intake.formData.clientProgram === "LTP"
+                      ? "Life Transformation Program (LTP)"
+                      : intake.formData.clientProgram === "TEMP"
+                        ? "Emergency Temporary Shelter (TEMP)"
+                        : "Not assigned"}
                 </Typography>
+
+                <Typography variant="body2">
+                  Intake Date:{" "}
+                  {intake.intakeDate
+                    ? new Date(`${intake.intakeDate}T00:00:00`)
+                        .toLocaleDateString("en-US", {
+                          month: "2-digit",
+                          day: "2-digit",
+                          year: "numeric",
+                        })
+                        .replaceAll("/", "-")
+                    : "Not entered"}
+                </Typography>
+
+                <Typography variant="body2">
+                  HMIS #: {intake.formData.hmisNumber || "Pending"}
+                </Typography>
+
+                <Typography variant="body2">
+                  Started By: {intake.startedBy}
+                </Typography>
+
+                <Typography variant="body2">
+                  Completed By: {intake.completedBy}
+                </Typography>
+
                 <Typography variant="body2">
                   Review Status: {intake.reviewStatus}
                 </Typography>
+
+                {intake.reviewedBy && (
+                  <Typography variant="body2">
+                    Reviewed By: {intake.reviewedBy}
+                  </Typography>
+                )}
+
+                {intake.reviewedAt && (
+                  <Typography variant="body2">
+                    Reviewed: {new Date(intake.reviewedAt).toLocaleString()}
+                  </Typography>
+                )}
+
+                {intake.lastEditedBy && (
+                  <Typography variant="body2">
+                    Last Edited By: {intake.lastEditedBy}
+                  </Typography>
+                )}
+
+                {intake.lastEditedAt && (
+                  <Typography variant="body2">
+                    Last Edited:{" "}
+                    {new Date(intake.lastEditedAt).toLocaleString()}
+                  </Typography>
+                )}
+
                 <Typography variant="body2">
                   Completed: {new Date(intake.completedAt).toLocaleString()}
                 </Typography>
+
                 <Button
                   variant="outlined"
                   sx={{ mt: 2 }}
                   onClick={() => {
                     setActiveCompletedIntakeId(intake.id);
+                    setIsEditingCompletedIntake(false);
                     loadIntakeData(intake);
                     setActiveTab(0);
                   }}
                 >
-                  Open for Review
+                  {intake.reviewStatus === "Review Complete"
+                    ? "View Intake"
+                    : "Open for Review"}
                 </Button>
               </Typography>
             </Paper>
