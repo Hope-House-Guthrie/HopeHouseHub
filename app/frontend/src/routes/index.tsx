@@ -59,6 +59,8 @@ import UaManagementPage from "@/pages/prototype/ua-management";
 import HouseDisplayPage from "@/pages/prototype/house-display";
 import HouseDisplayManagePage from "@/pages/prototype/house-display/manage";
 import IntakePage from "@/pages/prototype/intake";
+import RoomChartPage from "@/pages/prototype/room-chart";
+import MeetingRoomIcon from "@mui/icons-material/MeetingRoom";
 
 
 export const routesConfig: NavigationNode[] = [
@@ -366,6 +368,24 @@ export const routesConfig: NavigationNode[] = [
                         config: {
                             title: "Client Intake",
                             icon: <IntakeIcon />,
+                            showInNavigation: true,
+                            group: "Prototype",
+                            roles: ["PROTOTYPE"],
+                        },
+                    },
+                    {
+                        path: "prototype/room-chart",
+                        element: <RoomChartPage />,
+                        handle: {
+                            title: "Room Chart",
+                            icon: <MeetingRoomIcon />,
+                            showInNavigation: true,
+                            group: "Prototype",
+                            roles: ["PROTOTYPE"],
+                        },
+                        config: {
+                            title: "Room Chart",
+                            icon: <MeetingRoomIcon />,
                             showInNavigation: true,
                             group: "Prototype",
                             roles: ["PROTOTYPE"],
