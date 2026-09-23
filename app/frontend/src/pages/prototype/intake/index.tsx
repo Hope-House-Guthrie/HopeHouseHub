@@ -107,7 +107,7 @@ export default function IntakePage() {
   const [activeHandbookTab, setActiveHandbookTab] = useState("getting-started");
 
   // ---------------------------------------------------------------------------
-  // Live form object (Phase 5E: through Health/Support on form; agreements/program/covid/auth still mixed).
+  // Live form object (Phase 5F: all live Intake form fields on form; workflow/UI state remains separate).
   // ---------------------------------------------------------------------------
   const [form, setForm] = useState<LiveIntakeForm>(() =>
     createEmptyIntakeForm(),
@@ -154,85 +154,22 @@ export default function IntakePage() {
 
 
 
-  const [snapAcknowledgmentDate, setSnapAcknowledgmentDate] = useState("");
 
 
 
-  // ---------------------------------------------------------------------------
-  // Agreements / Waivers
-  // ---------------------------------------------------------------------------
 
-  const [childSupportDhsInitials, setChildSupportDhsInitials] = useState("");
-  const [
-    medicationResponsibilityInitials,
-    setMedicationResponsibilityInitials,
-  ] = useState("");
-  const [vehicleTransportationInitials, setVehicleTransportationInitials] =
-    useState("");
-  const [possessionsInitials, setPossessionsInitials] = useState("");
-  const [programGuidelinesInitials, setProgramGuidelinesInitials] =
-    useState("");
-  const [backgroundTestingSearchInitials, setBackgroundTestingSearchInitials] =
-    useState("");
-  const [informationSharingInitials, setInformationSharingInitials] =
-    useState("");
-  const [facilityExpectationsInitials, setFacilityExpectationsInitials] =
-    useState("");
-  const [volunteerWaiverInitials, setVolunteerWaiverInitials] = useState("");
-  const [
-    confidentialityAgreementInitials,
-    setConfidentialityAgreementInitials,
-  ] = useState("");
-  const [coEdAccountabilityInitials, setCoEdAccountabilityInitials] =
-    useState("");
-  const [dressForSuccessInitials, setDressForSuccessInitials] = useState("");
-  const [nondiscriminationInitials, setNondiscriminationInitials] =
-    useState("");
 
-  // ---------------------------------------------------------------------------
-  // Program Assignment
-  // ---------------------------------------------------------------------------
 
-  const [
-    lifeTransformationProgramInitials,
-    setLifeTransformationProgramInitials,
-  ] = useState("");
 
-  const [overnightProgramInitials, setOvernightProgramInitials] = useState("");
 
-  const [clientProgram, setClientProgram] = useState("");
-
-  const [temporaryShelterProgramInitials, setTemporaryShelterProgramInitials] =
-    useState("");
-
-  // ---------------------------------------------------------------------------
-  // COVID / Health
-  // ---------------------------------------------------------------------------
-
-  const [covidVaccinated, setCovidVaccinated] = useState("");
-  const [covidVaccinationDate, setCovidVaccinationDate] = useState("");
-  const [covidVaccinationAppointmentDate, setCovidVaccinationAppointmentDate] =
-    useState("");
-  const [covidVaccinationProof, setCovidVaccinationProof] = useState("");
   // Browser File only for prototype UI — not durable across refresh; FUTURE upload/storage.
-  const [covidVaccinationProofFile, setCovidVaccinationProofFile] =
-    useState<File | null>(null);
 
   // ---------------------------------------------------------------------------
   // HMIS Authorization / signature capture (frontend strings via SignatureCanvas)
   // FUTURE: persist signature payloads with intake records outside this prototype.
   // ---------------------------------------------------------------------------
 
-  const [hmisAuthorization, setHmisAuthorization] = useState("");
-  const [hmisSignature, setHmisSignature] = useState("");
-  const [hmisSignatureDate, setHmisSignatureDate] = useState("");
 
-  // ---------------------------------------------------------------------------
-  // Final Review
-  // ---------------------------------------------------------------------------
-
-  const [finalClientSignature, setFinalClientSignature] = useState("");
-  const [finalAdminSignature, setFinalAdminSignature] = useState("");
 
   // Resets all live form fields. Must stay aligned with formData / buildIntakeData.
   // Save Draft intentionally calls this afterward so the UI returns to a blank Intake.
@@ -240,7 +177,7 @@ export default function IntakePage() {
     setActiveDraftId(null);
     setActiveIntakeSection("client-information");
     setActiveHandbookTab("getting-started");
-    // Migrated fields on form — partial reset until full form cutover.
+    // All live form fields on form — partial reset until full createEmpty cutover.
     setForm((prev) => ({
       ...prev,
       firstName: "",
@@ -352,35 +289,35 @@ export default function IntakePage() {
       otherSocialFinancialSupport: "",
       childrenInSchoolOrChildcare: "",
       religiousSpiritualTraditions: "",
+      snapAcknowledgmentDate: "",
+      childSupportDhsInitials: "",
+      medicationResponsibilityInitials: "",
+      vehicleTransportationInitials: "",
+      possessionsInitials: "",
+      programGuidelinesInitials: "",
+      backgroundTestingSearchInitials: "",
+      informationSharingInitials: "",
+      facilityExpectationsInitials: "",
+      volunteerWaiverInitials: "",
+      confidentialityAgreementInitials: "",
+      coEdAccountabilityInitials: "",
+      dressForSuccessInitials: "",
+      nondiscriminationInitials: "",
+      lifeTransformationProgramInitials: "",
+      overnightProgramInitials: "",
+      clientProgram: "",
+      temporaryShelterProgramInitials: "",
+      covidVaccinated: "",
+      covidVaccinationDate: "",
+      covidVaccinationAppointmentDate: "",
+      covidVaccinationProof: "",
+      covidVaccinationProofFile: null,
+      hmisAuthorization: "",
+      hmisSignature: "",
+      hmisSignatureDate: "",
+      finalClientSignature: "",
+      finalAdminSignature: "",
     }));
-    setSnapAcknowledgmentDate("");
-    setChildSupportDhsInitials("");
-    setMedicationResponsibilityInitials("");
-    setVehicleTransportationInitials("");
-    setPossessionsInitials("");
-    setProgramGuidelinesInitials("");
-    setBackgroundTestingSearchInitials("");
-    setInformationSharingInitials("");
-    setFacilityExpectationsInitials("");
-    setVolunteerWaiverInitials("");
-    setConfidentialityAgreementInitials("");
-    setCoEdAccountabilityInitials("");
-    setDressForSuccessInitials("");
-    setNondiscriminationInitials("");
-    setLifeTransformationProgramInitials("");
-    setOvernightProgramInitials("");
-    setClientProgram("");
-    setTemporaryShelterProgramInitials("");
-    setCovidVaccinated("");
-    setCovidVaccinationDate("");
-    setCovidVaccinationAppointmentDate("");
-    setCovidVaccinationProof("");
-    setCovidVaccinationProofFile(null);
-    setHmisAuthorization("");
-    setHmisSignature("");
-    setHmisSignatureDate("");
-    setFinalClientSignature("");
-    setFinalAdminSignature("");
   };
 
   // Critical bridge: packs the many local useState fields into a formData snapshot
@@ -466,7 +403,7 @@ export default function IntakePage() {
 
         snapBenefits: form.snapBenefits,
         snapLoadDay: form.snapLoadDay,
-        snapAcknowledgmentDate,
+        snapAcknowledgmentDate: form.snapAcknowledgmentDate,
         snapMonthlyAmount: form.snapMonthlyAmount,
         soonerCareBenefits: form.soonerCareBenefits,
         soonerCarePlan: form.soonerCarePlan,
@@ -511,43 +448,43 @@ export default function IntakePage() {
         childrenInSchoolOrChildcare: form.childrenInSchoolOrChildcare,
         religiousSpiritualTraditions: form.religiousSpiritualTraditions,
 
-        childSupportDhsInitials,
-        medicationResponsibilityInitials,
-        vehicleTransportationInitials,
-        possessionsInitials,
-        programGuidelinesInitials,
-        backgroundTestingSearchInitials,
-        informationSharingInitials,
-        facilityExpectationsInitials,
-        volunteerWaiverInitials,
-        confidentialityAgreementInitials,
-        coEdAccountabilityInitials,
-        dressForSuccessInitials,
-        nondiscriminationInitials,
-        lifeTransformationProgramInitials,
-        overnightProgramInitials,
+        childSupportDhsInitials: form.childSupportDhsInitials,
+        medicationResponsibilityInitials: form.medicationResponsibilityInitials,
+        vehicleTransportationInitials: form.vehicleTransportationInitials,
+        possessionsInitials: form.possessionsInitials,
+        programGuidelinesInitials: form.programGuidelinesInitials,
+        backgroundTestingSearchInitials: form.backgroundTestingSearchInitials,
+        informationSharingInitials: form.informationSharingInitials,
+        facilityExpectationsInitials: form.facilityExpectationsInitials,
+        volunteerWaiverInitials: form.volunteerWaiverInitials,
+        confidentialityAgreementInitials: form.confidentialityAgreementInitials,
+        coEdAccountabilityInitials: form.coEdAccountabilityInitials,
+        dressForSuccessInitials: form.dressForSuccessInitials,
+        nondiscriminationInitials: form.nondiscriminationInitials,
+        lifeTransformationProgramInitials: form.lifeTransformationProgramInitials,
+        overnightProgramInitials: form.overnightProgramInitials,
 
-        clientProgram,
-        temporaryShelterProgramInitials,
+        clientProgram: form.clientProgram,
+        temporaryShelterProgramInitials: form.temporaryShelterProgramInitials,
 
-        covidVaccinated,
-        covidVaccinationDate,
-        covidVaccinationAppointmentDate,
-        covidVaccinationProof,
-        covidVaccinationProofFile,
+        covidVaccinated: form.covidVaccinated,
+        covidVaccinationDate: form.covidVaccinationDate,
+        covidVaccinationAppointmentDate: form.covidVaccinationAppointmentDate,
+        covidVaccinationProof: form.covidVaccinationProof,
+        covidVaccinationProofFile: form.covidVaccinationProofFile,
 
-        hmisAuthorization,
-        hmisSignature,
-        hmisSignatureDate,
-        finalClientSignature,
-        finalAdminSignature,
+        hmisAuthorization: form.hmisAuthorization,
+        hmisSignature: form.hmisSignature,
+        hmisSignatureDate: form.hmisSignatureDate,
+        finalClientSignature: form.finalClientSignature,
+        finalAdminSignature: form.finalAdminSignature,
       },
     };
   };
 
   // Inverse of buildIntakeData: hydrates local UI state from a Draft/Completed snapshot.
   const loadIntakeData = (intake: IntakeDraft) => {
-    // Migrated fields on form — partial load until full form cutover.
+    // All live form fields on form — partial load until full form cutover.
     setForm((prev) => ({
       ...prev,
       firstName: intake.formData.firstName,
@@ -659,57 +596,41 @@ export default function IntakePage() {
       otherSocialFinancialSupport: intake.formData.otherSocialFinancialSupport,
       childrenInSchoolOrChildcare: intake.formData.childrenInSchoolOrChildcare,
       religiousSpiritualTraditions: intake.formData.religiousSpiritualTraditions,
+      snapAcknowledgmentDate: intake.formData.snapAcknowledgmentDate,
+      childSupportDhsInitials: intake.formData.childSupportDhsInitials,
+      medicationResponsibilityInitials: intake.formData.medicationResponsibilityInitials,
+      vehicleTransportationInitials: intake.formData.vehicleTransportationInitials,
+      possessionsInitials: intake.formData.possessionsInitials,
+      programGuidelinesInitials: intake.formData.programGuidelinesInitials,
+      backgroundTestingSearchInitials: intake.formData.backgroundTestingSearchInitials,
+      informationSharingInitials: intake.formData.informationSharingInitials,
+      facilityExpectationsInitials: intake.formData.facilityExpectationsInitials,
+      volunteerWaiverInitials: intake.formData.volunteerWaiverInitials,
+      confidentialityAgreementInitials: intake.formData.confidentialityAgreementInitials,
+      coEdAccountabilityInitials: intake.formData.coEdAccountabilityInitials,
+      dressForSuccessInitials: intake.formData.dressForSuccessInitials,
+      nondiscriminationInitials: intake.formData.nondiscriminationInitials,
+      lifeTransformationProgramInitials: intake.formData.lifeTransformationProgramInitials,
+      overnightProgramInitials: intake.formData.overnightProgramInitials,
+      clientProgram: intake.formData.clientProgram,
+      temporaryShelterProgramInitials: intake.formData.temporaryShelterProgramInitials,
+      covidVaccinated: intake.formData.covidVaccinated,
+      covidVaccinationDate: intake.formData.covidVaccinationDate,
+      covidVaccinationAppointmentDate: intake.formData.covidVaccinationAppointmentDate,
+      covidVaccinationProof: intake.formData.covidVaccinationProof,
+      covidVaccinationProofFile: intake.formData.covidVaccinationProofFile,
+      hmisAuthorization: intake.formData.hmisAuthorization,
+      hmisSignature: intake.formData.hmisSignature,
+      hmisSignatureDate: intake.formData.hmisSignatureDate,
+      finalClientSignature: intake.formData.finalClientSignature,
+      finalAdminSignature: intake.formData.finalAdminSignature,
     }));
-    setSnapAcknowledgmentDate(intake.formData.snapAcknowledgmentDate);
-    setChildSupportDhsInitials(intake.formData.childSupportDhsInitials);
-    setMedicationResponsibilityInitials(
-      intake.formData.medicationResponsibilityInitials,
-    );
-    setVehicleTransportationInitials(
-      intake.formData.vehicleTransportationInitials,
-    );
-    setPossessionsInitials(intake.formData.possessionsInitials);
-    setProgramGuidelinesInitials(intake.formData.programGuidelinesInitials);
-    setBackgroundTestingSearchInitials(
-      intake.formData.backgroundTestingSearchInitials,
-    );
-    setInformationSharingInitials(intake.formData.informationSharingInitials);
-    setFacilityExpectationsInitials(
-      intake.formData.facilityExpectationsInitials,
-    );
-    setVolunteerWaiverInitials(intake.formData.volunteerWaiverInitials);
-    setConfidentialityAgreementInitials(
-      intake.formData.confidentialityAgreementInitials,
-    );
-    setCoEdAccountabilityInitials(intake.formData.coEdAccountabilityInitials);
-    setDressForSuccessInitials(intake.formData.dressForSuccessInitials);
-    setNondiscriminationInitials(intake.formData.nondiscriminationInitials);
-    setLifeTransformationProgramInitials(
-      intake.formData.lifeTransformationProgramInitials,
-    );
-    setOvernightProgramInitials(intake.formData.overnightProgramInitials);
-    setClientProgram(intake.formData.clientProgram);
-    setTemporaryShelterProgramInitials(
-      intake.formData.temporaryShelterProgramInitials,
-    );
-    setCovidVaccinated(intake.formData.covidVaccinated);
-    setCovidVaccinationDate(intake.formData.covidVaccinationDate);
-    setCovidVaccinationAppointmentDate(
-      intake.formData.covidVaccinationAppointmentDate,
-    );
-    setCovidVaccinationProof(intake.formData.covidVaccinationProof);
-    setCovidVaccinationProofFile(intake.formData.covidVaccinationProofFile);
-    setHmisAuthorization(intake.formData.hmisAuthorization);
-    setHmisSignature(intake.formData.hmisSignature);
-    setHmisSignatureDate(intake.formData.hmisSignatureDate);
-    setFinalClientSignature(intake.formData.finalClientSignature);
-    setFinalAdminSignature(intake.formData.finalAdminSignature);
   };
 
   // Completes the in-memory intake: requires clientProgram, assigns prototype HH#,
   // appends CompletedIntake (Pending Review), drops linked draft, clears form, opens Completed tab.
   const completeIntake = () => {
-    if (!clientProgram) {
+    if (!form.clientProgram) {
       alert("Please select a program before completing the intake.");
       setActiveIntakeSection("program-assignment");
       return;
@@ -1096,7 +1017,7 @@ export default function IntakePage() {
 
                       <TextField
                         label="PROGRAM"
-                        value={clientProgram}
+                        value={form.clientProgram}
                         slotProps={{
                           input: {
                             readOnly: true,
@@ -4092,9 +4013,9 @@ export default function IntakePage() {
 
                       <TextField
                         label="Client Initials"
-                        value={childSupportDhsInitials}
+                        value={form.childSupportDhsInitials}
                         onChange={(e) =>
-                          setChildSupportDhsInitials(e.target.value)
+                          setField("childSupportDhsInitials", e.target.value)
                         }
                         sx={{ mt: 2, maxWidth: 200 }}
                       />
@@ -4105,9 +4026,9 @@ export default function IntakePage() {
 
                       <TextField
                         label="Client Initials"
-                        value={medicationResponsibilityInitials}
+                        value={form.medicationResponsibilityInitials}
                         onChange={(e) =>
-                          setMedicationResponsibilityInitials(e.target.value)
+                          setField("medicationResponsibilityInitials", e.target.value)
                         }
                         sx={{ mt: 2, maxWidth: 200 }}
                       />
@@ -4118,9 +4039,9 @@ export default function IntakePage() {
 
                       <TextField
                         label="Client Initials"
-                        value={vehicleTransportationInitials}
+                        value={form.vehicleTransportationInitials}
                         onChange={(e) =>
-                          setVehicleTransportationInitials(e.target.value)
+                          setField("vehicleTransportationInitials", e.target.value)
                         }
                         sx={{ mt: 2, maxWidth: 200 }}
                       />
@@ -4131,8 +4052,8 @@ export default function IntakePage() {
 
                       <TextField
                         label="Client Initials"
-                        value={possessionsInitials}
-                        onChange={(e) => setPossessionsInitials(e.target.value)}
+                        value={form.possessionsInitials}
+                        onChange={(e) => setField("possessionsInitials", e.target.value)}
                         sx={{ mt: 2, maxWidth: 200 }}
                       />
                     </Box>
@@ -4142,9 +4063,9 @@ export default function IntakePage() {
 
                       <TextField
                         label="Client Initials"
-                        value={programGuidelinesInitials}
+                        value={form.programGuidelinesInitials}
                         onChange={(e) =>
-                          setProgramGuidelinesInitials(e.target.value)
+                          setField("programGuidelinesInitials", e.target.value)
                         }
                         sx={{ mt: 2, maxWidth: 200 }}
                       />
@@ -4155,9 +4076,9 @@ export default function IntakePage() {
 
                       <TextField
                         label="Client Initials"
-                        value={backgroundTestingSearchInitials}
+                        value={form.backgroundTestingSearchInitials}
                         onChange={(e) =>
-                          setBackgroundTestingSearchInitials(e.target.value)
+                          setField("backgroundTestingSearchInitials", e.target.value)
                         }
                         sx={{ mt: 2, maxWidth: 200 }}
                       />
@@ -4168,9 +4089,9 @@ export default function IntakePage() {
 
                       <TextField
                         label="Client Initials"
-                        value={informationSharingInitials}
+                        value={form.informationSharingInitials}
                         onChange={(e) =>
-                          setInformationSharingInitials(e.target.value)
+                          setField("informationSharingInitials", e.target.value)
                         }
                         sx={{ mt: 2, maxWidth: 200 }}
                       />
@@ -4182,9 +4103,9 @@ export default function IntakePage() {
 
                       <TextField
                         label="Client Initials"
-                        value={facilityExpectationsInitials}
+                        value={form.facilityExpectationsInitials}
                         onChange={(e) =>
-                          setFacilityExpectationsInitials(e.target.value)
+                          setField("facilityExpectationsInitials", e.target.value)
                         }
                         sx={{ mt: 2, maxWidth: 200 }}
                       />
@@ -4200,9 +4121,9 @@ export default function IntakePage() {
 
                       <TextField
                         label="Client Initials"
-                        value={volunteerWaiverInitials}
+                        value={form.volunteerWaiverInitials}
                         onChange={(e) =>
-                          setVolunteerWaiverInitials(e.target.value)
+                          setField("volunteerWaiverInitials", e.target.value)
                         }
                         sx={{ mt: 2, maxWidth: 200 }}
                       />
@@ -4214,9 +4135,9 @@ export default function IntakePage() {
 
                       <TextField
                         label="Client Initials"
-                        value={confidentialityAgreementInitials}
+                        value={form.confidentialityAgreementInitials}
                         onChange={(e) =>
-                          setConfidentialityAgreementInitials(e.target.value)
+                          setField("confidentialityAgreementInitials", e.target.value)
                         }
                         sx={{ mt: 2, maxWidth: 200 }}
                       />
@@ -4227,9 +4148,9 @@ export default function IntakePage() {
 
                       <TextField
                         label="Client Initials"
-                        value={coEdAccountabilityInitials}
+                        value={form.coEdAccountabilityInitials}
                         onChange={(e) =>
-                          setCoEdAccountabilityInitials(e.target.value)
+                          setField("coEdAccountabilityInitials", e.target.value)
                         }
                         sx={{ mt: 2, maxWidth: 200 }}
                       />
@@ -4241,9 +4162,9 @@ export default function IntakePage() {
 
                       <TextField
                         label="Client Initials"
-                        value={dressForSuccessInitials}
+                        value={form.dressForSuccessInitials}
                         onChange={(e) =>
-                          setDressForSuccessInitials(e.target.value)
+                          setField("dressForSuccessInitials", e.target.value)
                         }
                         sx={{ mt: 2, maxWidth: 200 }}
                       />
@@ -4255,9 +4176,9 @@ export default function IntakePage() {
 
                       <TextField
                         label="Client Initials"
-                        value={nondiscriminationInitials}
+                        value={form.nondiscriminationInitials}
                         onChange={(e) =>
-                          setNondiscriminationInitials(e.target.value)
+                          setField("nondiscriminationInitials", e.target.value)
                         }
                         sx={{ mt: 2, maxWidth: 200 }}
                       />
@@ -4282,8 +4203,8 @@ export default function IntakePage() {
                       </Typography>
 
                       <RadioGroup
-                        value={clientProgram}
-                        onChange={(e) => setClientProgram(e.target.value)}
+                        value={form.clientProgram}
+                        onChange={(e) => setField("clientProgram", e.target.value)}
                       >
                         <FormControlLabel
                           value="OVN"
@@ -4304,42 +4225,42 @@ export default function IntakePage() {
                     </FormControl>
                   </Box>
 
-                  {clientProgram === "OVN" && (
+                  {form.clientProgram === "OVN" && (
                     <Box sx={{ mt: 3 }}>
                       <ProgramOvnCopy />
                       <TextField
                         label="Client Initials"
-                        value={overnightProgramInitials}
+                        value={form.overnightProgramInitials}
                         onChange={(e) =>
-                          setOvernightProgramInitials(e.target.value)
+                          setField("overnightProgramInitials", e.target.value)
                         }
                         sx={{ mt: 2, maxWidth: 200 }}
                       />
                     </Box>
                   )}
 
-                  {clientProgram === "LTP" && (
+                  {form.clientProgram === "LTP" && (
                     <Box sx={{ mt: 3 }}>
                       <ProgramLtpCopy />
                       <TextField
                         label="Client Initials"
-                        value={lifeTransformationProgramInitials}
+                        value={form.lifeTransformationProgramInitials}
                         onChange={(e) =>
-                          setLifeTransformationProgramInitials(e.target.value)
+                          setField("lifeTransformationProgramInitials", e.target.value)
                         }
                         sx={{ mt: 2, maxWidth: 200 }}
                       />
                     </Box>
                   )}
 
-                  {clientProgram === "TEMP" && (
+                  {form.clientProgram === "TEMP" && (
                     <Box sx={{ mt: 3 }}>
                       <ProgramTempCopy />
                       <TextField
                         label="Client Initials"
-                        value={temporaryShelterProgramInitials}
+                        value={form.temporaryShelterProgramInitials}
                         onChange={(e) =>
-                          setTemporaryShelterProgramInitials(e.target.value)
+                          setField("temporaryShelterProgramInitials", e.target.value)
                         }
                         sx={{ mt: 2, maxWidth: 200 }}
                       />
@@ -4374,8 +4295,8 @@ export default function IntakePage() {
 
                     <RadioGroup
                       row
-                      value={covidVaccinated}
-                      onChange={(e) => setCovidVaccinated(e.target.value)}
+                      value={form.covidVaccinated}
+                      onChange={(e) => setField("covidVaccinated", e.target.value)}
                     >
                       <FormControlLabel
                         value="Yes"
@@ -4389,13 +4310,13 @@ export default function IntakePage() {
                       />
                     </RadioGroup>
 
-                    {covidVaccinated === "Yes" && (
+                    {form.covidVaccinated === "Yes" && (
                       <TextField
                         label="Approximate Vaccination Date"
                         type="date"
-                        value={covidVaccinationDate}
+                        value={form.covidVaccinationDate}
                         onChange={(e) =>
-                          setCovidVaccinationDate(e.target.value)
+                          setField("covidVaccinationDate", e.target.value)
                         }
                         slotProps={{
                           inputLabel: { shrink: true },
@@ -4404,13 +4325,13 @@ export default function IntakePage() {
                       />
                     )}
 
-                    {covidVaccinated === "No" && (
+                    {form.covidVaccinated === "No" && (
                       <TextField
                         label="Vaccination Appointment Date"
                         type="date"
-                        value={covidVaccinationAppointmentDate}
+                        value={form.covidVaccinationAppointmentDate}
                         onChange={(e) =>
-                          setCovidVaccinationAppointmentDate(e.target.value)
+                          setField("covidVaccinationAppointmentDate", e.target.value)
                         }
                         slotProps={{
                           inputLabel: { shrink: true },
@@ -4425,8 +4346,8 @@ export default function IntakePage() {
 
                     <RadioGroup
                       row
-                      value={covidVaccinationProof}
-                      onChange={(e) => setCovidVaccinationProof(e.target.value)}
+                      value={form.covidVaccinationProof}
+                      onChange={(e) => setField("covidVaccinationProof", e.target.value)}
                     >
                       <FormControlLabel
                         value="Yes"
@@ -4440,7 +4361,7 @@ export default function IntakePage() {
                       />
                     </RadioGroup>
 
-                    {covidVaccinationProof === "Yes" && (
+                    {form.covidVaccinationProof === "Yes" && (
                       <Box sx={{ mt: 1 }}>
                         <Button variant="outlined" component="label">
                           Attach Proof of Vaccination
@@ -4450,16 +4371,17 @@ export default function IntakePage() {
                             hidden
                             accept="image/*,.pdf"
                             onChange={(e) =>
-                              setCovidVaccinationProofFile(
+                              setField(
+                                "covidVaccinationProofFile",
                                 e.target.files?.[0] ?? null,
                               )
                             }
                           />
                         </Button>
 
-                        {covidVaccinationProofFile && (
+                        {form.covidVaccinationProofFile && (
                           <Typography variant="body2" sx={{ mt: 1 }}>
-                            Selected: {covidVaccinationProofFile.name}
+                            Selected: {form.covidVaccinationProofFile.name}
                           </Typography>
                         )}
                       </Box>
@@ -4495,9 +4417,9 @@ export default function IntakePage() {
                       <TextField
                         label="Acknowledgment Date"
                         type="date"
-                        value={snapAcknowledgmentDate}
+                        value={form.snapAcknowledgmentDate}
                         onChange={(e) =>
-                          setSnapAcknowledgmentDate(e.target.value)
+                          setField("snapAcknowledgmentDate", e.target.value)
                         }
                         slotProps={{
                           inputLabel: { shrink: true },
@@ -4557,9 +4479,9 @@ export default function IntakePage() {
                     </Typography>
 
                     <RadioGroup
-                      value={hmisAuthorization}
+                      value={form.hmisAuthorization}
                       onChange={(event) =>
-                        setHmisAuthorization(event.target.value)
+                        setField("hmisAuthorization", event.target.value)
                       }
                       sx={{ mt: 1 }}
                     >
@@ -4581,7 +4503,7 @@ export default function IntakePage() {
                     </Typography>
 
                     <SignatureCanvas
-                      onSignatureChange={setHmisSignature}
+                      onSignatureChange={(value) => setField("hmisSignature", value)}
                       width={500}
                       height={100}
                       showLabel={false}
@@ -4592,13 +4514,14 @@ export default function IntakePage() {
 
                     <TextField
                       type="date"
-                      value={hmisSignatureDate}
+                      value={form.hmisSignatureDate}
                       onChange={(event) =>
-                        setHmisSignatureDate(event.target.value)
+                        setField("hmisSignatureDate", event.target.value)
                       }
                       onFocus={() => {
-                        if (!hmisSignatureDate) {
-                          setHmisSignatureDate(
+                        if (!form.hmisSignatureDate) {
+                          setField(
+                            "hmisSignatureDate",
                             new Date().toLocaleDateString("en-CA"),
                           );
                         }
@@ -4666,11 +4589,11 @@ export default function IntakePage() {
                     </Typography>
 
                     <Typography sx={{ mt: 0.5 }}>
-                      {clientProgram === "OVN"
+                      {form.clientProgram === "OVN"
                         ? "Overnight Program (OVN)"
-                        : clientProgram === "LTP"
+                        : form.clientProgram === "LTP"
                           ? "Life Transformation Program (LTP)"
-                          : clientProgram === "TEMP"
+                          : form.clientProgram === "TEMP"
                             ? "Emergency Temporary Shelter (TEMP)"
                             : "Not assigned"}
                     </Typography>
@@ -4682,7 +4605,7 @@ export default function IntakePage() {
                     </Typography>
 
                     <SignatureCanvas
-                      onSignatureChange={setFinalClientSignature}
+                      onSignatureChange={(value) => setField("finalClientSignature", value)}
                       width={500}
                       height={100}
                       showLabel={false}
@@ -4695,7 +4618,7 @@ export default function IntakePage() {
                     </Typography>
 
                     <SignatureCanvas
-                      onSignatureChange={setFinalAdminSignature}
+                      onSignatureChange={(value) => setField("finalAdminSignature", value)}
                       width={500}
                       height={100}
                       showLabel={false}
