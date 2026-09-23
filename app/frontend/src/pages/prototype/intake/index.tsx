@@ -28,6 +28,7 @@ import {
   Box,
   Button,
   Checkbox,
+  Divider,
   FormControl,
   FormControlLabel,
   InputAdornment,
@@ -1077,37 +1078,6 @@ export default function IntakePage() {
                     />
                   </Box>
 
-                  {/* -------------------------------------------------------------- */}
-                  {/* Room & Medication Assignment                                  */}
-                  {/* -------------------------------------------------------------- */}
-                  {/* Room Assignment: free text today. FUTURE shared bed pick stores Bed.id + display code. */}
-                  <Typography variant="h6" sx={{ mt: 1 }}>
-                    Room & Medication Assignment
-                  </Typography>
-
-                  <Box
-                    sx={{
-                      display: "grid",
-                      gridTemplateColumns: "1fr 1fr",
-                      gap: 2,
-                      mt: 2,
-                    }}
-                  >
-                    <TextField
-                      label="Room Assignment"
-                      value={form.roomNumber}
-                      onChange={(event) => setField("roomNumber", event.target.value)}
-                      placeholder="Example: 6S - A"
-                    />
-
-                    <TextField
-                      label="Medication Room Locker Number"
-                      value={form.medRoomLockerNumber}
-                      onChange={(event) =>
-                        setField("medRoomLockerNumber", event.target.value)
-                      }
-                    />
-                  </Box>
                 </Paper>
               )}
 
@@ -3833,6 +3803,40 @@ export default function IntakePage() {
                       />
                     </Box>
                   )}
+
+                  <Divider sx={{ mt: 3, mb: 1 }} />
+
+                  {/* -------------------------------------------------------------- */}
+                  {/* Room & Medication Assignment                                  */}
+                  {/* -------------------------------------------------------------- */}
+                  {/* Room Assignment: free text today. FUTURE shared bed pick stores Bed.id + display code. */}
+                  <Typography variant="h6" sx={{ mt: 1 }}>
+                    Room & Medication Assignment
+                  </Typography>
+
+                  <Box
+                    sx={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: 2,
+                      mt: 2,
+                    }}
+                  >
+                    <TextField
+                      label="Room Assignment"
+                      value={form.roomNumber}
+                      onChange={(event) => setField("roomNumber", event.target.value)}
+                      placeholder="Example: 6S - A"
+                    />
+
+                    <TextField
+                      label="Medication Room Locker Number"
+                      value={form.medRoomLockerNumber}
+                      onChange={(event) =>
+                        setField("medRoomLockerNumber", event.target.value)
+                      }
+                    />
+                  </Box>
                 </Paper>
               )}
 
