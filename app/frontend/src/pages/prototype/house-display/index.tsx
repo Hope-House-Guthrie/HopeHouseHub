@@ -159,6 +159,21 @@ function formatTimeRange(startMin: number, endMin: number): string {
 }
 
 /**
+ * Happening Now only: role label for the facilitator field.
+ * NA program (logoKey "na") → "Chairing"; all other classes/events → "Facilitator".
+ * Canonical data field stays facilitator — no separate chair property.
+ */
+function formatHappeningNowFacilitatorLabel(ev: {
+  logoKey?: string | null;
+  facilitator?: string;
+}): string | null {
+  const name = ev.facilitator?.trim() ?? "";
+  if (!name) return null;
+  const isNa = (ev.logoKey?.trim() ?? "") === "na";
+  return `${isNa ? "Chairing" : "Facilitator"}: ${name}`;
+}
+
+/**
  * Derive currently-happening events from the SAME resolved agenda the schedule
  * uses (agendaItemsForToday), so the Spotlight takeover shares one source of
  * truth — recurring + one-time events both flow through, and cancellations/
@@ -1443,6 +1458,27 @@ export default function HouseDisplayPage() {
           >
             {ev.title}
           </Typography>
+          {ev.meetingTopic?.trim() ? (
+            <Typography
+              sx={{
+                fontWeight: 600,
+                opacity: 0.8,
+                fontSize: "clamp(0.95rem, 1.5vw, 1.35rem)",
+                lineHeight: 1.25,
+                m: 0,
+                maxWidth: "100%",
+                textAlign: "center",
+                display: "-webkit-box",
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                overflowWrap: "anywhere",
+              }}
+            >
+              Topic: {ev.meetingTopic.trim()}
+            </Typography>
+          ) : null}
           <Typography
             sx={{
               fontWeight: 600,
@@ -1454,30 +1490,27 @@ export default function HouseDisplayPage() {
           >
             {formatTimeRange(ev.startMin, ev.endMin)}
           </Typography>
-          {ev.location ? (
-            <Typography
-              sx={{
-                fontWeight: 600,
-                opacity: 0.8,
-                fontSize: "clamp(0.95rem, 1.5vw, 1.35rem)",
-                m: 0,
-              }}
-            >
-              {ev.location}
-              {ev.facilitator ? ` • ${ev.facilitator}` : ""}
-            </Typography>
-          ) : ev.facilitator ? (
-            <Typography
-              sx={{
-                fontWeight: 600,
-                opacity: 0.8,
-                fontSize: "clamp(0.95rem, 1.5vw, 1.35rem)",
-                m: 0,
-              }}
-            >
-              {ev.facilitator}
-            </Typography>
-          ) : null}
+          {(() => {
+            const loc = ev.location?.trim() ?? "";
+            const facLabel = formatHappeningNowFacilitatorLabel(ev);
+            if (!loc && !facLabel) return null;
+            return (
+              <Typography
+                sx={{
+                  fontWeight: 600,
+                  opacity: 0.8,
+                  fontSize: "clamp(0.95rem, 1.5vw, 1.35rem)",
+                  m: 0,
+                }}
+              >
+                {loc && facLabel
+                  ? `${loc} • ${facLabel}`
+                  : loc
+                    ? loc
+                    : facLabel}
+              </Typography>
+            );
+          })()}
         </Box>
       );
     }
@@ -2193,19 +2226,56 @@ export default function HouseDisplayPage() {
               No more scheduled activities today
             </Typography>
           ) : (
-            nextAgendaItems.map((item) => (
-              <Typography
-                key={item.id}
-                sx={{
-                  fontWeight: 600,
-                  fontSize: "clamp(0.95rem, 1.0vw, 1.4rem)",
-                  whiteSpace: "nowrap",
-                  color: "#2F3B4D",
-                }}
-              >
-                {formatMinutesAsTime(item.startMin)} - {item.title}
-              </Typography>
-            ))
+            nextAgendaItems.map((item) => {
+              const topic = item.meetingTopic?.trim() ?? "";
+              return (
+                <Box
+                  key={item.id}
+                  sx={{
+                    minWidth: 0,
+                    maxWidth: "100%",
+                    overflow: "hidden",
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "center",
+                    gap: 0.15,
+                  }}
+                >
+                  <Typography
+                    sx={{
+                      fontWeight: 600,
+                      fontSize: "clamp(0.95rem, 1.0vw, 1.4rem)",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      color: "#2F3B4D",
+                      lineHeight: 1.2,
+                      m: 0,
+                    }}
+                  >
+                    {formatMinutesAsTime(item.startMin)} - {item.title}
+                  </Typography>
+                  {topic ? (
+                    <Typography
+                      sx={{
+                        fontWeight: 500,
+                        fontSize: "clamp(0.75rem, 0.9vw, 1.05rem)",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        opacity: 0.72,
+                        color: "#2F3B4D",
+                        lineHeight: 1.15,
+                        m: 0,
+                        minWidth: 0,
+                      }}
+                    >
+                      Topic: {topic}
+                    </Typography>
+                  ) : null}
+                </Box>
+              );
+            })
           )}
         </Box>
       </Box>
