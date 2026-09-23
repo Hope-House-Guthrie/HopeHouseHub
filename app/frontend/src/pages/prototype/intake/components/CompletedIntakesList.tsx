@@ -6,7 +6,7 @@
  * workflows — open actions call back into index.tsx.
  */
 
-import { Button, Paper, Typography } from "@mui/material";
+import { Box, Button, Paper, Typography } from "@mui/material";
 
 import type { CompletedIntake } from "../types/intake";
 
@@ -31,8 +31,10 @@ export default function CompletedIntakesList({
 
       {intakes.map((intake) => (
         <Paper key={intake.id} variant="outlined" sx={{ mt: 2, p: 3 }}>
-          <Typography sx={{ fontWeight: 600 }}>
-            {intake.clientName || "Unnamed Client"}
+          <Box>
+            <Typography sx={{ fontWeight: 600 }}>
+              {intake.clientName || "Unnamed Client"}
+            </Typography>
 
             <Typography variant="body2">
               Hope House #: {intake.hopeHouseNumber}
@@ -116,7 +118,7 @@ export default function CompletedIntakesList({
                 ? "View Intake"
                 : "Open for Review"}
             </Button>
-          </Typography>
+          </Box>
         </Paper>
       ))}
     </Paper>

@@ -13,9 +13,9 @@
  * - Presentation pieces live under ./components; types/constants/utils as extracted
  *
  * Architecture:
- * - Many local useState fields for the live form
- * - buildIntakeData / loadIntakeData bridge UI state ↔ formData snapshots
- * - Do not push backend/persistence concerns into this page
+ * - One typed LiveIntakeForm (`form`) for all live intake fields
+ * - buildIntakeData / loadIntakeData snapshot and hydrate Draft/Completed formData
+ * - Workflow/UI state stays separate; no backend/persistence on this page
  *
  * FUTURE integration (not implemented here):
  * - Persistent intake/client records
@@ -180,9 +180,7 @@ export default function IntakePage() {
     setForm(createEmptyIntakeForm());
   };
 
-  // Critical bridge: packs the many local useState fields into a formData snapshot
-  // for Draft/Completed records. Keep state ↔ build ↔ load ↔ startNewIntake in sync
-  // when adding/removing fields or Draft/Completed round-trips will drop data.
+  // Snapshot unified `form` into Draft/Completed shape (top-level intakeDate + formData).
   const buildIntakeData = () => {
     const { intakeDate, ...formData } = form;
 
@@ -199,7 +197,7 @@ export default function IntakePage() {
     };
   };
 
-  // Inverse of buildIntakeData: hydrates local UI state from a Draft/Completed snapshot.
+  // Hydrate unified `form` from a Draft/Completed snapshot (clones mutable values).
   const loadIntakeData = (intake: IntakeDraft) => {
     setForm({
       ...intake.formData,
@@ -324,28 +322,8 @@ export default function IntakePage() {
     setIsEditingCompletedIntake(false);
   };
 
-  // ---------------------------------------------------------------------------
-  // Client Age Calculation (primary client DOB → disabled Age field)
-  // ---------------------------------------------------------------------------
-  const age = (() => {
-    if (!form.dateOfBirth) return "";
-
-    const today = new Date();
-    const birthDate = new Date(`${form.dateOfBirth}T00:00:00`);
-
-    let calculatedAge = today.getFullYear() - birthDate.getFullYear();
-
-    const birthdayHasPassed =
-      today.getMonth() > birthDate.getMonth() ||
-      (today.getMonth() === birthDate.getMonth() &&
-        today.getDate() >= birthDate.getDate());
-
-    if (!birthdayHasPassed) {
-      calculatedAge--;
-    }
-
-    return calculatedAge;
-  })();
+  // Primary client age (disabled Age field) from DOB.
+  const age = calculateAge(form.dateOfBirth);
 
   // ---------------------------------------------------------------------------
   // Minor Child Helpers (update one field; age from child DOB)
@@ -3989,9 +3967,9 @@ export default function IntakePage() {
                     </Typography>
 
                     <Typography sx={{ mt: 1 }}>
-                      {form.snapBenefits === "Yes"
+                      {form.snapBenefits === "yes"
                         ? "Receives SNAP"
-                        : form.snapBenefits === "No"
+                        : form.snapBenefits === "no"
                           ? "Does Not Receive SNAP"
                           : "SNAP status has not been entered."}
                     </Typography>
