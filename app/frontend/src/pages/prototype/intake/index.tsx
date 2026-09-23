@@ -107,7 +107,7 @@ export default function IntakePage() {
   const [activeHandbookTab, setActiveHandbookTab] = useState("getting-started");
 
   // ---------------------------------------------------------------------------
-  // Live form object (Phase 5D: Client Info + Suicide + Household + HMIS Demographics + Homelessness on form).
+  // Live form object (Phase 5E: through Health/Support on form; agreements/program/covid/auth still mixed).
   // ---------------------------------------------------------------------------
   const [form, setForm] = useState<LiveIntakeForm>(() =>
     createEmptyIntakeForm(),
@@ -153,91 +153,10 @@ export default function IntakePage() {
 
 
 
-  // ---------------------------------------------------------------------------
-  // Employment / Income / Education
-  // ---------------------------------------------------------------------------
 
-  const [currentlyEmployed, setCurrentlyEmployed] = useState("");
-  const [employerName, setEmployerName] = useState("");
-  const [monthlyEmploymentIncome, setMonthlyEmploymentIncome] = useState("");
-  const [hasOtherIncome, setHasOtherIncome] = useState("");
-  const [otherIncomeSources, setOtherIncomeSources] = useState<string[]>([]);
-  const [otherIncomeDescription, setOtherIncomeDescription] = useState("");
-  const [monthlyOtherIncome, setMonthlyOtherIncome] = useState("");
-  const [highestEducationCompleted, setHighestEducationCompleted] =
-    useState("");
-  const [schoolName, setSchoolName] = useState("");
-
-  // ---------------------------------------------------------------------------
-  // Benefits / Insurance
-  // ---------------------------------------------------------------------------
-
-  const [snapBenefits, setSnapBenefits] = useState("");
-  const [snapLoadDay, setSnapLoadDay] = useState("");
   const [snapAcknowledgmentDate, setSnapAcknowledgmentDate] = useState("");
-  const [snapMonthlyAmount, setSnapMonthlyAmount] = useState("");
-  const [soonerCareBenefits, setSoonerCareBenefits] = useState("");
-  const [soonerCarePlan, setSoonerCarePlan] = useState("");
-  const [soonerCareId, setSoonerCareId] = useState("");
-  const [medicaidBenefits, setMedicaidBenefits] = useState("");
-  const [medicareBenefits, setMedicareBenefits] = useState("");
-  const [wicBenefits, setWicBenefits] = useState("");
-  const [tanfBenefits, setTanfBenefits] = useState("");
-  const [employerInsurance, setEmployerInsurance] = useState("");
-  const [otherStateHealthInsurance, setOtherStateHealthInsurance] =
-    useState("");
-  const [hasSavingsAccount, setHasSavingsAccount] = useState("");
-  const [hasCheckingAccount, setHasCheckingAccount] = useState("");
 
-  // ---------------------------------------------------------------------------
-  // Legal / Housing
-  // ---------------------------------------------------------------------------
 
-  const [misdemeanorConviction, setMisdemeanorConviction] = useState("");
-  const [misdemeanorDetails, setMisdemeanorDetails] = useState("");
-  const [felonyConviction, setFelonyConviction] = useState("");
-  const [felonyDetails, setFelonyDetails] = useState("");
-  const [onProbation, setOnProbation] = useState("");
-  const [onParole, setOnParole] = useState("");
-  const [hasArrestWarrants, setHasArrestWarrants] = useState("");
-  const [hasUnpaidTickets, setHasUnpaidTickets] = useState("");
-  const [childSupportStatus, setChildSupportStatus] = useState("");
-  const [monthlyChildSupportAmount, setMonthlyChildSupportAmount] =
-    useState("");
-  const [owesLandlordMoney, setOwesLandlordMoney] = useState("");
-  const [landlordAmountOwed, setLandlordAmountOwed] = useState("");
-  const [owesUtilityMoney, setOwesUtilityMoney] = useState("");
-  const [utilityAmountOwed, setUtilityAmountOwed] = useState("");
-  const [hasEvictionHistory, setHasEvictionHistory] = useState("");
-  const [hasPaidStorage, setHasPaidStorage] = useState("");
-
-  // ---------------------------------------------------------------------------
-  // Health / Support
-  // ---------------------------------------------------------------------------
-
-  const [hasSubstanceUseConcerns, setHasSubstanceUseConcerns] = useState("");
-  const [substancesUsed, setSubstancesUsed] = useState<string[]>([]);
-  const [otherSubstance, setOtherSubstance] = useState("");
-  const [substanceUseDetails, setSubstanceUseDetails] = useState("");
-  const [
-    currentlyReceivingMedicalTreatment,
-    setCurrentlyReceivingMedicalTreatment,
-  ] = useState("");
-  const [medicalTreatmentDetails, setMedicalTreatmentDetails] = useState("");
-  const [healthSupportNeeds, setHealthSupportNeeds] = useState<string[]>([]);
-  const [otherHealthSupportNeed, setOtherHealthSupportNeed] = useState("");
-  const [healthSupportDetails, setHealthSupportDetails] = useState<
-    Record<string, string>
-  >({});
-  const [socialFinancialSupport, setSocialFinancialSupport] = useState<
-    string[]
-  >([]);
-  const [otherSocialFinancialSupport, setOtherSocialFinancialSupport] =
-    useState("");
-  const [childrenInSchoolOrChildcare, setChildrenInSchoolOrChildcare] =
-    useState("");
-  const [religiousSpiritualTraditions, setReligiousSpiritualTraditions] =
-    useState("");
 
   // ---------------------------------------------------------------------------
   // Agreements / Waivers
@@ -381,60 +300,60 @@ export default function IntakePage() {
       lastPlaceCity: "",
       lastPlaceCounty: "",
       lastPlaceState: "",
+      currentlyEmployed: "",
+      employerName: "",
+      monthlyEmploymentIncome: "",
+      hasOtherIncome: "",
+      otherIncomeSources: [],
+      otherIncomeDescription: "",
+      monthlyOtherIncome: "",
+      highestEducationCompleted: "",
+      schoolName: "",
+      snapBenefits: "",
+      snapLoadDay: "",
+      snapMonthlyAmount: "",
+      soonerCareBenefits: "",
+      soonerCarePlan: "",
+      soonerCareId: "",
+      medicaidBenefits: "",
+      medicareBenefits: "",
+      wicBenefits: "",
+      tanfBenefits: "",
+      employerInsurance: "",
+      otherStateHealthInsurance: "",
+      hasSavingsAccount: "",
+      hasCheckingAccount: "",
+      misdemeanorConviction: "",
+      misdemeanorDetails: "",
+      felonyConviction: "",
+      felonyDetails: "",
+      onProbation: "",
+      onParole: "",
+      hasArrestWarrants: "",
+      hasUnpaidTickets: "",
+      childSupportStatus: "",
+      monthlyChildSupportAmount: "",
+      owesLandlordMoney: "",
+      landlordAmountOwed: "",
+      owesUtilityMoney: "",
+      utilityAmountOwed: "",
+      hasEvictionHistory: "",
+      hasPaidStorage: "",
+      hasSubstanceUseConcerns: "",
+      substancesUsed: [],
+      otherSubstance: "",
+      substanceUseDetails: "",
+      currentlyReceivingMedicalTreatment: "",
+      medicalTreatmentDetails: "",
+      healthSupportNeeds: [],
+      otherHealthSupportNeed: "",
+      healthSupportDetails: {},
+      socialFinancialSupport: [],
+      otherSocialFinancialSupport: "",
+      childrenInSchoolOrChildcare: "",
+      religiousSpiritualTraditions: "",
     }));
-    setCurrentlyEmployed("");
-    setEmployerName("");
-    setMonthlyEmploymentIncome("");
-    setHasOtherIncome("");
-    setOtherIncomeSources([]);
-    setOtherIncomeDescription("");
-    setMonthlyOtherIncome("");
-    setHighestEducationCompleted("");
-    setSchoolName("");
-    setSnapBenefits("");
-    setSnapLoadDay("");
     setSnapAcknowledgmentDate("");
-    setSnapMonthlyAmount("");
-    setSoonerCareBenefits("");
-    setSoonerCarePlan("");
-    setSoonerCareId("");
-    setMedicaidBenefits("");
-    setMedicareBenefits("");
-    setWicBenefits("");
-    setTanfBenefits("");
-    setEmployerInsurance("");
-    setOtherStateHealthInsurance("");
-    setHasSavingsAccount("");
-    setHasCheckingAccount("");
-    setMisdemeanorConviction("");
-    setMisdemeanorDetails("");
-    setFelonyConviction("");
-    setFelonyDetails("");
-    setOnProbation("");
-    setOnParole("");
-    setHasArrestWarrants("");
-    setHasUnpaidTickets("");
-    setChildSupportStatus("");
-    setMonthlyChildSupportAmount("");
-    setOwesLandlordMoney("");
-    setLandlordAmountOwed("");
-    setOwesUtilityMoney("");
-    setUtilityAmountOwed("");
-    setHasEvictionHistory("");
-    setHasPaidStorage("");
-    setHasSubstanceUseConcerns("");
-    setSubstancesUsed([]);
-    setOtherSubstance("");
-    setSubstanceUseDetails("");
-    setCurrentlyReceivingMedicalTreatment("");
-    setMedicalTreatmentDetails("");
-    setHealthSupportNeeds([]);
-    setHealthSupportDetails({});
-    setOtherHealthSupportNeed("");
-    setSocialFinancialSupport([]);
-    setOtherSocialFinancialSupport("");
-    setChildrenInSchoolOrChildcare("");
-    setReligiousSpiritualTraditions("");
     setChildSupportDhsInitials("");
     setMedicationResponsibilityInitials("");
     setVehicleTransportationInitials("");
@@ -535,62 +454,62 @@ export default function IntakePage() {
         lastPlaceCounty: form.lastPlaceCounty,
         lastPlaceState: form.lastPlaceState,
 
-        currentlyEmployed,
-        employerName,
-        monthlyEmploymentIncome,
-        hasOtherIncome,
-        otherIncomeSources,
-        otherIncomeDescription,
-        monthlyOtherIncome,
-        highestEducationCompleted,
-        schoolName,
+        currentlyEmployed: form.currentlyEmployed,
+        employerName: form.employerName,
+        monthlyEmploymentIncome: form.monthlyEmploymentIncome,
+        hasOtherIncome: form.hasOtherIncome,
+        otherIncomeSources: form.otherIncomeSources,
+        otherIncomeDescription: form.otherIncomeDescription,
+        monthlyOtherIncome: form.monthlyOtherIncome,
+        highestEducationCompleted: form.highestEducationCompleted,
+        schoolName: form.schoolName,
 
-        snapBenefits,
-        snapLoadDay,
+        snapBenefits: form.snapBenefits,
+        snapLoadDay: form.snapLoadDay,
         snapAcknowledgmentDate,
-        snapMonthlyAmount,
-        soonerCareBenefits,
-        soonerCarePlan,
-        soonerCareId,
-        medicaidBenefits,
-        medicareBenefits,
-        wicBenefits,
-        tanfBenefits,
-        employerInsurance,
-        otherStateHealthInsurance,
-        hasSavingsAccount,
-        hasCheckingAccount,
+        snapMonthlyAmount: form.snapMonthlyAmount,
+        soonerCareBenefits: form.soonerCareBenefits,
+        soonerCarePlan: form.soonerCarePlan,
+        soonerCareId: form.soonerCareId,
+        medicaidBenefits: form.medicaidBenefits,
+        medicareBenefits: form.medicareBenefits,
+        wicBenefits: form.wicBenefits,
+        tanfBenefits: form.tanfBenefits,
+        employerInsurance: form.employerInsurance,
+        otherStateHealthInsurance: form.otherStateHealthInsurance,
+        hasSavingsAccount: form.hasSavingsAccount,
+        hasCheckingAccount: form.hasCheckingAccount,
 
-        misdemeanorConviction,
-        misdemeanorDetails,
-        felonyConviction,
-        felonyDetails,
-        onProbation,
-        onParole,
-        hasArrestWarrants,
-        hasUnpaidTickets,
-        childSupportStatus,
-        monthlyChildSupportAmount,
-        owesLandlordMoney,
-        landlordAmountOwed,
-        owesUtilityMoney,
-        utilityAmountOwed,
-        hasEvictionHistory,
-        hasPaidStorage,
+        misdemeanorConviction: form.misdemeanorConviction,
+        misdemeanorDetails: form.misdemeanorDetails,
+        felonyConviction: form.felonyConviction,
+        felonyDetails: form.felonyDetails,
+        onProbation: form.onProbation,
+        onParole: form.onParole,
+        hasArrestWarrants: form.hasArrestWarrants,
+        hasUnpaidTickets: form.hasUnpaidTickets,
+        childSupportStatus: form.childSupportStatus,
+        monthlyChildSupportAmount: form.monthlyChildSupportAmount,
+        owesLandlordMoney: form.owesLandlordMoney,
+        landlordAmountOwed: form.landlordAmountOwed,
+        owesUtilityMoney: form.owesUtilityMoney,
+        utilityAmountOwed: form.utilityAmountOwed,
+        hasEvictionHistory: form.hasEvictionHistory,
+        hasPaidStorage: form.hasPaidStorage,
 
-        hasSubstanceUseConcerns,
-        substancesUsed,
-        otherSubstance,
-        substanceUseDetails,
-        currentlyReceivingMedicalTreatment,
-        medicalTreatmentDetails,
-        healthSupportNeeds,
-        otherHealthSupportNeed,
-        healthSupportDetails,
-        socialFinancialSupport,
-        otherSocialFinancialSupport,
-        childrenInSchoolOrChildcare,
-        religiousSpiritualTraditions,
+        hasSubstanceUseConcerns: form.hasSubstanceUseConcerns,
+        substancesUsed: form.substancesUsed,
+        otherSubstance: form.otherSubstance,
+        substanceUseDetails: form.substanceUseDetails,
+        currentlyReceivingMedicalTreatment: form.currentlyReceivingMedicalTreatment,
+        medicalTreatmentDetails: form.medicalTreatmentDetails,
+        healthSupportNeeds: form.healthSupportNeeds,
+        otherHealthSupportNeed: form.otherHealthSupportNeed,
+        healthSupportDetails: form.healthSupportDetails,
+        socialFinancialSupport: form.socialFinancialSupport,
+        otherSocialFinancialSupport: form.otherSocialFinancialSupport,
+        childrenInSchoolOrChildcare: form.childrenInSchoolOrChildcare,
+        religiousSpiritualTraditions: form.religiousSpiritualTraditions,
 
         childSupportDhsInitials,
         medicationResponsibilityInitials,
@@ -628,7 +547,7 @@ export default function IntakePage() {
 
   // Inverse of buildIntakeData: hydrates local UI state from a Draft/Completed snapshot.
   const loadIntakeData = (intake: IntakeDraft) => {
-    // Migrated fields on form — partial load until full cutover.
+    // Migrated fields on form — partial load until full form cutover.
     setForm((prev) => ({
       ...prev,
       firstName: intake.formData.firstName,
@@ -688,64 +607,60 @@ export default function IntakePage() {
       lastPlaceCity: intake.formData.lastPlaceCity,
       lastPlaceCounty: intake.formData.lastPlaceCounty,
       lastPlaceState: intake.formData.lastPlaceState,
+      currentlyEmployed: intake.formData.currentlyEmployed,
+      employerName: intake.formData.employerName,
+      monthlyEmploymentIncome: intake.formData.monthlyEmploymentIncome,
+      hasOtherIncome: intake.formData.hasOtherIncome,
+      otherIncomeSources: [...intake.formData.otherIncomeSources],
+      otherIncomeDescription: intake.formData.otherIncomeDescription,
+      monthlyOtherIncome: intake.formData.monthlyOtherIncome,
+      highestEducationCompleted: intake.formData.highestEducationCompleted,
+      schoolName: intake.formData.schoolName,
+      snapBenefits: intake.formData.snapBenefits,
+      snapLoadDay: intake.formData.snapLoadDay,
+      snapMonthlyAmount: intake.formData.snapMonthlyAmount,
+      soonerCareBenefits: intake.formData.soonerCareBenefits,
+      soonerCarePlan: intake.formData.soonerCarePlan,
+      soonerCareId: intake.formData.soonerCareId,
+      medicaidBenefits: intake.formData.medicaidBenefits,
+      medicareBenefits: intake.formData.medicareBenefits,
+      wicBenefits: intake.formData.wicBenefits,
+      tanfBenefits: intake.formData.tanfBenefits,
+      employerInsurance: intake.formData.employerInsurance,
+      otherStateHealthInsurance: intake.formData.otherStateHealthInsurance,
+      hasSavingsAccount: intake.formData.hasSavingsAccount,
+      hasCheckingAccount: intake.formData.hasCheckingAccount,
+      misdemeanorConviction: intake.formData.misdemeanorConviction,
+      misdemeanorDetails: intake.formData.misdemeanorDetails,
+      felonyConviction: intake.formData.felonyConviction,
+      felonyDetails: intake.formData.felonyDetails,
+      onProbation: intake.formData.onProbation,
+      onParole: intake.formData.onParole,
+      hasArrestWarrants: intake.formData.hasArrestWarrants,
+      hasUnpaidTickets: intake.formData.hasUnpaidTickets,
+      childSupportStatus: intake.formData.childSupportStatus,
+      monthlyChildSupportAmount: intake.formData.monthlyChildSupportAmount,
+      owesLandlordMoney: intake.formData.owesLandlordMoney,
+      landlordAmountOwed: intake.formData.landlordAmountOwed,
+      owesUtilityMoney: intake.formData.owesUtilityMoney,
+      utilityAmountOwed: intake.formData.utilityAmountOwed,
+      hasEvictionHistory: intake.formData.hasEvictionHistory,
+      hasPaidStorage: intake.formData.hasPaidStorage,
+      hasSubstanceUseConcerns: intake.formData.hasSubstanceUseConcerns,
+      substancesUsed: [...intake.formData.substancesUsed],
+      otherSubstance: intake.formData.otherSubstance,
+      substanceUseDetails: intake.formData.substanceUseDetails,
+      currentlyReceivingMedicalTreatment: intake.formData.currentlyReceivingMedicalTreatment,
+      medicalTreatmentDetails: intake.formData.medicalTreatmentDetails,
+      healthSupportNeeds: [...intake.formData.healthSupportNeeds],
+      otherHealthSupportNeed: intake.formData.otherHealthSupportNeed,
+      healthSupportDetails: { ...intake.formData.healthSupportDetails },
+      socialFinancialSupport: [...intake.formData.socialFinancialSupport],
+      otherSocialFinancialSupport: intake.formData.otherSocialFinancialSupport,
+      childrenInSchoolOrChildcare: intake.formData.childrenInSchoolOrChildcare,
+      religiousSpiritualTraditions: intake.formData.religiousSpiritualTraditions,
     }));
-    setCurrentlyEmployed(intake.formData.currentlyEmployed);
-    setEmployerName(intake.formData.employerName);
-    setMonthlyEmploymentIncome(intake.formData.monthlyEmploymentIncome);
-    setHasOtherIncome(intake.formData.hasOtherIncome);
-    setOtherIncomeSources(intake.formData.otherIncomeSources);
-    setOtherIncomeDescription(intake.formData.otherIncomeDescription);
-    setMonthlyOtherIncome(intake.formData.monthlyOtherIncome);
-    setHighestEducationCompleted(intake.formData.highestEducationCompleted);
-    setSchoolName(intake.formData.schoolName);
-    setSnapBenefits(intake.formData.snapBenefits);
-    setSnapLoadDay(intake.formData.snapLoadDay);
     setSnapAcknowledgmentDate(intake.formData.snapAcknowledgmentDate);
-    setSnapMonthlyAmount(intake.formData.snapMonthlyAmount);
-    setSoonerCareBenefits(intake.formData.soonerCareBenefits);
-    setSoonerCarePlan(intake.formData.soonerCarePlan);
-    setSoonerCareId(intake.formData.soonerCareId);
-    setMedicaidBenefits(intake.formData.medicaidBenefits);
-    setMedicareBenefits(intake.formData.medicareBenefits);
-    setWicBenefits(intake.formData.wicBenefits);
-    setTanfBenefits(intake.formData.tanfBenefits);
-    setEmployerInsurance(intake.formData.employerInsurance);
-    setOtherStateHealthInsurance(intake.formData.otherStateHealthInsurance);
-    setHasSavingsAccount(intake.formData.hasSavingsAccount);
-    setHasCheckingAccount(intake.formData.hasCheckingAccount);
-    setMisdemeanorConviction(intake.formData.misdemeanorConviction);
-    setMisdemeanorDetails(intake.formData.misdemeanorDetails);
-    setFelonyConviction(intake.formData.felonyConviction);
-    setFelonyDetails(intake.formData.felonyDetails);
-    setOnProbation(intake.formData.onProbation);
-    setOnParole(intake.formData.onParole);
-    setHasArrestWarrants(intake.formData.hasArrestWarrants);
-    setHasUnpaidTickets(intake.formData.hasUnpaidTickets);
-    setChildSupportStatus(intake.formData.childSupportStatus);
-    setMonthlyChildSupportAmount(intake.formData.monthlyChildSupportAmount);
-    setOwesLandlordMoney(intake.formData.owesLandlordMoney);
-    setLandlordAmountOwed(intake.formData.landlordAmountOwed);
-    setOwesUtilityMoney(intake.formData.owesUtilityMoney);
-    setUtilityAmountOwed(intake.formData.utilityAmountOwed);
-    setHasEvictionHistory(intake.formData.hasEvictionHistory);
-    setHasPaidStorage(intake.formData.hasPaidStorage);
-    setHasSubstanceUseConcerns(intake.formData.hasSubstanceUseConcerns);
-    setSubstancesUsed(intake.formData.substancesUsed);
-    setOtherSubstance(intake.formData.otherSubstance);
-    setSubstanceUseDetails(intake.formData.substanceUseDetails);
-    setCurrentlyReceivingMedicalTreatment(
-      intake.formData.currentlyReceivingMedicalTreatment,
-    );
-    setMedicalTreatmentDetails(intake.formData.medicalTreatmentDetails);
-    setHealthSupportNeeds(intake.formData.healthSupportNeeds);
-    setOtherHealthSupportNeed(intake.formData.otherHealthSupportNeed);
-    setHealthSupportDetails(intake.formData.healthSupportDetails);
-    setSocialFinancialSupport(intake.formData.socialFinancialSupport);
-    setOtherSocialFinancialSupport(intake.formData.otherSocialFinancialSupport);
-    setChildrenInSchoolOrChildcare(intake.formData.childrenInSchoolOrChildcare);
-    setReligiousSpiritualTraditions(
-      intake.formData.religiousSpiritualTraditions,
-    );
     setChildSupportDhsInitials(intake.formData.childSupportDhsInitials);
     setMedicationResponsibilityInitials(
       intake.formData.medicationResponsibilityInitials,
@@ -2758,9 +2673,9 @@ export default function IntakePage() {
 
                     <RadioGroup
                       row
-                      value={currentlyEmployed}
+                      value={form.currentlyEmployed}
                       onChange={(event) =>
-                        setCurrentlyEmployed(event.target.value)
+                        setField("currentlyEmployed", event.target.value)
                       }
                     >
                       <FormControlLabel
@@ -2776,7 +2691,7 @@ export default function IntakePage() {
                     </RadioGroup>
                   </FormControl>
 
-                  {currentlyEmployed === "yes" && (
+                  {form.currentlyEmployed === "yes" && (
                     <Box
                       sx={{
                         mt: 1,
@@ -2787,18 +2702,18 @@ export default function IntakePage() {
                     >
                       <TextField
                         label="Employer"
-                        value={employerName}
+                        value={form.employerName}
                         onChange={(event) =>
-                          setEmployerName(event.target.value)
+                          setField("employerName", event.target.value)
                         }
                         fullWidth
                       />
 
                       <TextField
                         label="Monthly Employment Income"
-                        value={monthlyEmploymentIncome}
+                        value={form.monthlyEmploymentIncome}
                         onChange={(event) =>
-                          setMonthlyEmploymentIncome(event.target.value)
+                          setField("monthlyEmploymentIncome", event.target.value)
                         }
                         type="number"
                         slotProps={{
@@ -2824,9 +2739,9 @@ export default function IntakePage() {
 
                     <RadioGroup
                       row
-                      value={hasOtherIncome}
+                      value={form.hasOtherIncome}
                       onChange={(event) =>
-                        setHasOtherIncome(event.target.value)
+                        setField("hasOtherIncome", event.target.value)
                       }
                     >
                       <FormControlLabel
@@ -2842,7 +2757,7 @@ export default function IntakePage() {
                     </RadioGroup>
                   </FormControl>
 
-                  {hasOtherIncome === "yes" && (
+                  {form.hasOtherIncome === "yes" && (
                     <Box sx={{ mt: 1 }}>
                       <Typography variant="subtitle2">
                         Other Income Source
@@ -2860,17 +2775,23 @@ export default function IntakePage() {
                           key={source}
                           control={
                             <Checkbox
-                              checked={otherIncomeSources.includes(source)}
+                              checked={form.otherIncomeSources.includes(source)}
                               onChange={(event) => {
                                 if (event.target.checked) {
-                                  setOtherIncomeSources((current) => [
-                                    ...current,
-                                    source,
-                                  ]);
+                                  setForm((prev) => ({
+                                    ...prev,
+                                    otherIncomeSources: [
+                                      ...prev.otherIncomeSources,
+                                      source,
+                                    ],
+                                  }));
                                 } else {
-                                  setOtherIncomeSources((current) =>
-                                    current.filter((item) => item !== source),
-                                  );
+                                  setForm((prev) => ({
+                                    ...prev,
+                                    otherIncomeSources: prev.otherIncomeSources.filter(
+                                      (item) => item !== source,
+                                    ),
+                                  }));
                                 }
                               }}
                             />
@@ -2879,12 +2800,12 @@ export default function IntakePage() {
                         />
                       ))}
 
-                      {otherIncomeSources.includes("Other") && (
+                      {form.otherIncomeSources.includes("Other") && (
                         <TextField
                           label="Other Income Source"
-                          value={otherIncomeDescription}
+                          value={form.otherIncomeDescription}
                           onChange={(event) =>
-                            setOtherIncomeDescription(event.target.value)
+                            setField("otherIncomeDescription", event.target.value)
                           }
                           fullWidth
                           sx={{ mt: 2 }}
@@ -2893,9 +2814,9 @@ export default function IntakePage() {
 
                       <TextField
                         label="Total Monthly Other Income"
-                        value={monthlyOtherIncome}
+                        value={form.monthlyOtherIncome}
                         onChange={(event) =>
-                          setMonthlyOtherIncome(event.target.value)
+                          setField("monthlyOtherIncome", event.target.value)
                         }
                         type="number"
                         slotProps={{
@@ -2931,9 +2852,9 @@ export default function IntakePage() {
                     <TextField
                       select
                       label="Highest Level of Education Completed"
-                      value={highestEducationCompleted}
+                      value={form.highestEducationCompleted}
                       onChange={(event) =>
-                        setHighestEducationCompleted(event.target.value)
+                        setField("highestEducationCompleted", event.target.value)
                       }
                       fullWidth
                     >
@@ -2966,8 +2887,8 @@ export default function IntakePage() {
 
                     <TextField
                       label="School / Institution"
-                      value={schoolName}
-                      onChange={(event) => setSchoolName(event.target.value)}
+                      value={form.schoolName}
+                      onChange={(event) => setField("schoolName", event.target.value)}
                       fullWidth
                     />
                   </Box>
@@ -3000,9 +2921,9 @@ export default function IntakePage() {
 
                         <RadioGroup
                           row
-                          value={soonerCareBenefits}
+                          value={form.soonerCareBenefits}
                           onChange={(event) =>
-                            setSoonerCareBenefits(event.target.value)
+                            setField("soonerCareBenefits", event.target.value)
                           }
                         >
                           <FormControlLabel
@@ -3017,7 +2938,7 @@ export default function IntakePage() {
                           />
                         </RadioGroup>
                       </FormControl>
-                      {soonerCareBenefits === "yes" && (
+                      {form.soonerCareBenefits === "yes" && (
                         <Box
                           sx={{
                             mt: 1,
@@ -3030,9 +2951,9 @@ export default function IntakePage() {
                           <TextField
                             select
                             label="SoonerCare Plan"
-                            value={soonerCarePlan}
+                            value={form.soonerCarePlan}
                             onChange={(event) =>
-                              setSoonerCarePlan(event.target.value)
+                              setField("soonerCarePlan", event.target.value)
                             }
                             fullWidth
                           >
@@ -3044,9 +2965,9 @@ export default function IntakePage() {
                           </TextField>
                           <TextField
                             label="Member Number"
-                            value={soonerCareId}
+                            value={form.soonerCareId}
                             onChange={(event) =>
-                              setSoonerCareId(event.target.value)
+                              setField("soonerCareId", event.target.value)
                             }
                             fullWidth
                           />
@@ -3063,9 +2984,9 @@ export default function IntakePage() {
 
                         <RadioGroup
                           row
-                          value={snapBenefits}
+                          value={form.snapBenefits}
                           onChange={(event) =>
-                            setSnapBenefits(event.target.value)
+                            setField("snapBenefits", event.target.value)
                           }
                         >
                           <FormControlLabel
@@ -3080,7 +3001,7 @@ export default function IntakePage() {
                           />
                         </RadioGroup>
                       </FormControl>
-                      {snapBenefits === "yes" && (
+                      {form.snapBenefits === "yes" && (
                         <Box
                           sx={{
                             mt: 1,
@@ -3092,9 +3013,9 @@ export default function IntakePage() {
                         >
                           <TextField
                             label="Day SNAP Benefits Load"
-                            value={snapLoadDay}
+                            value={form.snapLoadDay}
                             onChange={(event) =>
-                              setSnapLoadDay(event.target.value)
+                              setField("snapLoadDay", event.target.value)
                             }
                             type="number"
                             slotProps={{
@@ -3104,9 +3025,9 @@ export default function IntakePage() {
                           />
                           <TextField
                             label="Monthly SNAP Amount"
-                            value={snapMonthlyAmount}
+                            value={form.snapMonthlyAmount}
                             onChange={(event) =>
-                              setSnapMonthlyAmount(event.target.value)
+                              setField("snapMonthlyAmount", event.target.value)
                             }
                             type="number"
                             slotProps={{
@@ -3142,9 +3063,9 @@ export default function IntakePage() {
 
                       <RadioGroup
                         row
-                        value={medicaidBenefits}
+                        value={form.medicaidBenefits}
                         onChange={(event) =>
-                          setMedicaidBenefits(event.target.value)
+                          setField("medicaidBenefits", event.target.value)
                         }
                       >
                         <FormControlLabel
@@ -3166,9 +3087,9 @@ export default function IntakePage() {
 
                       <RadioGroup
                         row
-                        value={medicareBenefits}
+                        value={form.medicareBenefits}
                         onChange={(event) =>
-                          setMedicareBenefits(event.target.value)
+                          setField("medicareBenefits", event.target.value)
                         }
                       >
                         <FormControlLabel
@@ -3192,8 +3113,8 @@ export default function IntakePage() {
 
                       <RadioGroup
                         row
-                        value={wicBenefits}
-                        onChange={(event) => setWicBenefits(event.target.value)}
+                        value={form.wicBenefits}
+                        onChange={(event) => setField("wicBenefits", event.target.value)}
                       >
                         <FormControlLabel
                           value="yes"
@@ -3216,9 +3137,9 @@ export default function IntakePage() {
 
                       <RadioGroup
                         row
-                        value={tanfBenefits}
+                        value={form.tanfBenefits}
                         onChange={(event) =>
-                          setTanfBenefits(event.target.value)
+                          setField("tanfBenefits", event.target.value)
                         }
                       >
                         <FormControlLabel
@@ -3242,9 +3163,9 @@ export default function IntakePage() {
 
                       <RadioGroup
                         row
-                        value={employerInsurance}
+                        value={form.employerInsurance}
                         onChange={(event) =>
-                          setEmployerInsurance(event.target.value)
+                          setField("employerInsurance", event.target.value)
                         }
                       >
                         <FormControlLabel
@@ -3268,9 +3189,9 @@ export default function IntakePage() {
 
                       <RadioGroup
                         row
-                        value={otherStateHealthInsurance}
+                        value={form.otherStateHealthInsurance}
                         onChange={(event) =>
-                          setOtherStateHealthInsurance(event.target.value)
+                          setField("otherStateHealthInsurance", event.target.value)
                         }
                       >
                         <FormControlLabel
@@ -3310,9 +3231,9 @@ export default function IntakePage() {
 
                       <RadioGroup
                         row
-                        value={hasSavingsAccount}
+                        value={form.hasSavingsAccount}
                         onChange={(event) =>
-                          setHasSavingsAccount(event.target.value)
+                          setField("hasSavingsAccount", event.target.value)
                         }
                       >
                         <FormControlLabel
@@ -3336,9 +3257,9 @@ export default function IntakePage() {
 
                       <RadioGroup
                         row
-                        value={hasCheckingAccount}
+                        value={form.hasCheckingAccount}
                         onChange={(event) =>
-                          setHasCheckingAccount(event.target.value)
+                          setField("hasCheckingAccount", event.target.value)
                         }
                       >
                         <FormControlLabel
@@ -3386,9 +3307,9 @@ export default function IntakePage() {
                         </Typography>
                         <RadioGroup
                           row
-                          value={misdemeanorConviction}
+                          value={form.misdemeanorConviction}
                           onChange={(e) =>
-                            setMisdemeanorConviction(e.target.value)
+                            setField("misdemeanorConviction", e.target.value)
                           }
                         >
                           <FormControlLabel
@@ -3404,15 +3325,15 @@ export default function IntakePage() {
                         </RadioGroup>
                       </FormControl>
 
-                      {misdemeanorConviction === "yes" && (
+                      {form.misdemeanorConviction === "yes" && (
                         <TextField
                           fullWidth
                           multiline
                           minRows={2}
                           label="What was the misdemeanor conviction for?"
-                          value={misdemeanorDetails}
+                          value={form.misdemeanorDetails}
                           onChange={(e) =>
-                            setMisdemeanorDetails(e.target.value)
+                            setField("misdemeanorDetails", e.target.value)
                           }
                           sx={{ mt: 1 }}
                         />
@@ -3427,8 +3348,8 @@ export default function IntakePage() {
                         </Typography>
                         <RadioGroup
                           row
-                          value={felonyConviction}
-                          onChange={(e) => setFelonyConviction(e.target.value)}
+                          value={form.felonyConviction}
+                          onChange={(e) => setField("felonyConviction", e.target.value)}
                         >
                           <FormControlLabel
                             value="yes"
@@ -3443,14 +3364,14 @@ export default function IntakePage() {
                         </RadioGroup>
                       </FormControl>
 
-                      {felonyConviction === "yes" && (
+                      {form.felonyConviction === "yes" && (
                         <TextField
                           fullWidth
                           multiline
                           minRows={2}
                           label="What was the felony conviction for?"
-                          value={felonyDetails}
-                          onChange={(e) => setFelonyDetails(e.target.value)}
+                          value={form.felonyDetails}
+                          onChange={(e) => setField("felonyDetails", e.target.value)}
                           sx={{ mt: 1 }}
                         />
                       )}
@@ -3470,8 +3391,8 @@ export default function IntakePage() {
                       <Typography>Are you currently on probation?</Typography>
                       <RadioGroup
                         row
-                        value={onProbation}
-                        onChange={(e) => setOnProbation(e.target.value)}
+                        value={form.onProbation}
+                        onChange={(e) => setField("onProbation", e.target.value)}
                       >
                         <FormControlLabel
                           value="yes"
@@ -3491,8 +3412,8 @@ export default function IntakePage() {
                       <Typography>Are you currently on parole?</Typography>
                       <RadioGroup
                         row
-                        value={onParole}
-                        onChange={(e) => setOnParole(e.target.value)}
+                        value={form.onParole}
+                        onChange={(e) => setField("onParole", e.target.value)}
                       >
                         <FormControlLabel
                           value="yes"
@@ -3523,8 +3444,8 @@ export default function IntakePage() {
                       </Typography>
                       <RadioGroup
                         row
-                        value={hasArrestWarrants}
-                        onChange={(e) => setHasArrestWarrants(e.target.value)}
+                        value={form.hasArrestWarrants}
+                        onChange={(e) => setField("hasArrestWarrants", e.target.value)}
                       >
                         <FormControlLabel
                           value="yes"
@@ -3546,8 +3467,8 @@ export default function IntakePage() {
                       </Typography>
                       <RadioGroup
                         row
-                        value={hasUnpaidTickets}
-                        onChange={(e) => setHasUnpaidTickets(e.target.value)}
+                        value={form.hasUnpaidTickets}
+                        onChange={(e) => setField("hasUnpaidTickets", e.target.value)}
                       >
                         <FormControlLabel
                           value="yes"
@@ -3571,8 +3492,8 @@ export default function IntakePage() {
                       </Typography>
                       <RadioGroup
                         row
-                        value={childSupportStatus}
-                        onChange={(e) => setChildSupportStatus(e.target.value)}
+                        value={form.childSupportStatus}
+                        onChange={(e) => setField("childSupportStatus", e.target.value)}
                       >
                         <FormControlLabel
                           value="paying"
@@ -3597,14 +3518,14 @@ export default function IntakePage() {
                       </RadioGroup>
                     </FormControl>
 
-                    {(childSupportStatus === "paying" ||
-                      childSupportStatus === "receiving" ||
-                      childSupportStatus === "both") && (
+                    {(form.childSupportStatus === "paying" ||
+                      form.childSupportStatus === "receiving" ||
+                      form.childSupportStatus === "both") && (
                       <TextField
                         label="Monthly Child Support Amount"
-                        value={monthlyChildSupportAmount}
+                        value={form.monthlyChildSupportAmount}
                         onChange={(e) =>
-                          setMonthlyChildSupportAmount(e.target.value)
+                          setField("monthlyChildSupportAmount", e.target.value)
                         }
                         sx={{ mt: 1, maxWidth: 320 }}
                         slotProps={{
@@ -3646,8 +3567,8 @@ export default function IntakePage() {
                         </Typography>
                         <RadioGroup
                           row
-                          value={owesLandlordMoney}
-                          onChange={(e) => setOwesLandlordMoney(e.target.value)}
+                          value={form.owesLandlordMoney}
+                          onChange={(e) => setField("owesLandlordMoney", e.target.value)}
                         >
                           <FormControlLabel
                             value="yes"
@@ -3662,12 +3583,12 @@ export default function IntakePage() {
                         </RadioGroup>
                       </FormControl>
 
-                      {owesLandlordMoney === "yes" && (
+                      {form.owesLandlordMoney === "yes" && (
                         <TextField
                           label="Amount Owed"
-                          value={landlordAmountOwed}
+                          value={form.landlordAmountOwed}
                           onChange={(e) =>
-                            setLandlordAmountOwed(e.target.value)
+                            setField("landlordAmountOwed", e.target.value)
                           }
                           sx={{ mt: 1, ml: 2, maxWidth: 320 }}
                           slotProps={{
@@ -3691,8 +3612,8 @@ export default function IntakePage() {
                         </Typography>
                         <RadioGroup
                           row
-                          value={owesUtilityMoney}
-                          onChange={(e) => setOwesUtilityMoney(e.target.value)}
+                          value={form.owesUtilityMoney}
+                          onChange={(e) => setField("owesUtilityMoney", e.target.value)}
                         >
                           <FormControlLabel
                             value="yes"
@@ -3707,11 +3628,11 @@ export default function IntakePage() {
                         </RadioGroup>
                       </FormControl>
 
-                      {owesUtilityMoney === "yes" && (
+                      {form.owesUtilityMoney === "yes" && (
                         <TextField
                           label="Amount Owed"
-                          value={utilityAmountOwed}
-                          onChange={(e) => setUtilityAmountOwed(e.target.value)}
+                          value={form.utilityAmountOwed}
+                          onChange={(e) => setField("utilityAmountOwed", e.target.value)}
                           sx={{ mt: 1, ml: 2, maxWidth: 320 }}
                           slotProps={{
                             input: {
@@ -3742,8 +3663,8 @@ export default function IntakePage() {
                       </Typography>
                       <RadioGroup
                         row
-                        value={hasEvictionHistory}
-                        onChange={(e) => setHasEvictionHistory(e.target.value)}
+                        value={form.hasEvictionHistory}
+                        onChange={(e) => setField("hasEvictionHistory", e.target.value)}
                       >
                         <FormControlLabel
                           value="yes"
@@ -3765,8 +3686,8 @@ export default function IntakePage() {
                       </Typography>
                       <RadioGroup
                         row
-                        value={hasPaidStorage}
-                        onChange={(e) => setHasPaidStorage(e.target.value)}
+                        value={form.hasPaidStorage}
+                        onChange={(e) => setField("hasPaidStorage", e.target.value)}
                       >
                         <FormControlLabel
                           value="yes"
@@ -3806,9 +3727,9 @@ export default function IntakePage() {
                     </Typography>
                     <RadioGroup
                       row
-                      value={hasSubstanceUseConcerns}
+                      value={form.hasSubstanceUseConcerns}
                       onChange={(e) =>
-                        setHasSubstanceUseConcerns(e.target.value)
+                        setField("hasSubstanceUseConcerns", e.target.value)
                       }
                     >
                       <FormControlLabel
@@ -3823,7 +3744,7 @@ export default function IntakePage() {
                       />
                     </RadioGroup>
                   </FormControl>
-                  {hasSubstanceUseConcerns === "yes" && (
+                  {form.hasSubstanceUseConcerns === "yes" && (
                     <Box sx={{ mb: 2 }}>
                       <Typography sx={{ mb: 1 }}>
                         Select all substances that apply:
@@ -3847,19 +3768,23 @@ export default function IntakePage() {
                           key={substance}
                           control={
                             <Checkbox
-                              checked={substancesUsed.includes(substance)}
+                              checked={form.substancesUsed.includes(substance)}
                               onChange={(e) => {
                                 if (e.target.checked) {
-                                  setSubstancesUsed([
-                                    ...substancesUsed,
-                                    substance,
-                                  ]);
+                                  setForm((prev) => ({
+                                    ...prev,
+                                    substancesUsed: [
+                                      ...prev.substancesUsed,
+                                      substance,
+                                    ],
+                                  }));
                                 } else {
-                                  setSubstancesUsed(
-                                    substancesUsed.filter(
+                                  setForm((prev) => ({
+                                    ...prev,
+                                    substancesUsed: prev.substancesUsed.filter(
                                       (item) => item !== substance,
                                     ),
-                                  );
+                                  }));
                                 }
                               }}
                             />
@@ -3868,12 +3793,12 @@ export default function IntakePage() {
                         />
                       ))}
 
-                      {substancesUsed.includes("Other") && (
+                      {form.substancesUsed.includes("Other") && (
                         <TextField
                           fullWidth
                           label="Other Substance"
-                          value={otherSubstance}
-                          onChange={(e) => setOtherSubstance(e.target.value)}
+                          value={form.otherSubstance}
+                          onChange={(e) => setField("otherSubstance", e.target.value)}
                           sx={{ mt: 1 }}
                         />
                       )}
@@ -3883,8 +3808,8 @@ export default function IntakePage() {
                         multiline
                         minRows={2}
                         label="Substance Use Details (Optional)"
-                        value={substanceUseDetails}
-                        onChange={(e) => setSubstanceUseDetails(e.target.value)}
+                        value={form.substanceUseDetails}
+                        onChange={(e) => setField("substanceUseDetails", e.target.value)}
                         sx={{ mt: 2 }}
                       />
                     </Box>
@@ -3903,9 +3828,9 @@ export default function IntakePage() {
                     </Typography>
                     <RadioGroup
                       row
-                      value={currentlyReceivingMedicalTreatment}
+                      value={form.currentlyReceivingMedicalTreatment}
                       onChange={(e) =>
-                        setCurrentlyReceivingMedicalTreatment(e.target.value)
+                        setField("currentlyReceivingMedicalTreatment", e.target.value)
                       }
                     >
                       <FormControlLabel
@@ -3920,15 +3845,15 @@ export default function IntakePage() {
                       />
                     </RadioGroup>
                   </FormControl>
-                  {currentlyReceivingMedicalTreatment === "yes" && (
+                  {form.currentlyReceivingMedicalTreatment === "yes" && (
                     <TextField
                       fullWidth
                       multiline
                       minRows={2}
                       label="Medical Condition / Treatment Details"
-                      value={medicalTreatmentDetails}
+                      value={form.medicalTreatmentDetails}
                       onChange={(e) =>
-                        setMedicalTreatmentDetails(e.target.value)
+                        setField("medicalTreatmentDetails", e.target.value)
                       }
                       sx={{ mt: 1 }}
                     />
@@ -3957,25 +3882,29 @@ export default function IntakePage() {
                       key={need}
                       control={
                         <Checkbox
-                          checked={healthSupportNeeds.includes(need)}
+                          checked={form.healthSupportNeeds.includes(need)}
                           onChange={(e) => {
                             if (e.target.checked) {
                               if (need === "None") {
-                                setHealthSupportNeeds(["None"]);
+                                setField("healthSupportNeeds", ["None"]);
                               } else {
-                                setHealthSupportNeeds([
-                                  ...healthSupportNeeds.filter(
-                                    (item) => item !== "None",
-                                  ),
-                                  need,
-                                ]);
+                                setForm((prev) => ({
+                                  ...prev,
+                                  healthSupportNeeds: [
+                                    ...prev.healthSupportNeeds.filter(
+                                      (item) => item !== "None",
+                                    ),
+                                    need,
+                                  ],
+                                }));
                               }
                             } else {
-                              setHealthSupportNeeds(
-                                healthSupportNeeds.filter(
+                              setForm((prev) => ({
+                                ...prev,
+                                healthSupportNeeds: prev.healthSupportNeeds.filter(
                                   (item) => item !== need,
                                 ),
-                              );
+                              }));
                             }
                           }}
                         />
@@ -3983,18 +3912,18 @@ export default function IntakePage() {
                       label={need}
                     />
                   ))}
-                  {healthSupportNeeds.includes("Other") && (
+                  {form.healthSupportNeeds.includes("Other") && (
                     <TextField
                       fullWidth
                       label="Other Health / Support Need"
-                      value={otherHealthSupportNeed}
+                      value={form.otherHealthSupportNeed}
                       onChange={(e) =>
-                        setOtherHealthSupportNeed(e.target.value)
+                        setField("otherHealthSupportNeed", e.target.value)
                       }
                       sx={{ mt: 1 }}
                     />
                   )}
-                  {healthSupportNeeds
+                  {form.healthSupportNeeds
                     .filter((need) => need !== "Other" && need !== "None")
                     .map((need) => (
                       <TextField
@@ -4003,12 +3932,15 @@ export default function IntakePage() {
                         multiline
                         minRows={2}
                         label={`${need} Details (Optional)`}
-                        value={healthSupportDetails[need] || ""}
+                        value={form.healthSupportDetails[need] || ""}
                         onChange={(e) =>
-                          setHealthSupportDetails({
-                            ...healthSupportDetails,
-                            [need]: e.target.value,
-                          })
+                          setForm((prev) => ({
+                            ...prev,
+                            healthSupportDetails: {
+                              ...prev.healthSupportDetails,
+                              [need]: e.target.value,
+                            },
+                          }))
                         }
                         sx={{ mt: 2 }}
                       />
@@ -4046,25 +3978,30 @@ export default function IntakePage() {
                       key={support}
                       control={
                         <Checkbox
-                          checked={socialFinancialSupport.includes(support)}
+                          checked={form.socialFinancialSupport.includes(support)}
                           onChange={(e) => {
                             if (e.target.checked) {
                               if (support === "None") {
-                                setSocialFinancialSupport(["None"]);
+                                setField("socialFinancialSupport", ["None"]);
                               } else {
-                                setSocialFinancialSupport([
-                                  ...socialFinancialSupport.filter(
-                                    (item) => item !== "None",
-                                  ),
-                                  support,
-                                ]);
+                                setForm((prev) => ({
+                                  ...prev,
+                                  socialFinancialSupport: [
+                                    ...prev.socialFinancialSupport.filter(
+                                      (item) => item !== "None",
+                                    ),
+                                    support,
+                                  ],
+                                }));
                               }
                             } else {
-                              setSocialFinancialSupport(
-                                socialFinancialSupport.filter(
-                                  (item) => item !== support,
-                                ),
-                              );
+                              setForm((prev) => ({
+                                ...prev,
+                                socialFinancialSupport:
+                                  prev.socialFinancialSupport.filter(
+                                    (item) => item !== support,
+                                  ),
+                              }));
                             }
                           }}
                         />
@@ -4072,13 +4009,13 @@ export default function IntakePage() {
                       label={support}
                     />
                   ))}
-                  {socialFinancialSupport.includes("Other") && (
+                  {form.socialFinancialSupport.includes("Other") && (
                     <TextField
                       fullWidth
                       label="Other Social / Financial Support"
-                      value={otherSocialFinancialSupport}
+                      value={form.otherSocialFinancialSupport}
                       onChange={(e) =>
-                        setOtherSocialFinancialSupport(e.target.value)
+                        setField("otherSocialFinancialSupport", e.target.value)
                       }
                       sx={{ mt: 1 }}
                     />
@@ -4097,9 +4034,9 @@ export default function IntakePage() {
                     </Typography>
                     <RadioGroup
                       row
-                      value={childrenInSchoolOrChildcare}
+                      value={form.childrenInSchoolOrChildcare}
                       onChange={(e) =>
-                        setChildrenInSchoolOrChildcare(e.target.value)
+                        setField("childrenInSchoolOrChildcare", e.target.value)
                       }
                     >
                       <FormControlLabel
@@ -4131,9 +4068,9 @@ export default function IntakePage() {
                     multiline
                     minRows={2}
                     label="Religious / Spiritual Traditions (Optional)"
-                    value={religiousSpiritualTraditions}
+                    value={form.religiousSpiritualTraditions}
                     onChange={(e) =>
-                      setReligiousSpiritualTraditions(e.target.value)
+                      setField("religiousSpiritualTraditions", e.target.value)
                     }
                     sx={{ mt: 1 }}
                   />
@@ -4541,9 +4478,9 @@ export default function IntakePage() {
                     </Typography>
 
                     <Typography sx={{ mt: 1 }}>
-                      {snapBenefits === "Yes"
+                      {form.snapBenefits === "Yes"
                         ? "Receives SNAP"
-                        : snapBenefits === "No"
+                        : form.snapBenefits === "No"
                           ? "Does Not Receive SNAP"
                           : "SNAP status has not been entered."}
                     </Typography>
