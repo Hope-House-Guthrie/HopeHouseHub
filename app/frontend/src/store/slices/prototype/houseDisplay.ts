@@ -116,11 +116,9 @@ import {
   saveScheduleSources,
   type HouseDisplayAffirmationPersist,
 } from "../../../features/house-display/schedulePersistence";
-// Bundled flyer/video URLs (Bun @assets). public/house-display/* is NOT served by dev-server.
-// test-video.mp4 is local-only (gitignored) — DEV prototype asset, not production media.
+// Bundled flyer URLs (Bun @assets). public/house-display/* is NOT served by dev-server.
 import kiddosDonationUrl from "@assets/house-display/kiddos-donation.png";
 import hopeChangesEverythingUrl from "@assets/house-display/hope-changes-everything.png";
-import testVideoUrl from "@assets/house-display/test-video.mp4";
 
 /** Occurrence payload from manage — dateYmd must be explicit (no clock in reducer). */
 export type HouseDisplayOccurrenceActionPayload = {
@@ -529,21 +527,6 @@ function buildContent(
         message: "",
         imageUrl: hopeChangesEverythingUrl,
         imageAlt: "Hope Changes Everything / Family Reunification flyer",
-      },
-      {
-        id: "s4",
-        kind: "video",
-        sortOrder: 3,
-        active: true,
-        pinMode: "none",
-        title: "Test Video",
-        subtitle: "",
-        message: "",
-        imageUrl: "",
-        imageAlt: "",
-        videoUrl: testVideoUrl,
-        videoMimeType: "video/mp4",
-        videoSoundEnabled: true,
       },
     ],
 
