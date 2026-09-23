@@ -107,7 +107,7 @@ export default function IntakePage() {
   const [activeHandbookTab, setActiveHandbookTab] = useState("getting-started");
 
   // ---------------------------------------------------------------------------
-  // Live form object (Phase 5C: Client Information fields on form; later sections still useState).
+  // Live form object (Phase 5D: Client Info + Suicide + Household + HMIS Demographics + Homelessness on form).
   // ---------------------------------------------------------------------------
   const [form, setForm] = useState<LiveIntakeForm>(() =>
     createEmptyIntakeForm(),
@@ -129,79 +129,29 @@ export default function IntakePage() {
   // Room Assignment: free-text display today (placeholder e.g. "6S - A").
   // FUTURE: pair human-readable code with shared Bed.id from Room Chart data;
   // do not drive Room Chart by mutating its component state from Intake.
-  // Suicide risk screening fields (cleared via effect when all primary answers are No)
-  const [suicideWishDead, setSuicideWishDead] = useState("");
-  const [suicideBetterOffDead, setSuicideBetterOffDead] = useState("");
-  const [suicideThoughts, setSuicideThoughts] = useState("");
-  const [suicideAttemptHistory, setSuicideAttemptHistory] = useState("");
-  const [suicideAttemptHow, setSuicideAttemptHow] = useState("");
-  const [suicideAttemptWhen, setSuicideAttemptWhen] = useState("");
-  const [suicideCurrentThoughts, setSuicideCurrentThoughts] = useState("");
-  const [
-    suicideCurrentThoughtsDescription,
-    setSuicideCurrentThoughtsDescription,
-  ] = useState("");
+  // Suicide risk screening fields live on form (cleared via effect when primary answers are No)
 
   useEffect(() => {
     if (
-      suicideWishDead === "No" &&
-      suicideBetterOffDead === "No" &&
-      suicideThoughts === "No" &&
-      suicideAttemptHistory === "No"
+      form.suicideWishDead === "No" &&
+      form.suicideBetterOffDead === "No" &&
+      form.suicideThoughts === "No" &&
+      form.suicideAttemptHistory === "No"
     ) {
-      setSuicideCurrentThoughts("");
-      setSuicideCurrentThoughtsDescription("");
+      setForm((prev) => ({
+        ...prev,
+        suicideCurrentThoughts: "",
+        suicideCurrentThoughtsDescription: "",
+      }));
     }
   }, [
-    suicideWishDead,
-    suicideBetterOffDead,
-    suicideThoughts,
-    suicideAttemptHistory,
+    form.suicideWishDead,
+    form.suicideBetterOffDead,
+    form.suicideThoughts,
+    form.suicideAttemptHistory,
   ]);
 
-  // ---------------------------------------------------------------------------
-  // Household / Family / HMIS Demographics
-  // ---------------------------------------------------------------------------
 
-  const [hasMinorChildren, setHasMinorChildren] = useState("");
-  const [minorChildren, setMinorChildren] = useState<
-    {
-      firstName: string;
-      lastName: string;
-      dateOfBirth: string;
-      ssnFirst: string;
-      ssnMiddle: string;
-      ssnLast: string;
-    }[]
-  >([]);
-  const [gender, setGender] = useState("");
-  const [race, setRace] = useState<string[]>([]);
-  const [ethnicity, setEthnicity] = useState("");
-  const [household, setHousehold] = useState("");
-  const [domesticViolence, setDomesticViolence] = useState(false);
-  const [fosterCare, setFosterCare] = useState(false);
-  const [humanTrafficking, setHumanTrafficking] = useState(false);
-  const [domesticViolenceDate, setDomesticViolenceDate] = useState("");
-  const [currentlyFleeing, setCurrentlyFleeing] = useState("");
-
-  // ---------------------------------------------------------------------------
-  // Homelessness
-  // ---------------------------------------------------------------------------
-
-  const [firstTimeHomeless, setFirstTimeHomeless] = useState("");
-  const [totalTimesHomeless, setTotalTimesHomeless] = useState("");
-  const [priorLivingSituation, setPriorLivingSituation] = useState("");
-  const [priorLivingStayLength, setPriorLivingStayLength] = useState("");
-  const [priorLivingStayUnit, setPriorLivingStayUnit] = useState("");
-  const [homelessnessStartDate, setHomelessnessStartDate] = useState("");
-  const [homelessEpisodesPastThreeYears, setHomelessEpisodesPastThreeYears] =
-    useState("");
-  const [homelessMonthsPastThreeYears, setHomelessMonthsPastThreeYears] =
-    useState("");
-  const [lastPlaceStayed, setLastPlaceStayed] = useState("");
-  const [lastPlaceCity, setLastPlaceCity] = useState("");
-  const [lastPlaceCounty, setLastPlaceCounty] = useState("");
-  const [lastPlaceState, setLastPlaceState] = useState("");
 
   // ---------------------------------------------------------------------------
   // Employment / Income / Education
@@ -371,7 +321,7 @@ export default function IntakePage() {
     setActiveDraftId(null);
     setActiveIntakeSection("client-information");
     setActiveHandbookTab("getting-started");
-    // Client Information fields on form — partial reset until full form cutover.
+    // Migrated fields on form — partial reset until full form cutover.
     setForm((prev) => ({
       ...prev,
       firstName: "",
@@ -400,38 +350,38 @@ export default function IntakePage() {
       emergencyContactRelationship: "",
       roomNumber: "",
       medRoomLockerNumber: "",
+      suicideWishDead: "",
+      suicideBetterOffDead: "",
+      suicideThoughts: "",
+      suicideAttemptHistory: "",
+      suicideAttemptHow: "",
+      suicideAttemptWhen: "",
+      suicideCurrentThoughts: "",
+      suicideCurrentThoughtsDescription: "",
+      hasMinorChildren: "",
+      minorChildren: [],
+      gender: "",
+      race: [],
+      ethnicity: "",
+      household: "",
+      domesticViolence: false,
+      fosterCare: false,
+      humanTrafficking: false,
+      domesticViolenceDate: "",
+      currentlyFleeing: "",
+      firstTimeHomeless: "",
+      totalTimesHomeless: "",
+      priorLivingSituation: "",
+      priorLivingStayLength: "",
+      priorLivingStayUnit: "",
+      homelessnessStartDate: "",
+      homelessEpisodesPastThreeYears: "",
+      homelessMonthsPastThreeYears: "",
+      lastPlaceStayed: "",
+      lastPlaceCity: "",
+      lastPlaceCounty: "",
+      lastPlaceState: "",
     }));
-    setSuicideWishDead("");
-    setSuicideBetterOffDead("");
-    setSuicideThoughts("");
-    setSuicideAttemptHistory("");
-    setSuicideAttemptHow("");
-    setSuicideAttemptWhen("");
-    setSuicideCurrentThoughts("");
-    setSuicideCurrentThoughtsDescription("");
-    setHasMinorChildren("");
-    setMinorChildren([]);
-    setGender("");
-    setRace([]);
-    setEthnicity("");
-    setHousehold("");
-    setDomesticViolence(false);
-    setFosterCare(false);
-    setHumanTrafficking(false);
-    setDomesticViolenceDate("");
-    setCurrentlyFleeing("");
-    setFirstTimeHomeless("");
-    setTotalTimesHomeless("");
-    setPriorLivingSituation("");
-    setPriorLivingStayLength("");
-    setPriorLivingStayUnit("");
-    setHomelessnessStartDate("");
-    setHomelessEpisodesPastThreeYears("");
-    setHomelessMonthsPastThreeYears("");
-    setLastPlaceStayed("");
-    setLastPlaceCity("");
-    setLastPlaceCounty("");
-    setLastPlaceState("");
     setCurrentlyEmployed("");
     setEmployerName("");
     setMonthlyEmploymentIncome("");
@@ -550,40 +500,40 @@ export default function IntakePage() {
         emergencyContactRelationship: form.emergencyContactRelationship,
         roomNumber: form.roomNumber,
         medRoomLockerNumber: form.medRoomLockerNumber,
-        suicideWishDead,
-        suicideBetterOffDead,
-        suicideThoughts,
-        suicideAttemptHistory,
-        suicideAttemptHow,
-        suicideAttemptWhen,
-        suicideCurrentThoughts,
-        suicideCurrentThoughtsDescription,
+        suicideWishDead: form.suicideWishDead,
+        suicideBetterOffDead: form.suicideBetterOffDead,
+        suicideThoughts: form.suicideThoughts,
+        suicideAttemptHistory: form.suicideAttemptHistory,
+        suicideAttemptHow: form.suicideAttemptHow,
+        suicideAttemptWhen: form.suicideAttemptWhen,
+        suicideCurrentThoughts: form.suicideCurrentThoughts,
+        suicideCurrentThoughtsDescription: form.suicideCurrentThoughtsDescription,
         outDate: form.outDate,
         hopeHouseNumber: form.hopeHouseNumber,
         hmisNumber: form.hmisNumber,
-        hasMinorChildren,
-        minorChildren,
-        gender,
-        race,
-        ethnicity,
-        household,
-        domesticViolence,
-        fosterCare,
-        humanTrafficking,
-        domesticViolenceDate,
-        currentlyFleeing,
-        firstTimeHomeless,
-        totalTimesHomeless,
-        priorLivingSituation,
-        priorLivingStayLength,
-        priorLivingStayUnit,
-        homelessnessStartDate,
-        homelessEpisodesPastThreeYears,
-        homelessMonthsPastThreeYears,
-        lastPlaceStayed,
-        lastPlaceCity,
-        lastPlaceCounty,
-        lastPlaceState,
+        hasMinorChildren: form.hasMinorChildren,
+        minorChildren: form.minorChildren,
+        gender: form.gender,
+        race: form.race,
+        ethnicity: form.ethnicity,
+        household: form.household,
+        domesticViolence: form.domesticViolence,
+        fosterCare: form.fosterCare,
+        humanTrafficking: form.humanTrafficking,
+        domesticViolenceDate: form.domesticViolenceDate,
+        currentlyFleeing: form.currentlyFleeing,
+        firstTimeHomeless: form.firstTimeHomeless,
+        totalTimesHomeless: form.totalTimesHomeless,
+        priorLivingSituation: form.priorLivingSituation,
+        priorLivingStayLength: form.priorLivingStayLength,
+        priorLivingStayUnit: form.priorLivingStayUnit,
+        homelessnessStartDate: form.homelessnessStartDate,
+        homelessEpisodesPastThreeYears: form.homelessEpisodesPastThreeYears,
+        homelessMonthsPastThreeYears: form.homelessMonthsPastThreeYears,
+        lastPlaceStayed: form.lastPlaceStayed,
+        lastPlaceCity: form.lastPlaceCity,
+        lastPlaceCounty: form.lastPlaceCounty,
+        lastPlaceState: form.lastPlaceState,
 
         currentlyEmployed,
         employerName,
@@ -678,7 +628,7 @@ export default function IntakePage() {
 
   // Inverse of buildIntakeData: hydrates local UI state from a Draft/Completed snapshot.
   const loadIntakeData = (intake: IntakeDraft) => {
-    // Client Information fields on form — partial load until full cutover.
+    // Migrated fields on form — partial load until full cutover.
     setForm((prev) => ({
       ...prev,
       firstName: intake.formData.firstName,
@@ -707,44 +657,38 @@ export default function IntakePage() {
       roomNumber: intake.formData.roomNumber,
       medRoomLockerNumber: intake.formData.medRoomLockerNumber,
       intakeDate: intake.intakeDate,
+      suicideWishDead: intake.formData.suicideWishDead,
+      suicideBetterOffDead: intake.formData.suicideBetterOffDead,
+      suicideThoughts: intake.formData.suicideThoughts,
+      suicideAttemptHistory: intake.formData.suicideAttemptHistory,
+      suicideAttemptHow: intake.formData.suicideAttemptHow,
+      suicideAttemptWhen: intake.formData.suicideAttemptWhen,
+      suicideCurrentThoughts: intake.formData.suicideCurrentThoughts,
+      suicideCurrentThoughtsDescription: intake.formData.suicideCurrentThoughtsDescription,
+      hasMinorChildren: intake.formData.hasMinorChildren,
+      minorChildren: intake.formData.minorChildren.map((c) => ({ ...c })),
+      gender: intake.formData.gender,
+      race: [...intake.formData.race],
+      ethnicity: intake.formData.ethnicity,
+      household: intake.formData.household,
+      domesticViolence: intake.formData.domesticViolence,
+      fosterCare: intake.formData.fosterCare,
+      humanTrafficking: intake.formData.humanTrafficking,
+      domesticViolenceDate: intake.formData.domesticViolenceDate,
+      currentlyFleeing: intake.formData.currentlyFleeing,
+      firstTimeHomeless: intake.formData.firstTimeHomeless,
+      totalTimesHomeless: intake.formData.totalTimesHomeless,
+      priorLivingSituation: intake.formData.priorLivingSituation,
+      priorLivingStayLength: intake.formData.priorLivingStayLength,
+      priorLivingStayUnit: intake.formData.priorLivingStayUnit,
+      homelessnessStartDate: intake.formData.homelessnessStartDate,
+      homelessEpisodesPastThreeYears: intake.formData.homelessEpisodesPastThreeYears,
+      homelessMonthsPastThreeYears: intake.formData.homelessMonthsPastThreeYears,
+      lastPlaceStayed: intake.formData.lastPlaceStayed,
+      lastPlaceCity: intake.formData.lastPlaceCity,
+      lastPlaceCounty: intake.formData.lastPlaceCounty,
+      lastPlaceState: intake.formData.lastPlaceState,
     }));
-    setSuicideWishDead(intake.formData.suicideWishDead);
-    setSuicideBetterOffDead(intake.formData.suicideBetterOffDead);
-    setSuicideThoughts(intake.formData.suicideThoughts);
-    setSuicideAttemptHistory(intake.formData.suicideAttemptHistory);
-    setSuicideAttemptHow(intake.formData.suicideAttemptHow);
-    setSuicideAttemptWhen(intake.formData.suicideAttemptWhen);
-    setSuicideCurrentThoughts(intake.formData.suicideCurrentThoughts);
-    setSuicideCurrentThoughtsDescription(
-      intake.formData.suicideCurrentThoughtsDescription,
-    );
-    setHasMinorChildren(intake.formData.hasMinorChildren);
-    setMinorChildren(intake.formData.minorChildren);
-    setGender(intake.formData.gender);
-    setRace(intake.formData.race);
-    setEthnicity(intake.formData.ethnicity);
-    setHousehold(intake.formData.household);
-    setDomesticViolence(intake.formData.domesticViolence);
-    setFosterCare(intake.formData.fosterCare);
-    setHumanTrafficking(intake.formData.humanTrafficking);
-    setDomesticViolenceDate(intake.formData.domesticViolenceDate);
-    setCurrentlyFleeing(intake.formData.currentlyFleeing);
-    setFirstTimeHomeless(intake.formData.firstTimeHomeless);
-    setTotalTimesHomeless(intake.formData.totalTimesHomeless);
-    setPriorLivingSituation(intake.formData.priorLivingSituation);
-    setPriorLivingStayLength(intake.formData.priorLivingStayLength);
-    setPriorLivingStayUnit(intake.formData.priorLivingStayUnit);
-    setHomelessnessStartDate(intake.formData.homelessnessStartDate);
-    setHomelessEpisodesPastThreeYears(
-      intake.formData.homelessEpisodesPastThreeYears,
-    );
-    setHomelessMonthsPastThreeYears(
-      intake.formData.homelessMonthsPastThreeYears,
-    );
-    setLastPlaceStayed(intake.formData.lastPlaceStayed);
-    setLastPlaceCity(intake.formData.lastPlaceCity);
-    setLastPlaceCounty(intake.formData.lastPlaceCounty);
-    setLastPlaceState(intake.formData.lastPlaceState);
     setCurrentlyEmployed(intake.formData.currentlyEmployed);
     setEmployerName(intake.formData.employerName);
     setMonthlyEmploymentIncome(intake.formData.monthlyEmploymentIncome);
@@ -992,11 +936,12 @@ export default function IntakePage() {
       | "ssnLast",
     value: string,
   ) => {
-    setMinorChildren((current) =>
-      current.map((child, childIndex) =>
+    setForm((prev) => ({
+      ...prev,
+      minorChildren: prev.minorChildren.map((child, childIndex) =>
         childIndex === index ? { ...child, [field]: value } : child,
       ),
-    );
+    }));
   };
 
   return (
@@ -1776,9 +1721,9 @@ export default function IntakePage() {
 
                     <RadioGroup
                       row
-                      value={suicideWishDead}
+                      value={form.suicideWishDead}
                       onChange={(event) =>
-                        setSuicideWishDead(event.target.value)
+                        setField("suicideWishDead", event.target.value)
                       }
                     >
                       <FormControlLabel
@@ -1802,9 +1747,9 @@ export default function IntakePage() {
 
                     <RadioGroup
                       row
-                      value={suicideBetterOffDead}
+                      value={form.suicideBetterOffDead}
                       onChange={(event) =>
-                        setSuicideBetterOffDead(event.target.value)
+                        setField("suicideBetterOffDead", event.target.value)
                       }
                     >
                       <FormControlLabel
@@ -1828,9 +1773,9 @@ export default function IntakePage() {
 
                     <RadioGroup
                       row
-                      value={suicideThoughts}
+                      value={form.suicideThoughts}
                       onChange={(event) =>
-                        setSuicideThoughts(event.target.value)
+                        setField("suicideThoughts", event.target.value)
                       }
                     >
                       <FormControlLabel
@@ -1853,14 +1798,14 @@ export default function IntakePage() {
 
                     <RadioGroup
                       row
-                      value={suicideAttemptHistory}
+                      value={form.suicideAttemptHistory}
                       onChange={(event) => {
                         const value = event.target.value;
-                        setSuicideAttemptHistory(value);
+                        setField("suicideAttemptHistory", value);
 
                         if (value === "No") {
-                          setSuicideAttemptHow("");
-                          setSuicideAttemptWhen("");
+                          setField("suicideAttemptHow", "");
+                          setField("suicideAttemptWhen", "");
                         }
                       }}
                     >
@@ -1877,7 +1822,7 @@ export default function IntakePage() {
                     </RadioGroup>
                   </FormControl>
 
-                  {suicideAttemptHistory === "Yes" && (
+                  {form.suicideAttemptHistory === "Yes" && (
                     <Box
                       sx={{
                         display: "grid",
@@ -1888,9 +1833,9 @@ export default function IntakePage() {
                     >
                       <TextField
                         label="If yes, how?"
-                        value={suicideAttemptHow}
+                        value={form.suicideAttemptHow}
                         onChange={(event) =>
-                          setSuicideAttemptHow(event.target.value)
+                          setField("suicideAttemptHow", event.target.value)
                         }
                         multiline
                         minRows={2}
@@ -1898,18 +1843,18 @@ export default function IntakePage() {
 
                       <TextField
                         label="When?"
-                        value={suicideAttemptWhen}
+                        value={form.suicideAttemptWhen}
                         onChange={(event) =>
-                          setSuicideAttemptWhen(event.target.value)
+                          setField("suicideAttemptWhen", event.target.value)
                         }
                       />
                     </Box>
                   )}
 
-                  {suicideWishDead === "No" &&
-                    suicideBetterOffDead === "No" &&
-                    suicideThoughts === "No" &&
-                    suicideAttemptHistory === "No" && (
+                  {form.suicideWishDead === "No" &&
+                    form.suicideBetterOffDead === "No" &&
+                    form.suicideThoughts === "No" &&
+                    form.suicideAttemptHistory === "No" && (
                       <Alert
                         severity="success"
                         sx={{
@@ -1926,10 +1871,10 @@ export default function IntakePage() {
                       </Alert>
                     )}
 
-                  {(suicideWishDead === "Yes" ||
-                    suicideBetterOffDead === "Yes" ||
-                    suicideThoughts === "Yes" ||
-                    suicideAttemptHistory === "Yes") && (
+                  {(form.suicideWishDead === "Yes" ||
+                    form.suicideBetterOffDead === "Yes" ||
+                    form.suicideThoughts === "Yes" ||
+                    form.suicideAttemptHistory === "Yes") && (
                     <>
                       <FormControl fullWidth sx={{ mt: 3 }}>
                         <Typography>
@@ -1939,13 +1884,13 @@ export default function IntakePage() {
 
                         <RadioGroup
                           row
-                          value={suicideCurrentThoughts}
+                          value={form.suicideCurrentThoughts}
                           onChange={(event) => {
                             const value = event.target.value;
-                            setSuicideCurrentThoughts(value);
+                            setField("suicideCurrentThoughts", value);
 
                             if (value === "No") {
-                              setSuicideCurrentThoughtsDescription("");
+                              setField("suicideCurrentThoughtsDescription", "");
                             }
                           }}
                         >
@@ -1962,14 +1907,15 @@ export default function IntakePage() {
                         </RadioGroup>
                       </FormControl>
 
-                      {suicideCurrentThoughts === "Yes" && (
+                      {form.suicideCurrentThoughts === "Yes" && (
                         <TextField
                           fullWidth
                           sx={{ mt: 1 }}
                           label="Please describe"
-                          value={suicideCurrentThoughtsDescription}
+                          value={form.suicideCurrentThoughtsDescription}
                           onChange={(event) =>
-                            setSuicideCurrentThoughtsDescription(
+                            setField(
+                              "suicideCurrentThoughtsDescription",
                               event.target.value,
                             )
                           }
@@ -1978,7 +1924,7 @@ export default function IntakePage() {
                         />
                       )}
 
-                      {suicideCurrentThoughts === "Yes" && (
+                      {form.suicideCurrentThoughts === "Yes" && (
                         <Alert
                           severity="error"
                           sx={{
@@ -1996,7 +1942,7 @@ export default function IntakePage() {
                         </Alert>
                       )}
 
-                      {suicideCurrentThoughts === "No" && (
+                      {form.suicideCurrentThoughts === "No" && (
                         <Alert
                           severity="warning"
                           sx={{
@@ -2033,9 +1979,9 @@ export default function IntakePage() {
 
                     <RadioGroup
                       row
-                      value={hasMinorChildren}
+                      value={form.hasMinorChildren}
                       onChange={(event) =>
-                        setHasMinorChildren(event.target.value)
+                        setField("hasMinorChildren", event.target.value)
                       }
                     >
                       <FormControlLabel
@@ -2052,9 +1998,9 @@ export default function IntakePage() {
                   </FormControl>
 
                   {/* -------------------------------------------------------------- */}
-                  {/* Minor Children (shown when hasMinorChildren === "yes")        */}
+                  {/* Minor Children (shown when form.hasMinorChildren === "yes")        */}
                   {/* -------------------------------------------------------------- */}
-                  {hasMinorChildren === "yes" && (
+                  {form.hasMinorChildren === "yes" && (
                     <Box sx={{ mt: 2 }}>
                       <Typography variant="subtitle1">
                         Minor Children
@@ -2063,22 +2009,25 @@ export default function IntakePage() {
                       <Button
                         variant="outlined"
                         onClick={() =>
-                          setMinorChildren((current) => [
-                            ...current,
-                            {
-                              firstName: "",
-                              lastName: "",
-                              dateOfBirth: "",
-                              ssnFirst: "",
-                              ssnMiddle: "",
-                              ssnLast: "",
-                            },
-                          ])
+                          setForm((prev) => ({
+                            ...prev,
+                            minorChildren: [
+                              ...prev.minorChildren,
+                              {
+                                firstName: "",
+                                lastName: "",
+                                dateOfBirth: "",
+                                ssnFirst: "",
+                                ssnMiddle: "",
+                                ssnLast: "",
+                              },
+                            ],
+                          }))
                         }
                       >
                         Add Child
                       </Button>
-                      {minorChildren.map((child, index) => (
+                      {form.minorChildren.map((child, index) => (
                         <Box key={index} sx={{ mt: 2 }}>
                           <Box
                             sx={{
@@ -2096,11 +2045,12 @@ export default function IntakePage() {
                               size="small"
                               color="error"
                               onClick={() =>
-                                setMinorChildren((current) =>
-                                  current.filter(
+                                setForm((prev) => ({
+                                  ...prev,
+                                  minorChildren: prev.minorChildren.filter(
                                     (_, childIndex) => childIndex !== index,
                                   ),
-                                )
+                                }))
                               }
                             >
                               Remove
@@ -2262,8 +2212,8 @@ export default function IntakePage() {
                     <FormControl>
                       <RadioGroup
                         row
-                        value={gender}
-                        onChange={(event) => setGender(event.target.value)}
+                        value={form.gender}
+                        onChange={(event) => setField("gender", event.target.value)}
                       >
                         <FormControlLabel
                           value="female"
@@ -2356,13 +2306,14 @@ export default function IntakePage() {
                           key={value}
                           control={
                             <Checkbox
-                              checked={race.includes(value)}
+                              checked={form.race.includes(value)}
                               onChange={(event) =>
-                                setRace((current) =>
-                                  event.target.checked
-                                    ? [...current, value]
-                                    : current.filter((item) => item !== value),
-                                )
+                                setForm((prev) => ({
+                                  ...prev,
+                                  race: event.target.checked
+                                    ? [...prev.race, value]
+                                    : prev.race.filter((item) => item !== value),
+                                }))
                               }
                             />
                           }
@@ -2393,8 +2344,8 @@ export default function IntakePage() {
 
                       <FormControl>
                         <RadioGroup
-                          value={ethnicity}
-                          onChange={(event) => setEthnicity(event.target.value)}
+                          value={form.ethnicity}
+                          onChange={(event) => setField("ethnicity", event.target.value)}
                         >
                           <FormControlLabel
                             value="hispanicLatinaeo"
@@ -2430,8 +2381,8 @@ export default function IntakePage() {
 
                       <FormControl>
                         <RadioGroup
-                          value={household}
-                          onChange={(event) => setHousehold(event.target.value)}
+                          value={form.household}
+                          onChange={(event) => setField("household", event.target.value)}
                         >
                           <FormControlLabel
                             value="singleAdult"
@@ -2471,9 +2422,9 @@ export default function IntakePage() {
                       <FormControlLabel
                         control={
                           <Checkbox
-                            checked={domesticViolence}
+                            checked={form.domesticViolence}
                             onChange={(event) =>
-                              setDomesticViolence(event.target.checked)
+                              setField("domesticViolence", event.target.checked)
                             }
                           />
                         }
@@ -2483,9 +2434,9 @@ export default function IntakePage() {
                       <FormControlLabel
                         control={
                           <Checkbox
-                            checked={fosterCare}
+                            checked={form.fosterCare}
                             onChange={(event) =>
-                              setFosterCare(event.target.checked)
+                              setField("fosterCare", event.target.checked)
                             }
                           />
                         }
@@ -2495,9 +2446,9 @@ export default function IntakePage() {
                       <FormControlLabel
                         control={
                           <Checkbox
-                            checked={humanTrafficking}
+                            checked={form.humanTrafficking}
                             onChange={(event) =>
-                              setHumanTrafficking(event.target.checked)
+                              setField("humanTrafficking", event.target.checked)
                             }
                           />
                         }
@@ -2505,7 +2456,7 @@ export default function IntakePage() {
                       />
                     </Box>
 
-                    {domesticViolence && (
+                    {form.domesticViolence && (
                       <Box
                         sx={{
                           mt: 2,
@@ -2529,9 +2480,9 @@ export default function IntakePage() {
                         <TextField
                           label="Approximate Date of Most Recent Occurrence"
                           type="date"
-                          value={domesticViolenceDate}
+                          value={form.domesticViolenceDate}
                           onChange={(event) =>
-                            setDomesticViolenceDate(event.target.value)
+                            setField("domesticViolenceDate", event.target.value)
                           }
                           slotProps={{ inputLabel: { shrink: true } }}
                         />
@@ -2541,9 +2492,9 @@ export default function IntakePage() {
 
                           <RadioGroup
                             row
-                            value={currentlyFleeing}
+                            value={form.currentlyFleeing}
                             onChange={(event) =>
-                              setCurrentlyFleeing(event.target.value)
+                              setField("currentlyFleeing", event.target.value)
                             }
                           >
                             <FormControlLabel
@@ -2580,9 +2531,9 @@ export default function IntakePage() {
 
                     <RadioGroup
                       row
-                      value={firstTimeHomeless}
+                      value={form.firstTimeHomeless}
                       onChange={(event) =>
-                        setFirstTimeHomeless(event.target.value)
+                        setField("firstTimeHomeless", event.target.value)
                       }
                     >
                       <FormControlLabel
@@ -2598,16 +2549,16 @@ export default function IntakePage() {
                     </RadioGroup>
                   </FormControl>
 
-                  {firstTimeHomeless === "no" && (
+                  {form.firstTimeHomeless === "no" && (
                     <Box sx={{ mt: 2, width: "100%" }}>
                       <TextField
                         fullWidth
                         sx={{ maxWidth: 560, display: "block" }}
                         label="How many times has the client experienced homelessness in total?"
                         type="number"
-                        value={totalTimesHomeless}
+                        value={form.totalTimesHomeless}
                         onChange={(event) =>
-                          setTotalTimesHomeless(event.target.value)
+                          setField("totalTimesHomeless", event.target.value)
                         }
                         slotProps={{
                           htmlInput: {
@@ -2630,9 +2581,9 @@ export default function IntakePage() {
                     <TextField
                       fullWidth
                       label="Where was the client living before coming to Hope House Guthrie?"
-                      value={priorLivingSituation}
+                      value={form.priorLivingSituation}
                       onChange={(event) =>
-                        setPriorLivingSituation(event.target.value)
+                        setField("priorLivingSituation", event.target.value)
                       }
                     />
 
@@ -2648,9 +2599,9 @@ export default function IntakePage() {
                       <TextField
                         label="Length of Stay"
                         type="number"
-                        value={priorLivingStayLength}
+                        value={form.priorLivingStayLength}
                         onChange={(event) =>
-                          setPriorLivingStayLength(event.target.value)
+                          setField("priorLivingStayLength", event.target.value)
                         }
                         slotProps={{
                           htmlInput: {
@@ -2666,9 +2617,9 @@ export default function IntakePage() {
                         <Select
                           labelId="prior-living-stay-unit-label"
                           label="Unit"
-                          value={priorLivingStayUnit}
+                          value={form.priorLivingStayUnit}
                           onChange={(event) =>
-                            setPriorLivingStayUnit(event.target.value)
+                            setField("priorLivingStayUnit", event.target.value)
                           }
                         >
                           <MenuItem value="days">Days</MenuItem>
@@ -2684,9 +2635,9 @@ export default function IntakePage() {
                     sx={{ mt: 3, minWidth: 360, maxWidth: 560, width: "100%" }}
                     label="Approximate Start of Current Homeless Episode"
                     type="date"
-                    value={homelessnessStartDate}
+                    value={form.homelessnessStartDate}
                     onChange={(event) =>
-                      setHomelessnessStartDate(event.target.value)
+                      setField("homelessnessStartDate", event.target.value)
                     }
                     slotProps={{ inputLabel: { shrink: true } }}
                   />
@@ -2711,9 +2662,9 @@ export default function IntakePage() {
                       <TextField
                         label="Number of Homeless Episodes"
                         type="number"
-                        value={homelessEpisodesPastThreeYears}
+                        value={form.homelessEpisodesPastThreeYears}
                         onChange={(event) =>
-                          setHomelessEpisodesPastThreeYears(event.target.value)
+                          setField("homelessEpisodesPastThreeYears", event.target.value)
                         }
                         slotProps={{
                           htmlInput: {
@@ -2725,9 +2676,9 @@ export default function IntakePage() {
                       <TextField
                         label="Total Months Homeless"
                         type="number"
-                        value={homelessMonthsPastThreeYears}
+                        value={form.homelessMonthsPastThreeYears}
                         onChange={(event) =>
-                          setHomelessMonthsPastThreeYears(event.target.value)
+                          setField("homelessMonthsPastThreeYears", event.target.value)
                         }
                         slotProps={{
                           htmlInput: {
@@ -2750,9 +2701,9 @@ export default function IntakePage() {
                     <TextField
                       fullWidth
                       label="Place / Facility / Address"
-                      value={lastPlaceStayed}
+                      value={form.lastPlaceStayed}
                       onChange={(event) =>
-                        setLastPlaceStayed(event.target.value)
+                        setField("lastPlaceStayed", event.target.value)
                       }
                     />
 
@@ -2766,25 +2717,25 @@ export default function IntakePage() {
                     >
                       <TextField
                         label="City"
-                        value={lastPlaceCity}
+                        value={form.lastPlaceCity}
                         onChange={(event) =>
-                          setLastPlaceCity(event.target.value)
+                          setField("lastPlaceCity", event.target.value)
                         }
                       />
 
                       <TextField
                         label="County"
-                        value={lastPlaceCounty}
+                        value={form.lastPlaceCounty}
                         onChange={(event) =>
-                          setLastPlaceCounty(event.target.value)
+                          setField("lastPlaceCounty", event.target.value)
                         }
                       />
 
                       <TextField
                         label="State"
-                        value={lastPlaceState}
+                        value={form.lastPlaceState}
                         onChange={(event) =>
-                          setLastPlaceState(event.target.value)
+                          setField("lastPlaceState", event.target.value)
                         }
                       />
                     </Box>
