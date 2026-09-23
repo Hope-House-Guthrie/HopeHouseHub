@@ -45,7 +45,12 @@ import {
 import { useEffect, useState } from "react";
 import SignatureCanvas from "../../../components/SignatureCanvas";
 import { MOCK_CURRENT_USER } from "../../../features/prototype/mockCurrentUser";
-import type { CompletedIntake, IntakeDraft } from "./types/intake";
+import type {
+  CompletedIntake,
+  IntakeDraft,
+  LiveIntakeForm,
+} from "./types/intake";
+import { createEmptyIntakeForm } from "./types/intake";
 import { calculateAge } from "./utils/calculateAge";
 import IntakeSectionNav from "./components/IntakeSectionNav";
 import DraftIntakesList from "./components/DraftIntakesList";
@@ -102,9 +107,26 @@ export default function IntakePage() {
   const [activeHandbookTab, setActiveHandbookTab] = useState("getting-started");
 
   // ---------------------------------------------------------------------------
+  // Live form object (Phase 5B pilot: firstName, noMedicalAllergies, dietaryNeeds)
+  // Other fields still use individual useState until later migration phases.
+  // ---------------------------------------------------------------------------
+  const [form, setForm] = useState<LiveIntakeForm>(() =>
+    createEmptyIntakeForm(),
+  );
+
+  const setField = <K extends keyof LiveIntakeForm>(
+    key: K,
+    value: LiveIntakeForm[K],
+  ) => {
+    setForm((prev) => ({
+      ...prev,
+      [key]: value,
+    }));
+  };
+
+  // ---------------------------------------------------------------------------
   // Client Information
   // ---------------------------------------------------------------------------
-  const [firstName, setFirstName] = useState("");
   const [middleName, setMiddleName] = useState("");
   const [lastName, setLastName] = useState("");
   const [preferredName, setPreferredName] = useState("");
@@ -120,10 +142,8 @@ export default function IntakePage() {
   const [ssnStatus, setSsnStatus] = useState("");
   const [veteranStatus, setVeteranStatus] = useState("");
   const [medicalAllergies, setMedicalAllergies] = useState("");
-  const [noMedicalAllergies, setNoMedicalAllergies] = useState(false);
   const [foodAllergies, setFoodAllergies] = useState("");
   const [noFoodAllergies, setNoFoodAllergies] = useState(false);
-  const [dietaryNeeds, setDietaryNeeds] = useState<string[]>([]);
   const [otherDietaryNeed, setOtherDietaryNeed] = useState("");
   const [emergencyContactName, setEmergencyContactName] = useState("");
   const [emergencyContactPhoneNumber, setEmergencyContactPhoneNumber] =
@@ -378,7 +398,13 @@ export default function IntakePage() {
     setActiveIntakeSection("client-information");
     setActiveHandbookTab("getting-started");
     setDateOfBirth("");
-    setFirstName("");
+    // Pilot fields live on form — reset only these three until full form cutover.
+    setForm((prev) => ({
+      ...prev,
+      firstName: "",
+      noMedicalAllergies: false,
+      dietaryNeeds: [],
+    }));
     setMiddleName("");
     setLastName("");
     setPreferredName("");
@@ -393,10 +419,8 @@ export default function IntakePage() {
     setSsnStatus("");
     setVeteranStatus("");
     setMedicalAllergies("");
-    setNoMedicalAllergies(false);
     setFoodAllergies("");
     setNoFoodAllergies(false);
-    setDietaryNeeds([]);
     setOtherDietaryNeed("");
     setEmergencyContactName("");
     setEmergencyContactPhoneNumber("");
@@ -521,7 +545,7 @@ export default function IntakePage() {
   // when adding/removing fields or Draft/Completed round-trips will drop data.
   const buildIntakeData = () => {
     return {
-      clientName: `${firstName} ${middleName} ${lastName}`
+      clientName: `${form.firstName} ${middleName} ${lastName}`
         .replace(/\s+/g, " ")
         .trim(),
       intakeDate,
@@ -530,7 +554,7 @@ export default function IntakePage() {
       lastUpdatedBy: MOCK_CURRENT_USER.displayName,
 
       formData: {
-        firstName,
+        firstName: form.firstName,
         middleName,
         lastName,
         preferredName,
@@ -542,10 +566,10 @@ export default function IntakePage() {
         ssnStatus,
         veteranStatus,
         medicalAllergies,
-        noMedicalAllergies,
+        noMedicalAllergies: form.noMedicalAllergies,
         foodAllergies,
         noFoodAllergies,
-        dietaryNeeds,
+        dietaryNeeds: form.dietaryNeeds,
         otherDietaryNeed,
         emergencyContactName,
         emergencyContactPhoneNumber,
@@ -680,7 +704,13 @@ export default function IntakePage() {
 
   // Inverse of buildIntakeData: hydrates local UI state from a Draft/Completed snapshot.
   const loadIntakeData = (intake: IntakeDraft) => {
-    setFirstName(intake.formData.firstName);
+    // Pilot fields only — leave other form.* values alone until full cutover.
+    setForm((prev) => ({
+      ...prev,
+      firstName: intake.formData.firstName,
+      noMedicalAllergies: intake.formData.noMedicalAllergies,
+      dietaryNeeds: [...intake.formData.dietaryNeeds],
+    }));
     setMiddleName(intake.formData.middleName);
     setLastName(intake.formData.lastName);
     setPreferredName(intake.formData.preferredName);
@@ -692,10 +722,8 @@ export default function IntakePage() {
     setSsnStatus(intake.formData.ssnStatus);
     setVeteranStatus(intake.formData.veteranStatus);
     setMedicalAllergies(intake.formData.medicalAllergies);
-    setNoMedicalAllergies(intake.formData.noMedicalAllergies);
     setFoodAllergies(intake.formData.foodAllergies);
     setNoFoodAllergies(intake.formData.noFoodAllergies);
-    setDietaryNeeds(intake.formData.dietaryNeeds);
     setOtherDietaryNeed(intake.formData.otherDietaryNeed);
     setEmergencyContactName(intake.formData.emergencyContactName);
     setEmergencyContactPhoneNumber(intake.formData.emergencyContactPhoneNumber);
@@ -1288,8 +1316,10 @@ export default function IntakePage() {
                   >
                     <TextField
                       label="First Name"
-                      value={firstName}
-                      onChange={(event) => setFirstName(event.target.value)}
+                      value={form.firstName}
+                      onChange={(event) =>
+                        setField("firstName", event.target.value)
+                      }
                     />
 
                     <TextField
@@ -1510,9 +1540,12 @@ export default function IntakePage() {
                       <FormControlLabel
                         control={
                           <Checkbox
-                            checked={noMedicalAllergies}
+                            checked={form.noMedicalAllergies}
                             onChange={(event) => {
-                              setNoMedicalAllergies(event.target.checked);
+                              setField(
+                                "noMedicalAllergies",
+                                event.target.checked,
+                              );
 
                               if (event.target.checked) {
                                 setMedicalAllergies("");
@@ -1532,7 +1565,7 @@ export default function IntakePage() {
                         onChange={(event) =>
                           setMedicalAllergies(event.target.value)
                         }
-                        disabled={noMedicalAllergies}
+                        disabled={form.noMedicalAllergies}
                       />
                     </Box>
                   </Box>
@@ -1588,13 +1621,13 @@ export default function IntakePage() {
                       <FormControlLabel
                         control={
                           <Checkbox
-                            checked={dietaryNeeds.includes("none")}
+                            checked={form.dietaryNeeds.includes("none")}
                             onChange={(event) => {
                               if (event.target.checked) {
-                                setDietaryNeeds(["none"]);
+                                setField("dietaryNeeds", ["none"]);
                                 setOtherDietaryNeed("");
                               } else {
-                                setDietaryNeeds([]);
+                                setField("dietaryNeeds", []);
                               }
                             }}
                           />
@@ -1623,19 +1656,25 @@ export default function IntakePage() {
                           key={value}
                           control={
                             <Checkbox
-                              checked={dietaryNeeds.includes(value)}
+                              checked={form.dietaryNeeds.includes(value)}
                               onChange={(event) => {
                                 if (event.target.checked) {
-                                  setDietaryNeeds((current) => [
-                                    ...current.filter(
-                                      (item) => item !== "none",
-                                    ),
-                                    value,
-                                  ]);
+                                  setForm((prev) => ({
+                                    ...prev,
+                                    dietaryNeeds: [
+                                      ...prev.dietaryNeeds.filter(
+                                        (item) => item !== "none",
+                                      ),
+                                      value,
+                                    ],
+                                  }));
                                 } else {
-                                  setDietaryNeeds((current) =>
-                                    current.filter((item) => item !== value),
-                                  );
+                                  setForm((prev) => ({
+                                    ...prev,
+                                    dietaryNeeds: prev.dietaryNeeds.filter(
+                                      (item) => item !== value,
+                                    ),
+                                  }));
 
                                   if (value === "other") {
                                     setOtherDietaryNeed("");
@@ -1648,7 +1687,7 @@ export default function IntakePage() {
                         />
                       ))}
 
-                      {dietaryNeeds.includes("other") && (
+                      {form.dietaryNeeds.includes("other") && (
                         <TextField
                           label="Other Dietary Need / Restriction"
                           multiline
@@ -4294,7 +4333,7 @@ export default function IntakePage() {
                     <Box sx={{ mt: 3 }}>
                     <AgreementVolunteerReleaseCopy
                       intakeDate={intakeDate}
-                      participantName={[firstName, middleName, lastName]
+                      participantName={[form.firstName, middleName, lastName]
                         .filter(Boolean)
                         .join(" ")}
                     />
@@ -4589,7 +4628,7 @@ export default function IntakePage() {
                       <SnapNoticeAcknowledgmentCopy />
                       <Typography sx={{ mt: 2 }}>
                         <strong>Participant Name:</strong>{" "}
-                        {[firstName, middleName, lastName]
+                        {[form.firstName, middleName, lastName]
                           .filter(Boolean)
                           .join(" ") || "Not entered"}
                       </Typography>
