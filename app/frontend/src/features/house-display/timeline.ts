@@ -76,6 +76,7 @@ export function buildRollCallAgendaItem(
     systemKind: "rollCall",
     location: undefined,
     facilitator: undefined,
+    meetingTopic: undefined,
     logoKey: null,
   };
 }
@@ -177,6 +178,8 @@ export interface TimelineBlockLayout {
   location?: string;
   /** Optional facilitator metadata for display */
   facilitator?: string;
+  /** Optional meeting topic (carried for later TV use; timeline paint may ignore) */
+  meetingTopic?: string;
 }
 
 /**
@@ -339,6 +342,7 @@ export function layoutAgendaItem(
     durationMin: item.endMin - item.startMin,
     location: item.location,
     facilitator: item.facilitator,
+    meetingTopic: item.meetingTopic,
   };
 }
 
@@ -381,6 +385,7 @@ export function layoutAgendaItems(
       durationMin: item.endMin - item.startMin,
       location: item.location,
       facilitator: item.facilitator,
+      meetingTopic: item.meetingTopic,
     });
   }
 

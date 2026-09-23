@@ -334,6 +334,7 @@ export default function HouseDisplayManagePage() {
   /** Set only in edit mode; null in add mode */
   const [editingClassId, setEditingClassId] = useState<string | null>(null);
   const [addTitle, setAddTitle] = useState("");
+  const [addMeetingTopic, setAddMeetingTopic] = useState("");
   const [addStartTime, setAddStartTime] = useState(""); // "HH:mm"
   const [addEndTime, setAddEndTime] = useState("");
   /** Weekday numbers 0=Sun … 6=Sat (empty ≠ every day) */
@@ -356,6 +357,7 @@ export default function HouseDisplayManagePage() {
   const [editingOneTimeId, setEditingOneTimeId] = useState<string | null>(null);
   const [addOneTimeOpen, setAddOneTimeOpen] = useState(false);
   const [addOneTimeTitle, setAddOneTimeTitle] = useState("");
+  const [addOneTimeMeetingTopic, setAddOneTimeMeetingTopic] = useState("");
   const [addOneTimeDate, setAddOneTimeDate] = useState<string>(""); // YYYY-MM-DD
   const [addOneTimeStartTime, setAddOneTimeStartTime] = useState("");
   const [addOneTimeEndTime, setAddOneTimeEndTime] = useState("");
@@ -465,6 +467,7 @@ export default function HouseDisplayManagePage() {
     setClassFormMode("add");
     setEditingClassId(null);
     setAddTitle("");
+    setAddMeetingTopic("");
     setAddStartTime("");
     setAddEndTime("");
     setAddDays([]);
@@ -500,6 +503,7 @@ export default function HouseDisplayManagePage() {
     setOneTimeFormMode("add");
     setEditingOneTimeId(null);
     setAddOneTimeTitle("");
+    setAddOneTimeMeetingTopic("");
     setAddOneTimeDate(hopeNow.dateKey);
     setAddOneTimeStartTime("");
     setAddOneTimeEndTime("");
@@ -518,6 +522,7 @@ export default function HouseDisplayManagePage() {
     setOneTimeFormMode("edit");
     setEditingOneTimeId(event.id);
     setAddOneTimeTitle(event.title);
+    setAddOneTimeMeetingTopic(event.meetingTopic ?? "");
     setAddOneTimeDate(event.dateYmd);
     setAddOneTimeStartTime(formatMinToTimeInput(event.startMin));
     setAddOneTimeEndTime(formatMinToTimeInput(event.endMin));
@@ -1204,6 +1209,9 @@ export default function HouseDisplayManagePage() {
           facilitator: addOneTimeFacilitator
             ? capitalizeTitle(addOneTimeFacilitator)
             : undefined,
+          meetingTopic: addOneTimeMeetingTopic.trim()
+            ? addOneTimeMeetingTopic.trim()
+            : undefined,
         },
         candidate: oneTimeCandidate,
       });
@@ -1234,6 +1242,9 @@ export default function HouseDisplayManagePage() {
           facilitator: addOneTimeFacilitator
             ? capitalizeTitle(addOneTimeFacilitator)
             : "",
+          meetingTopic: addOneTimeMeetingTopic.trim()
+            ? addOneTimeMeetingTopic.trim()
+            : "",
         }),
       );
     } else {
@@ -1249,6 +1260,9 @@ export default function HouseDisplayManagePage() {
             location: addOneTimeLocation || undefined,
             facilitator: addOneTimeFacilitator
               ? capitalizeTitle(addOneTimeFacilitator)
+              : undefined,
+            meetingTopic: addOneTimeMeetingTopic.trim()
+              ? addOneTimeMeetingTopic.trim()
               : undefined,
             active: true,
             canceled: false,
@@ -1381,6 +1395,7 @@ export default function HouseDisplayManagePage() {
     setClassFormMode("edit");
     setEditingClassId(series.id);
     setAddTitle(series.title);
+    setAddMeetingTopic(series.meetingTopic ?? "");
     setAddStartTime(formatMinToTimeInput(series.startMin));
     setAddEndTime(formatMinToTimeInput(series.endMin));
     setAddDays([...series.daysOfWeek].sort((a, b) => a - b));
@@ -1485,6 +1500,7 @@ export default function HouseDisplayManagePage() {
           dateYmd: hopeNow.dateKey,
           location: ev.location,
           facilitator: ev.facilitator,
+          meetingTopic: ev.meetingTopic ?? "",
           // Form always sends explicit logoKey (string | null) for Class Image.
           logoKey: ev.logoKey ?? null,
         }),
@@ -1512,6 +1528,7 @@ export default function HouseDisplayManagePage() {
           resolveDateYmd: hopeNow.dateKey,
           location: event.location,
           facilitator: (event as any).facilitator ?? "",
+          meetingTopic: (event as any).meetingTopic ?? "",
         }),
       );
     } else if (pendingSaveKind === "add") {
@@ -1571,6 +1588,7 @@ export default function HouseDisplayManagePage() {
         endMin: number;
         location?: string;
         facilitator?: string;
+        meetingTopic?: string;
       };
       dispatch(
         addOneTimeEvent({
@@ -1582,6 +1600,7 @@ export default function HouseDisplayManagePage() {
             endMin: ot.endMin,
             location: ot.location,
             facilitator: ot.facilitator,
+            meetingTopic: ot.meetingTopic,
             active: true,
             canceled: false,
           },
@@ -1600,6 +1619,7 @@ export default function HouseDisplayManagePage() {
         endMin: number;
         location?: string;
         facilitator?: string;
+        meetingTopic?: string;
       };
       dispatch(
         editOneTimeEvent({
@@ -1611,6 +1631,7 @@ export default function HouseDisplayManagePage() {
           resolveDateYmd: hopeNow.dateKey,
           location: ot.location,
           facilitator: ot.facilitator ?? "",
+          meetingTopic: ot.meetingTopic ?? "",
         }),
       );
     } else if (pendingSaveKind === "edit") {
@@ -1627,6 +1648,7 @@ export default function HouseDisplayManagePage() {
           dateYmd: hopeNow.dateKey,
           location: ev.location,
           facilitator: ev.facilitator,
+          meetingTopic: ev.meetingTopic ?? "",
           logoKey: ev.logoKey ?? null,
         }),
       );
@@ -1695,6 +1717,7 @@ export default function HouseDisplayManagePage() {
       active: true,
       location: addLocation,
       facilitator: capitalizeTitle(addFacilitator),
+      meetingTopic: addMeetingTopic.trim() ? addMeetingTopic.trim() : undefined,
       logoKey: logoKeyForSave,
     };
 
@@ -1730,6 +1753,7 @@ export default function HouseDisplayManagePage() {
             dateYmd: submitDateYmd,
             location: addLocation,
             facilitator: addFacilitator ? capitalizeTitle(addFacilitator) : "",
+            meetingTopic: addMeetingTopic.trim() ? addMeetingTopic.trim() : "",
             logoKey: logoKeyForSave,
           }),
         );
@@ -2045,6 +2069,19 @@ export default function HouseDisplayManagePage() {
                     slotProps={{ input: { "aria-label": "Class name" } }}
                   />
                   <TextField
+                    label="Meeting Topic"
+                    value={addMeetingTopic}
+                    onChange={(e) => setAddMeetingTopic(e.target.value)}
+                    fullWidth
+                    slotProps={{
+                      input: {
+                        "aria-label": "Meeting topic",
+                      },
+                      htmlInput: { maxLength: 120 },
+                    }}
+                    helperText="Optional — e.g. Dealing With Triggers"
+                  />
+                  <TextField
                     label="Start Time"
                     type="time"
                     value={addStartTime}
@@ -2113,11 +2150,13 @@ export default function HouseDisplayManagePage() {
                     </Select>
                   </FormControl>
                   <TextField
-                    label="Facilitator"
+                    label="Chair / Facilitator"
                     value={addFacilitator}
                     onChange={(e) => setAddFacilitator(e.target.value)}
                     fullWidth
-                    slotProps={{ input: { "aria-label": "Facilitator name" } }}
+                    slotProps={{
+                      input: { "aria-label": "Chair or facilitator name" },
+                    }}
                   />
                   <FormControl fullWidth>
                     <InputLabel id="add-class-image-label">
@@ -3854,6 +3893,17 @@ export default function HouseDisplayManagePage() {
                 slotProps={{ input: { "aria-label": "Event name" } }}
               />
               <TextField
+                label="Meeting Topic"
+                value={addOneTimeMeetingTopic}
+                onChange={(e) => setAddOneTimeMeetingTopic(e.target.value)}
+                fullWidth
+                slotProps={{
+                  input: { "aria-label": "Meeting topic" },
+                  htmlInput: { maxLength: 120 },
+                }}
+                helperText="Optional — e.g. Dealing With Triggers"
+              />
+              <TextField
                 label="Date"
                 type="date"
                 value={addOneTimeDate}
@@ -3919,11 +3969,13 @@ export default function HouseDisplayManagePage() {
                 </Select>
               </FormControl>
               <TextField
-                label="Facilitator"
+                label="Chair / Facilitator"
                 value={addOneTimeFacilitator}
                 onChange={(e) => setAddOneTimeFacilitator(e.target.value)}
                 fullWidth
-                slotProps={{ input: { "aria-label": "Facilitator name" } }}
+                slotProps={{
+                  input: { "aria-label": "Chair or facilitator name" },
+                }}
               />
               {addOneTimeError ? (
                 <Typography variant="body2" color="error">

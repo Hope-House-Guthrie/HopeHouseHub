@@ -151,6 +151,8 @@ export type EditRecurringClassPayload = {
   location?: string;
   /** Optional facilitator name (clear by passing empty string) */
   facilitator?: string;
+  /** Optional meeting topic (clear by passing empty string) */
+  meetingTopic?: string;
   /**
    * Class Image / program logo for Spotlight takeover.
    * undefined = keep existing; null = clear; string = replace (catalog key).
@@ -228,6 +230,8 @@ export type EditOneTimeEventPayload = {
   location?: string;
   /** Optional facilitator name (clear by passing empty string) */
   facilitator?: string;
+  /** Optional meeting topic (clear by passing empty string) */
+  meetingTopic?: string;
 };
 
 /** Deep-ish copy so seed arrays are not shared/mutated by accident. */
@@ -1129,6 +1133,7 @@ export const houseDisplaySlice = createSlice({
         active: true,
         location: event.location,
         facilitator: event.facilitator,
+        meetingTopic: event.meetingTopic,
         // Catalog logoKey from Manage Class Image (optional).
         logoKey:
           typeof event.logoKey === "string" && event.logoKey.trim()
@@ -1159,6 +1164,7 @@ export const houseDisplaySlice = createSlice({
         dateYmd,
         location,
         facilitator,
+        meetingTopic,
         logoKey: logoKeyPayload,
       } = action.payload;
       if (!dateYmd) return;
@@ -1183,6 +1189,11 @@ export const houseDisplaySlice = createSlice({
       // For facilitator: undefined means keep existing, "" means clear
       const newFacilitator =
         typeof facilitator === "string" ? facilitator : existing.facilitator;
+      // meetingTopic: same clear/keep semantics as facilitator
+      const newMeetingTopic =
+        typeof meetingTopic === "string"
+          ? meetingTopic
+          : existing.meetingTopic;
       // logoKey: undefined = keep; null = clear; non-empty string = replace
       let nextLogoKey = existing.logoKey;
       if (logoKeyPayload === null) {
@@ -1200,6 +1211,7 @@ export const houseDisplaySlice = createSlice({
         daysOfWeek: normalizedDays,
         location: location ?? existing.location,
         facilitator: newFacilitator,
+        meetingTopic: newMeetingTopic,
         logoKey: nextLogoKey,
       };
 
@@ -1294,6 +1306,7 @@ export const houseDisplaySlice = createSlice({
         canceled: false,
         location: event.location,
         facilitator: event.facilitator,
+        meetingTopic: event.meetingTopic,
       });
 
       syncAgendaFromSchedule(state, resolveDateYmd);
@@ -1318,6 +1331,7 @@ export const houseDisplaySlice = createSlice({
         resolveDateYmd,
         location,
         facilitator,
+        meetingTopic,
       } = action.payload;
       if (!resolveDateYmd || !isRealDateYmd(resolveDateYmd)) return;
 
@@ -1343,6 +1357,10 @@ export const houseDisplaySlice = createSlice({
       // For facilitator: undefined means keep existing, "" means clear
       const newFacilitator =
         typeof facilitator === "string" ? facilitator : existing.facilitator;
+      const newMeetingTopic =
+        typeof meetingTopic === "string"
+          ? meetingTopic
+          : existing.meetingTopic;
       state.schedule.oneTime[index] = {
         id: existing.id,
         active: existing.active,
@@ -1353,6 +1371,7 @@ export const houseDisplaySlice = createSlice({
         endMin,
         location: location ?? existing.location,
         facilitator: newFacilitator,
+        meetingTopic: newMeetingTopic,
         logoKey: existing.logoKey,
       };
 

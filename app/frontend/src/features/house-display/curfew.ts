@@ -430,6 +430,7 @@ export function buildClosingAgendaItems(args: {
     closingStageId: stage.id,
     location: undefined,
     facilitator: undefined,
+    meetingTopic: undefined,
     logoKey: null,
   }));
 }

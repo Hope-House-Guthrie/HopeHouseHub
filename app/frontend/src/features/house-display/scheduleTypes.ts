@@ -35,6 +35,8 @@ export interface HouseDisplayRecurringEvent {
   location?: string;
   /** Optional facilitator name for this event */
   facilitator?: string;
+  /** Optional meeting topic for this occurrence/series (e.g. "Dealing With Triggers") */
+  meetingTopic?: string;
   /**
    * Optional program/logo association key for Spotlight.
    * Shared across a series (e.g. Men's/Women's/Main NA can all be "na").
@@ -63,6 +65,8 @@ export interface HouseDisplayOneTimeEvent {
   location?: string;
   /** Optional facilitator name for this event */
   facilitator?: string;
+  /** Optional meeting topic for this event (e.g. "Dealing With Triggers") */
+  meetingTopic?: string;
   /**
    * Optional program/logo association key for Spotlight.
    * Absent/null on an ordinary one-time event means no logo is rendered;

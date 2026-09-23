@@ -90,6 +90,8 @@ export interface HouseDisplayAgendaItem {
   location?: string;
   /** Optional facilitator name for this event */
   facilitator?: string;
+  /** Optional meeting topic carried from schedule sources (TV may use later) */
+  meetingTopic?: string;
   /**
    * Optional program/logo association key for Spotlight takeover.
    * Propagated from the schedule source (recurring series or one-time event).
