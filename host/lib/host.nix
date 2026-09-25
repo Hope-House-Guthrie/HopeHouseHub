@@ -15,6 +15,7 @@ let
     specialArgs = nixosOptions.specialArgs // {
       inherit
         adminPublicKeys
+        inputs
         self
         system
         wireguardNetwork

@@ -4,6 +4,11 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-26.05";
 
+    h2site = {
+      url = "github:Hope-House-Guthrie/Hope-House-Site";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     terranix = {
       url = "github:terranix/terranix";
       inputs.nixpkgs.follows = "nixpkgs";
