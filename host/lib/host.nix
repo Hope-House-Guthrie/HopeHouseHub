@@ -5,7 +5,7 @@
   inputs,
   name,
   nixosOptions,
-  self,
+  overlays,
   system,
   terranixOptions ? null,
   wireguardNetwork,
@@ -16,7 +16,6 @@ let
       inherit
         adminPublicKeys
         inputs
-        self
         system
         wireguardNetwork
         ;
@@ -27,6 +26,9 @@ let
     modules = nixosOptions.modules ++ [
       inputs.agenix.nixosModules.default
       ../lib/nixos/modules/common
+      {
+        nixpkgs.overlays = overlays;
+      }
     ];
   };
 

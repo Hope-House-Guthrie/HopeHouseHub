@@ -1,6 +1,6 @@
 {
   inputs,
-  self,
+  pkgs,
   stdenv,
   version,
   ...
@@ -8,7 +8,6 @@
 let
   system = stdenv.hostPlatform.system;
   bun2nix = inputs.bun2nix.packages.${system}.default;
-  backend = self.packages.${system}.backend;
 in
 stdenv.mkDerivation {
   inherit version;
@@ -26,7 +25,7 @@ stdenv.mkDerivation {
 
   postUnpack = ''
     mkdir -p $NIX_BUILD_TOP/backend/H3.Server
-    cp ${backend}/lib/backend/openapi.json $NIX_BUILD_TOP/backend/H3.Server/openapi.json
+    cp ${pkgs.h3-backend}/lib/backend/openapi.json $NIX_BUILD_TOP/backend/H3.Server/openapi.json
   '';
 
   buildPhase = ''

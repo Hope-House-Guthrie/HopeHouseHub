@@ -39,39 +39,16 @@
       system = "x86_64-linux";
       version = "0.1.0";
 
-      pkgs = import inputs.nixpkgs {
-        inherit system;
-
-        overlays = [
-          (final: prev: {
-            dotnet-sdk = pkgs.dotnet-sdk_10;
-            dotnet-runtime = pkgs.dotnet-aspnetcore_10;
-          })
-        ];
-      };
-
-      backend = pkgs.callPackage ./app/backend/package.nix {
-        inherit
-          inputs
-          pkgs
-          self
-          version
-          ;
-      };
-
-      frontend = pkgs.callPackage ./app/frontend/package.nix {
-        inherit
-          inputs
-          pkgs
-          self
-          version
-          ;
-      };
+      pkgsFor =
+        system:
+        import inputs.nixpkgs {
+          inherit system;
+          overlays = [ self.overlays.default ];
+        };
 
       adminPublicKeys = (import ./secrets.nix).adminPublicKeys;
 
       hub-gateway-ipv4Address = "104.215.78.1";
-      hub-services-ipv4Address = "192.168.0.90";
       hub-display-kitchen-ipv4Address = "192.168.2.201";
       hub-display-common-ipv4Address = "192.168.2.149";
 
@@ -99,53 +76,40 @@
         inherit
           adminPublicKeys
           inputs
-          self
           system
           wireguardNetwork
           ;
 
         ipv4Address = hub-gateway-ipv4Address;
-      };
-
-      hub-services = (import ./host/services/host.nix) {
-        inherit
-          adminPublicKeys
-          inputs
-          self
-          system
-          wireguardNetwork
-          ;
-
-        ipv4Address = hub-services-ipv4Address;
+        overlays = [ self.overlays.default ];
       };
 
       hub-display-kitchen = (import ./host/display-kitchen/host.nix) {
         inherit
           adminPublicKeys
           inputs
-          self
           system
           wireguardNetwork
           ;
 
         ipv4Address = hub-display-kitchen-ipv4Address;
+        overlays = [ self.overlays.default ];
       };
 
       hub-display-common = (import ./host/display-common/host.nix) {
         inherit
           adminPublicKeys
           inputs
-          self
           system
           wireguardNetwork
           ;
 
         ipv4Address = hub-display-common-ipv4Address;
+        overlays = [ self.overlays.default ];
       };
 
       hosts = [
         hub-gateway
-        hub-services
         hub-display-kitchen
         hub-display-common
       ];
@@ -155,32 +119,61 @@
           adminPublicKeys
           hosts
           inputs
-          pkgs
-          self
           system
           ;
+
+        pkgs = import inputs.nixpkgs {
+          inherit system;
+          overlays = [ self.overlays.default ];
+        };
       };
     in
     {
+      overlays.default = final: prev: {
+        h3-backend = final.callPackage ./app/backend/package.nix {
+          inherit
+            inputs
+            version
+            ;
+        };
+        h3-frontend = final.callPackage ./app/frontend/package.nix {
+          inherit
+            inputs
+            version
+            ;
+        };
+      };
+
       packages.${system} = {
-        inherit frontend backend;
+        h3-backend = (pkgsFor system).h3-backend;
+        h3-frontend = (pkgsFor system).h3-frontend;
 
         hub-gateway-image = hub-gateway.imagePackage;
         hub-gateway-provisioner = hub-gateway.provisioner;
-
-        hub-services-image = hub-services.imagePackage;
-        hub-services-provisioner = hub-services.provisioner;
       };
 
       lib = {
         hub-gateway.imageConfiguration = hub-gateway.imageConfiguration;
-        hub-services.imageConfiguration = hub-services.imageConfiguration;
       };
 
       nixosConfigurations.hub-gateway = hub-gateway.nixosConfiguration;
-      nixosConfigurations.hub-services = hub-services.nixosConfiguration;
       nixosConfigurations.hub-display-kitchen = hub-display-kitchen.nixosConfiguration;
       nixosConfigurations.hub-display-common = hub-display-common.nixosConfiguration;
+
+      nixosConfigurations.hub-backend-test-vm = inputs.nixpkgs.lib.nixosSystem {
+        inherit system;
+
+        modules = [
+          ./app/backend/test-vm
+          {
+            nixpkgs.overlays = [ self.overlays.default ];
+          }
+        ];
+      };
+
+      nixosModules = {
+        h3-backend = ./app/backend/module.nix;
+      };
 
       devShells.${system}.default = devShell;
     };

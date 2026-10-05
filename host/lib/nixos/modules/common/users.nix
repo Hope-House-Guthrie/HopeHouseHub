@@ -2,12 +2,11 @@
   lib,
   adminPublicKeys,
   config,
-  self,
   ...
 }:
 {
   age.secrets.root_passwd = {
-    file = "${self}/host/lib/secrets/root_passwd.age";
+    file = ../../../secrets/root_passwd.age;
     mode = "0400";
   };
 

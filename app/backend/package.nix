@@ -9,8 +9,8 @@
 pkgs.buildDotnetModule {
   inherit version;
 
-  dotnet-runtime = pkgs.dotnet-runtime;
-  dotnet-sdk = pkgs.dotnet-sdk;
+  dotnet-runtime = pkgs.dotnet-runtime_10;
+  dotnet-sdk = pkgs.dotnet-sdk_10;
 
   nugetDeps = inputs.nuget-packageslock2nix.lib {
     system = stdenv.hostPlatform.system;

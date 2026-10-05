@@ -2,18 +2,16 @@
   "nodes": {
     "agenix": {
       "inputs": {
-        "darwin": "darwin",
-        "home-manager": "home-manager",
         "nixpkgs": [
           "nixpkgs"
         ]
       },
       "locked": {
-        "lastModified": 1790460690,
-        "narHash": "sha256-5T54NUBA0c1eo7a8MMT1GOuFYsDqqa91rLWp7l/xPC8=",
+        "lastModified": 1790734419,
+        "narHash": "sha256-n7wew722m1OTBT9DOIMxNX/NF4zfsSUABAO5eW3wikE=",
         "owner": "ryantm",
         "repo": "agenix",
-        "rev": "654f73179924797b0d5307105398aedfcdc10800",
+        "rev": "3daa710894355fa2fad8243380af373a2b4046ef",
         "type": "github"
       },
       "original": {
@@ -44,28 +42,6 @@
         "owner": "nix-community",
         "ref": "2.1.2",
         "repo": "bun2nix",
-        "type": "github"
-      }
-    },
-    "darwin": {
-      "inputs": {
-        "nixpkgs": [
-          "agenix",
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1783744694,
-        "narHash": "sha256-2cp6N3rrwnGYLTx9l6N+NI+kwrCWxvJUbj5WJhvB29A=",
-        "owner": "nix-darwin",
-        "repo": "nix-darwin",
-        "rev": "c3e90c89649b07d1a96e4b9dd6cd0d6e44b91a74",
-        "type": "github"
-      },
-      "original": {
-        "owner": "nix-darwin",
-        "ref": "nix-darwin-26.05",
-        "repo": "nix-darwin",
         "type": "github"
       }
     },
@@ -118,38 +94,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1790462128,
-        "narHash": "sha256-YR98IFKt0BypsYekOb/cwVevvcfH7bq+iEvHAF5uw0o=",
+        "lastModified": 1790959574,
+        "narHash": "sha256-WN83emGUqS4gbrx4KHav8xWVqcp9uz89eWPFD8Zl7Ko=",
         "owner": "Hope-House-Guthrie",
         "repo": "Hope-House-Site",
-        "rev": "4caeef7732561141bb20f0e1a04d5574750243d6",
+        "rev": "9c47852fcbdaf7c44e56d5324744ea6c60df0b0e",
         "type": "github"
       },
       "original": {
         "owner": "Hope-House-Guthrie",
         "repo": "Hope-House-Site",
-        "type": "github"
-      }
-    },
-    "home-manager": {
-      "inputs": {
-        "nixpkgs": [
-          "agenix",
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1790215976,
-        "narHash": "sha256-VkR1rMGyjU9jtw8ISFx5uqR9e+LEaOlhHwrseFkiIVk=",
-        "owner": "nix-community",
-        "repo": "home-manager",
-        "rev": "a6631107a83ceab5872f298a2ea710859c80c4cb",
-        "type": "github"
-      },
-      "original": {
-        "owner": "nix-community",
-        "ref": "release-26.05",
-        "repo": "home-manager",
         "type": "github"
       }
     },
@@ -170,11 +124,11 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1790340521,
-        "narHash": "sha256-cRrWlIjVRJ6BHDr9caUdXsZ3owzWIKYHpNmGPHBInIU=",
+        "lastModified": 1791031588,
+        "narHash": "sha256-/FGDr01siZ8txrVzkOz6CYjiz0XR27JuVJP+aWchi4s=",
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "f5c082a40f7571c266e74e80ae2e68aadd8a9fc7",
+        "rev": "825e2028c29b702a4a5f085f08095d12099784f2",
         "type": "github"
       },
       "original": {
@@ -191,11 +145,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1790410908,
-        "narHash": "sha256-fL77vOVnY73FYL6i3/9xmLDCbkd9JFiYuD3YyhHLobI=",
+        "lastModified": 1791007343,
+        "narHash": "sha256-I/GJAXDG9tknl/s7ALZOdkNS7d/lbV2tJQlQiHWjNXM=",
         "owner": "mdarocha",
         "repo": "nuget-packageslock2nix",
-        "rev": "859c1d89e1749d4aa85292072cf078d5e6893f68",
+        "rev": "44a22a2eb700af89a7b8ad025d6245875f90d1c6",
         "type": "github"
       },
       "original": {

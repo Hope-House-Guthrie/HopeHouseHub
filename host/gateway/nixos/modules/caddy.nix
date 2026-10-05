@@ -1,16 +1,15 @@
 {
   inputs,
-  self,
+  pkgs,
   system,
   wireguardNetwork,
   ...
 }:
 let
-  frontend = self.packages.${system}.frontend;
   portal = inputs.h2site.packages.${system}.default;
 
   hubConfig = ''
-    root * "${frontend}/bin"
+    root * "${pkgs.h3-frontend}/bin"
     encode gzip zstd
 
     @api_routes {
@@ -18,7 +17,7 @@ let
     }
 
     handle @api_routes {
-      reverse_proxy http://${wireguardNetwork.hub-services.ipv4Address}
+      reverse_proxy http://${wireguardNetwork.hub-services.ipv4Address}:5000
     }
 
     handle {

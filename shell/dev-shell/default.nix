@@ -13,6 +13,10 @@ let
 
   moduleBuildInputs = lib.concatLists (map (m: m.buildInputs or [ ]) modules);
   moduleShellHooks = lib.concatStringsSep "\n" (map (m: m.shellHook or "") modules);
+
+  runBackendTestVm = pkgs.writeShellScriptBin "run-backend-test-vm" ''
+    nix build .#nixosConfigurations.hub-backend-test-vm.config.system.build.vm && ./result/bin/run-hub-backend-test-vm
+  '';
 in
 pkgs.mkShell {
   buildInputs =
@@ -27,6 +31,8 @@ pkgs.mkShell {
       nixfmt
       starship
       wireguard-tools
+
+      runBackendTestVm
     ]
     ++ moduleBuildInputs;
 
