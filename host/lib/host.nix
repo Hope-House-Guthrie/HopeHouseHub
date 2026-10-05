@@ -8,7 +8,6 @@
   overlays,
   system,
   terranixOptions ? null,
-  wireguardNetwork,
 }:
 let
   nixosConfiguration = inputs.nixpkgs.lib.nixosSystem {
@@ -17,7 +16,6 @@ let
         adminPublicKeys
         inputs
         system
-        wireguardNetwork
         ;
 
       hostName = name;
