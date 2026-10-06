@@ -4,16 +4,6 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-26.05";
 
-    h2site = {
-      url = "github:Hope-House-Guthrie/Hope-House-Site";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
-    agenix = {
-      url = "github:ryantm/agenix/main";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
     bun2nix = {
       url = "github:nix-community/bun2nix?ref=2.1.2";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -41,42 +31,8 @@
           overlays = [ self.overlays.default ];
         };
 
-      adminPublicKeys = (import ./secrets.nix).adminPublicKeys;
-
-      hub-display-kitchen-ipv4Address = "192.168.2.201";
-      hub-display-common-ipv4Address = "192.168.2.149";
-
-      hub-display-kitchen = (import ./host/display-kitchen/host.nix) {
-        inherit
-          adminPublicKeys
-          inputs
-          system
-          ;
-
-        ipv4Address = hub-display-kitchen-ipv4Address;
-        overlays = [ self.overlays.default ];
-      };
-
-      hub-display-common = (import ./host/display-common/host.nix) {
-        inherit
-          adminPublicKeys
-          inputs
-          system
-          ;
-
-        ipv4Address = hub-display-common-ipv4Address;
-        overlays = [ self.overlays.default ];
-      };
-
-      hosts = [
-        hub-display-kitchen
-        hub-display-common
-      ];
-
       devShell = (import ./shell/dev-shell/default.nix) {
         inherit
-          adminPublicKeys
-          hosts
           inputs
           system
           ;
@@ -107,9 +63,6 @@
         h3-backend = (pkgsFor system).h3-backend;
         h3-frontend = (pkgsFor system).h3-frontend;
       };
-
-      nixosConfigurations.hub-display-kitchen = hub-display-kitchen.nixosConfiguration;
-      nixosConfigurations.hub-display-common = hub-display-common.nixosConfiguration;
 
       nixosConfigurations.hub-backend-test-vm = inputs.nixpkgs.lib.nixosSystem {
         inherit system;

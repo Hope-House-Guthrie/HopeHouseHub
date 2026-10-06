@@ -1,26 +1,5 @@
 {
   "nodes": {
-    "agenix": {
-      "inputs": {
-        "nixpkgs": [
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1790734419,
-        "narHash": "sha256-n7wew722m1OTBT9DOIMxNX/NF4zfsSUABAO5eW3wikE=",
-        "owner": "ryantm",
-        "repo": "agenix",
-        "rev": "3daa710894355fa2fad8243380af373a2b4046ef",
-        "type": "github"
-      },
-      "original": {
-        "owner": "ryantm",
-        "ref": "main",
-        "repo": "agenix",
-        "type": "github"
-      }
-    },
     "bun2nix": {
       "inputs": {
         "flake-parts": "flake-parts",
@@ -66,33 +45,13 @@
         "type": "github"
       }
     },
-    "h2site": {
-      "inputs": {
-        "nixpkgs": [
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1790959574,
-        "narHash": "sha256-WN83emGUqS4gbrx4KHav8xWVqcp9uz89eWPFD8Zl7Ko=",
-        "owner": "Hope-House-Guthrie",
-        "repo": "Hope-House-Site",
-        "rev": "9c47852fcbdaf7c44e56d5324744ea6c60df0b0e",
-        "type": "github"
-      },
-      "original": {
-        "owner": "Hope-House-Guthrie",
-        "repo": "Hope-House-Site",
-        "type": "github"
-      }
-    },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1791031588,
-        "narHash": "sha256-/FGDr01siZ8txrVzkOz6CYjiz0XR27JuVJP+aWchi4s=",
+        "lastModified": 1791143449,
+        "narHash": "sha256-9+n3ReS2y9xS199LoJjKUWHwZrISGHWgkD/LUZTDZyA=",
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "825e2028c29b702a4a5f085f08095d12099784f2",
+        "rev": "0d9e9b832d03ac387417e16ce1febf73b2e631e1",
         "type": "github"
       },
       "original": {
@@ -125,9 +84,7 @@
     },
     "root": {
       "inputs": {
-        "agenix": "agenix",
         "bun2nix": "bun2nix",
-        "h2site": "h2site",
         "nixpkgs": "nixpkgs",
         "nuget-packageslock2nix": "nuget-packageslock2nix"
       }
