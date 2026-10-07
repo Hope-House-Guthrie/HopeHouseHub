@@ -8,13 +8,11 @@
 let
   inherit (lib)
     filterAttrs
-    mapAttrs'
     mapAttrsToList
     mkEnableOption
     mkIf
     mkMerge
     mkOption
-    nameValuePair
     types
     ;
 
@@ -26,11 +24,6 @@ let
     {
       options = {
         enable = mkEnableOption "H3 Forms instance: ${name}";
-
-        domain = mkOption {
-          type = types.str;
-          description = "Public URL for the application.";
-        };
 
         user = mkOption {
           type = types.str;
@@ -50,6 +43,13 @@ let
           defaultText = lib.literalExpression "pkgs.h3-forms";
           description = "The H3 forms package to use.";
         };
+
+        socketPath = mkOption {
+          type = types.str;
+          readOnly = true;
+          default = "/run/h3-forms-${name}/runtime.sock";
+          description = "Runtime UNIX socket path used by this instance.";
+        };
       };
     };
 in
@@ -61,49 +61,6 @@ in
   };
 
   config = mkIf (enabledInstances != { }) {
-    users.users = {
-      caddy.extraGroups = mapAttrsToList (_: inst: inst.group) enabledInstances;
-    }
-    // mapAttrs' (
-      name: inst:
-      nameValuePair inst.user {
-        isSystemUser = true;
-        group = inst.group;
-        description = "H3 Forms Service User (${name})";
-      }
-    ) enabledInstances;
-
-    users.groups = mapAttrs' (_: inst: nameValuePair inst.group { }) enabledInstances;
-
-    services.caddy = {
-      enable = true;
-
-      virtualHosts = mapAttrs' (
-        name: inst:
-        let
-          serviceName = "h3-forms-${name}";
-          runtimeSocketFile = "/run/${serviceName}/runtime.sock";
-        in
-        nameValuePair inst.domain {
-          extraConfig = ''
-            encode gzip zstd
-
-            @api_routes {
-              path /api /api/ /api/*
-            }
-
-            handle @api_routes {
-              reverse_proxy unix/${runtimeSocketFile}
-            }
-
-            log {
-              output file /var/log/caddy/access.log
-            }
-          '';
-        }
-      ) enabledInstances;
-    };
-
     systemd.services = mkMerge (
       mapAttrsToList (
         name: inst:
@@ -111,7 +68,6 @@ in
           serviceName = "h3-forms-${name}";
           runtimeDir = "/run/${serviceName}";
           runtimeEnvFile = "${runtimeDir}/runtime.env";
-          runtimeSocketFile = "${runtimeDir}/runtime.sock";
           package = if inst.package != null then inst.package else pkgs.h3-forms;
         in
         {
@@ -159,7 +115,7 @@ in
               RuntimeDirectoryMode = "0750";
               UMask = "0007";
               Environment = [
-                "ASPNETCORE_URLS=http://unix:${runtimeSocketFile}"
+                "ASPNETCORE_URLS=http://unix:${inst.socketPath}"
               ];
             };
           };

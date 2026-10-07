@@ -28,12 +28,11 @@
 
   services.h3-forms.test = {
     enable = true;
-    domain = "forms.localhost";
   };
 
   services.h3-server.test = {
     enable = true;
-    domain = "server.localhost";
+    domain = "localhost";
     jwtSecretFile = builtins.toFile "jwtSecretFile" "4OAvG2qzE+l7xwFydbBbeX9sdHgULBvaw57mM4MaqWA=";
     database = {
       host = "/run/postgresql";
