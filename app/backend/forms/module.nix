@@ -72,6 +72,8 @@ in
       }
     ) enabledInstances;
 
+    users.groups = mapAttrs' (_: inst: nameValuePair inst.group { }) enabledInstances;
+
     systemd.services = mkMerge (
       mapAttrsToList (
         name: inst:
