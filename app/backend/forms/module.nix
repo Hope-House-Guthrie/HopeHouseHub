@@ -18,14 +18,14 @@ let
     types
     ;
 
-  cfg = config.services.h3-backend;
+  cfg = config.services.h3-forms;
   enabledInstances = filterAttrs (_: inst: inst.enable) cfg;
 
   instanceOptions =
     { name, ... }:
     {
       options = {
-        enable = mkEnableOption "H3 Backend instance: ${name}";
+        enable = mkEnableOption "H3 Forms instance: ${name}";
 
         domain = mkOption {
           type = types.str;
@@ -34,61 +34,30 @@ let
 
         user = mkOption {
           type = types.str;
-          default = "h3-backend-${name}";
+          default = "h3-forms-${name}";
           description = "System user account under which the service runs.";
         };
 
         group = mkOption {
           type = types.str;
-          default = "h3-backend-${name}";
+          default = "h3-forms-${name}";
           description = "System group under which the service runs.";
-        };
-
-        jwtSecretFile = mkOption {
-          type = types.path;
-          description = "Path to the file containing the raw JWT secret key.";
         };
 
         package = mkOption {
           type = types.nullOr types.package;
           default = null;
-          defaultText = lib.literalExpression "pkgs.h3-backend";
-          description = "The H3 backend package to use.";
-        };
-
-        database = {
-          host = mkOption {
-            type = types.str;
-            default = "localhost";
-            description = "PostgreSQL host address or socket directory.";
-          };
-
-          name = mkOption {
-            type = types.str;
-            default = "h3_${name}";
-            description = "PostgreSQL database name.";
-          };
-
-          user = mkOption {
-            type = types.str;
-            default = "h3_${name}";
-            description = "PostgreSQL database user.";
-          };
-
-          port = mkOption {
-            type = types.port;
-            default = 5432;
-            description = "PostgreSQL database port.";
-          };
+          defaultText = lib.literalExpression "pkgs.h3-forms";
+          description = "The H3 forms package to use.";
         };
       };
     };
 in
 {
-  options.services.h3-backend = mkOption {
+  options.services.h3-forms = mkOption {
     type = types.attrsOf (types.submodule instanceOptions);
     default = { };
-    description = "Declarative multi-instance backend service configuration.";
+    description = "Declarative multi-instance forms service configuration.";
   };
 
   config = mkIf (enabledInstances != { }) {
@@ -100,7 +69,7 @@ in
       nameValuePair inst.user {
         isSystemUser = true;
         group = inst.group;
-        description = "H3 Backend Service User (${name})";
+        description = "H3 Forms Service User (${name})";
       }
     ) enabledInstances;
 
@@ -112,7 +81,7 @@ in
       virtualHosts = mapAttrs' (
         name: inst:
         let
-          serviceName = "h3-backend-${name}";
+          serviceName = "h3-forms-${name}";
           runtimeSocketFile = "/run/${serviceName}/runtime.sock";
         in
         nameValuePair inst.domain {
@@ -139,11 +108,11 @@ in
       mapAttrsToList (
         name: inst:
         let
-          serviceName = "h3-backend-${name}";
+          serviceName = "h3-forms-${name}";
           runtimeDir = "/run/${serviceName}";
           runtimeEnvFile = "${runtimeDir}/runtime.env";
           runtimeSocketFile = "${runtimeDir}/runtime.sock";
-          package = if inst.package != null then inst.package else pkgs.h3-backend;
+          package = if inst.package != null then inst.package else pkgs.h3-forms;
         in
         {
           "${serviceName}-env" = {
@@ -159,36 +128,28 @@ in
               Group = inst.group;
               ExecStart = pkgs.writeShellScript "${serviceName}-env-setup" ''
                 set -euo pipefail
-                SECRET=$(cat "${inst.jwtSecretFile}")
-                echo "JWT_SECRET=''${SECRET}" > "${runtimeEnvFile}"
+                echo "TODO=" > "${runtimeEnvFile}"
                 chmod 0600 "${runtimeEnvFile}"
               '';
             };
           };
 
           "${serviceName}" = {
-            description = "H3 Backend (${name})";
+            description = "H3 Forms (${name})";
 
             after = [
               "network.target"
-              "postgresql.service"
-              "postgresql-setup.service"
               "${serviceName}-env.service"
             ];
 
-            wants = [
-              "postgresql-setup.service"
-            ];
-
             requires = [
-              "postgresql.service"
               "${serviceName}-env.service"
             ];
 
             wantedBy = [ "multi-user.target" ];
 
             serviceConfig = {
-              ExecStart = "${package}/bin/H3.Server";
+              ExecStart = "${package}/bin/h3-forms";
               WorkingDirectory = "${package}/bin";
               Restart = "always";
               User = inst.user;
@@ -199,12 +160,6 @@ in
               UMask = "0007";
               Environment = [
                 "ASPNETCORE_URLS=http://unix:${runtimeSocketFile}"
-                "PGHOST=${inst.database.host}"
-                "PGDATABASE=${inst.database.name}"
-                "PGUSER=${inst.database.user}"
-                "PGPORT=${toString inst.database.port}"
-                "Jwt__Issuer=https://${inst.domain}"
-                "Jwt__Audience=https://${inst.domain}"
               ];
             };
           };

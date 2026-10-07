@@ -17,18 +17,51 @@
 
   outputs =
     {
-      self,
       ...
     }@inputs:
     let
       system = "x86_64-linux";
       version = "0.1.0";
 
+      overlays = {
+        dotnet-10 = final: prev: {
+          dotnet-aspnetcore = prev.dotnetCorePackages.dotnet_10.aspnetcore;
+          dotnet-runtime = prev.dotnetCorePackages.dotnet_10.runtime;
+          dotnet-sdk = prev.dotnetCorePackages.dotnet_10.sdk;
+        };
+
+        default =
+          final: prev:
+          let
+            pkgs-dotnet-10 = prev.extend overlays.dotnet-10;
+          in
+          {
+            h3-forms = pkgs-dotnet-10.callPackage ./app/backend/forms/package.nix {
+              inherit
+                inputs
+                version
+                ;
+            };
+            h3-server = pkgs-dotnet-10.callPackage ./app/backend/server/package.nix {
+              inherit
+                inputs
+                version
+                ;
+            };
+            h3-frontend = final.callPackage ./app/frontend/package.nix {
+              inherit
+                inputs
+                version
+                ;
+            };
+          };
+      };
+
       pkgsFor =
         system:
         import inputs.nixpkgs {
           inherit system;
-          overlays = [ self.overlays.default ];
+          overlays = [ overlays.default ];
         };
 
       devShell = (import ./shell/dev-shell/default.nix) {
@@ -39,28 +72,21 @@
 
         pkgs = import inputs.nixpkgs {
           inherit system;
-          overlays = [ self.overlays.default ];
+          overlays = [
+            overlays.default
+            overlays.dotnet-10
+          ];
         };
       };
     in
     {
-      overlays.default = final: prev: {
-        h3-backend = final.callPackage ./app/backend/package.nix {
-          inherit
-            inputs
-            version
-            ;
-        };
-        h3-frontend = final.callPackage ./app/frontend/package.nix {
-          inherit
-            inputs
-            version
-            ;
-        };
+      overlays = {
+        inherit (overlays) default;
       };
 
       packages.${system} = {
-        h3-backend = (pkgsFor system).h3-backend;
+        h3-forms = (pkgsFor system).h3-forms;
+        h3-server = (pkgsFor system).h3-server;
         h3-frontend = (pkgsFor system).h3-frontend;
       };
 
@@ -70,7 +96,7 @@
         modules = [
           ./app/backend/test-vm
           {
-            nixpkgs.overlays = [ self.overlays.default ];
+            nixpkgs.overlays = [ overlays.default ];
           }
         ];
       };
@@ -81,13 +107,14 @@
         modules = [
           ./app/frontend/test-vm
           {
-            nixpkgs.overlays = [ self.overlays.default ];
+            nixpkgs.overlays = [ overlays.default ];
           }
         ];
       };
 
       nixosModules = {
-        h3-backend = ./app/backend/module.nix;
+        h3-forms = ./app/backend/forms/module.nix;
+        h3-server = ./app/backend/server/module.nix;
         h3-frontend = ./app/frontend/module.nix;
       };
 

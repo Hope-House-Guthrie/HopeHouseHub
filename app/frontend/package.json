@@ -6,7 +6,7 @@
   "scripts": {
     "postinstall": "bun2nix -o bun.nix",
     "dev": "bun --hot ./src/dev-server.ts",
-    "generate-backend": "mkdir -p ./.backend && openapi-typescript -o ./.backend/index.ts ../backend/H3.Server/openapi.json",
+    "generate-backend": "mkdir -p ./.backend && openapi-typescript -o ./.backend/index.ts ../backend/server/openapi.json",
     "build": "bun run generate-backend && bun build ./src/index.html --outdir=dist --sourcemap --target=browser --minify --define:process.env.NODE_ENV='\"production\"' --env='BUN_PUBLIC_*'"
   },
   "dependencies": {

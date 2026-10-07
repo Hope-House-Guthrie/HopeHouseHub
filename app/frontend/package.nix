@@ -24,8 +24,8 @@ stdenv.mkDerivation {
   };
 
   postUnpack = ''
-    mkdir -p $NIX_BUILD_TOP/backend/H3.Server
-    cp ${pkgs.h3-backend}/lib/backend/openapi.json $NIX_BUILD_TOP/backend/H3.Server/openapi.json
+    mkdir -p $NIX_BUILD_TOP/backend/server
+    cp ${pkgs.h3-server}/lib/backend/openapi.json $NIX_BUILD_TOP/backend/server/openapi.json
   '';
 
   buildPhase = ''
