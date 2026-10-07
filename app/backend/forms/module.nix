@@ -8,11 +8,13 @@
 let
   inherit (lib)
     filterAttrs
+    mapAttrs'
     mapAttrsToList
     mkEnableOption
     mkIf
     mkMerge
     mkOption
+    nameValuePair
     types
     ;
 
@@ -61,6 +63,15 @@ in
   };
 
   config = mkIf (enabledInstances != { }) {
+    users.users = mapAttrs' (
+      name: inst:
+      nameValuePair inst.user {
+        isSystemUser = true;
+        group = inst.group;
+        description = "H3 Forms Service User (${name})";
+      }
+    ) enabledInstances;
+
     systemd.services = mkMerge (
       mapAttrsToList (
         name: inst:
