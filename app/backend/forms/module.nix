@@ -86,31 +86,21 @@ in
         {
           "${serviceName}" = {
             description = "H3 Forms (${name})";
-
             after = [ "network.target" ];
             wantedBy = [ "multi-user.target" ];
-
             serviceConfig = {
               User = inst.user;
               Group = inst.group;
               RuntimeDirectory = serviceName;
               RuntimeDirectoryMode = "0750";
               UMask = "0007";
-
-              ExecStartPre = pkgs.writeShellScript "${serviceName}-env-setup" ''
-                set -euo pipefail
-                echo "TODO=" > "${runtimeEnvFile}"
-                chmod 0600 "${runtimeEnvFile}"
-              '';
-
-              EnvironmentFile = "${runtimeEnvFile}";
-
-              ExecStart = "${package}/bin/h3-forms";
               WorkingDirectory = "${package}/bin";
               Restart = "always";
-              Environment = [
-                "ASPNETCORE_URLS=http://unix:${inst.socketPath}"
-              ];
+              ExecStart = pkgs.writeShellScript "h3-forms-wrapper" ''
+                set -euo pipefail
+                export ASPNETCORE_URLS=http://unix:${inst.socketPath}
+                exec ${package}/bin/h3-forms
+              '';
             };
           };
         }
