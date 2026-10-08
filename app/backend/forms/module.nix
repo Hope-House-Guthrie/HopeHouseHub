@@ -79,8 +79,6 @@ in
         name: inst:
         let
           serviceName = "h3-forms-${name}";
-          runtimeDir = "/run/${serviceName}";
-          runtimeEnvFile = "${runtimeDir}/runtime.env";
           package = if inst.package != null then inst.package else pkgs.h3-forms;
         in
         {

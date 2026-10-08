@@ -140,32 +140,10 @@ in
         name: inst:
         let
           serviceName = "h3-server-${name}";
-          runtimeDir = "/run/${serviceName}";
-          runtimeEnvFile = "${runtimeDir}/runtime.env";
-          runtimeSocketFile = "${runtimeDir}/runtime.sock";
+          runtimeSocketFile = "/run/${serviceName}/runtime.sock";
           package = if inst.package != null then inst.package else pkgs.h3-server;
         in
         {
-          "${serviceName}-env" = {
-            description = "Generate runtime environment file for ${serviceName}";
-            wantedBy = [ "multi-user.target" ];
-            before = [ "${serviceName}.service" ];
-            serviceConfig = {
-              Type = "oneshot";
-              RemainAfterExit = true;
-              RuntimeDirectory = serviceName;
-              RuntimeDirectoryMode = "0750";
-              User = inst.user;
-              Group = inst.group;
-              ExecStart = pkgs.writeShellScript "${serviceName}-env-setup" ''
-                set -euo pipefail
-                SECRET=$(cat "${inst.jwtSecretFile}")
-                echo "JWT_SECRET=''${SECRET}" > "${runtimeEnvFile}"
-                chmod 0600 "${runtimeEnvFile}"
-              '';
-            };
-          };
-
           "${serviceName}" = {
             description = "H3 Backend (${name})";
 
@@ -173,7 +151,6 @@ in
               "network.target"
               "postgresql.service"
               "postgresql-setup.service"
-              "${serviceName}-env.service"
             ];
 
             wants = [
@@ -182,30 +159,32 @@ in
 
             requires = [
               "postgresql.service"
-              "${serviceName}-env.service"
             ];
 
             wantedBy = [ "multi-user.target" ];
 
             serviceConfig = {
-              ExecStart = "${package}/bin/h3-server";
               WorkingDirectory = "${package}/bin";
               Restart = "always";
               User = inst.user;
               Group = inst.group;
-              EnvironmentFile = runtimeEnvFile;
               RuntimeDirectory = serviceName;
               RuntimeDirectoryMode = "0750";
               UMask = "0007";
-              Environment = [
-                "ASPNETCORE_URLS=http://unix:${runtimeSocketFile}"
-                "PGHOST=${inst.database.host}"
-                "PGDATABASE=${inst.database.name}"
-                "PGUSER=${inst.database.user}"
-                "PGPORT=${toString inst.database.port}"
-                "Jwt__Issuer=https://${inst.domain}"
-                "Jwt__Audience=https://${inst.domain}"
-              ];
+              ExecStart = pkgs.writeShellScript "h3-server-wrapper" ''
+                set -euo pipefail
+
+                export ASPNETCORE_URLS=http://unix:${runtimeSocketFile}
+                export PGHOST=${inst.database.host}
+                export PGDATABASE=${inst.database.name}
+                export PGUSER=${inst.database.user}
+                export PGPORT=${toString inst.database.port}
+                export JWT__ISSUER=https://${inst.domain}
+                export JWT__AUDIENCE=https://${inst.domain}
+                export JWT__SECRET=$(cat "${inst.jwtSecretFile}")
+
+                exec ${package}/bin/h3-server
+              '';
             };
           };
         }
