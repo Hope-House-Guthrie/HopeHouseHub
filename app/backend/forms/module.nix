@@ -84,49 +84,30 @@ in
           package = if inst.package != null then inst.package else pkgs.h3-forms;
         in
         {
-          "${serviceName}-env" = {
-            description = "Generate runtime environment file for ${serviceName}";
+          "${serviceName}" = {
+            description = "H3 Forms (${name})";
+
+            after = [ "network.target" ];
             wantedBy = [ "multi-user.target" ];
-            before = [ "${serviceName}.service" ];
+
             serviceConfig = {
-              Type = "oneshot";
-              RemainAfterExit = true;
-              RuntimeDirectory = serviceName;
-              RuntimeDirectoryMode = "0750";
               User = inst.user;
               Group = inst.group;
-              ExecStart = pkgs.writeShellScript "${serviceName}-env-setup" ''
+              RuntimeDirectory = serviceName;
+              RuntimeDirectoryMode = "0750";
+              UMask = "0007";
+
+              ExecStartPre = pkgs.writeShellScript "${serviceName}-env-setup" ''
                 set -euo pipefail
                 echo "TODO=" > "${runtimeEnvFile}"
                 chmod 0600 "${runtimeEnvFile}"
               '';
-            };
-          };
 
-          "${serviceName}" = {
-            description = "H3 Forms (${name})";
+              EnvironmentFile = "${runtimeEnvFile}";
 
-            after = [
-              "network.target"
-              "${serviceName}-env.service"
-            ];
-
-            requires = [
-              "${serviceName}-env.service"
-            ];
-
-            wantedBy = [ "multi-user.target" ];
-
-            serviceConfig = {
               ExecStart = "${package}/bin/h3-forms";
               WorkingDirectory = "${package}/bin";
               Restart = "always";
-              User = inst.user;
-              Group = inst.group;
-              EnvironmentFile = runtimeEnvFile;
-              RuntimeDirectory = serviceName;
-              RuntimeDirectoryMode = "0750";
-              UMask = "0007";
               Environment = [
                 "ASPNETCORE_URLS=http://unix:${inst.socketPath}"
               ];
