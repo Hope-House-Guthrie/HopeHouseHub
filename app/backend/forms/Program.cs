@@ -8,9 +8,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddQueues(builder.Configuration, cfg =>
 {
-    cfg
-        .AddProducers()
-        .AddConsumers();
+    cfg.AddProducers();
 });
 
 var app = builder.Build();
