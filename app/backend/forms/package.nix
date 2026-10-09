@@ -19,6 +19,7 @@ pkgs.buildDotnetModule {
   nugetDeps = inputs.nuget-packageslock2nix.lib {
     system = stdenv.hostPlatform.system;
     lockfiles = [
+      ../queues/packages.lock.json
       ./packages.lock.json
     ];
   };
@@ -28,6 +29,7 @@ pkgs.buildDotnetModule {
     fileset = lib.fileset.unions [
       ../Directory.Build.props
       ../Directory.Packages.props
+      ../queues
       ./.
     ];
   };

@@ -2,6 +2,7 @@
 **/result
 *.qcow2
 .postgresql
+.rabbitmq
 node_modules
 NOTES.md
 .env

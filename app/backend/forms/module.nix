@@ -46,6 +46,12 @@ let
           description = "The H3 forms package to use.";
         };
 
+        azureServiceBusFile = mkOption {
+          type = types.nullOr types.str;
+          default = null;
+          description = "Path to the file containing the Azure Service Bus connection string.";
+        };
+
         socketPath = mkOption {
           type = types.str;
           readOnly = true;
@@ -96,7 +102,18 @@ in
               Restart = "always";
               ExecStart = pkgs.writeShellScript "h3-forms-wrapper" ''
                 set -euo pipefail
-                export ASPNETCORE_URLS=http://unix:${inst.socketPath}
+                export ASPNETCORE_URLS="http://unix:${inst.socketPath}"
+                ${
+                  if inst.azureServiceBusFile != null then
+                    ''
+                      export H3__QUEUES__MODE="AzureServiceBus"
+                      export H3__QUEUES__AZURESERVICEBUS__CONNECTIONSTRING="$(cat "${inst.azureServiceBusFile}")"
+                    ''
+                  else
+                    ''
+                      export H3__QUEUES__MODE="InMemory"
+                    ''
+                }
                 exec ${package}/bin/h3-forms
               '';
             };
