@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using H3.Data.Entities;
 using H3.Data.Entities.Configuration;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using H3.Data.Entities.Configurations;
 
 namespace H3.Data;
 
@@ -11,6 +12,8 @@ public class HubDbContext(DbContextOptions<HubDbContext> options)
     public DbSet<Kennyism> Kennyisms => Set<Kennyism>();
     public DbSet<MenuItem> MenuItems => Set<MenuItem>();
     public DbSet<Meal> Meals => Set<Meal>();
+    public DbSet<ClientInquiry> ClientInquiries => Set<ClientInquiry>();
+    public DbSet<VolunteerInquiry> VolunteerInquiries => Set<VolunteerInquiry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -27,5 +30,7 @@ public class HubDbContext(DbContextOptions<HubDbContext> options)
         modelBuilder.ApplyConfiguration(new KennyismConfiguration());
         modelBuilder.ApplyConfiguration(new MenuItemConfiguration());
         modelBuilder.ApplyConfiguration(new MealConfiguration());
+        modelBuilder.ApplyConfiguration(new ClientInquiryConfiguration());
+        modelBuilder.ApplyConfiguration(new VolunteerInquiryConfiguration());
     }
 }
