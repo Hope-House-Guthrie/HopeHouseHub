@@ -61,7 +61,7 @@ builder.Services.AddIdentity<User, Role>(options =>
 .AddDefaultTokenProviders();
 
 // Configure JWT Authentication
-var jwtKey = builder.Configuration["JWT:SecretKey"] ?? Guid.NewGuid().ToString();
+var jwtKey = builder.Configuration["JWT:Secret"] ?? Guid.NewGuid().ToString();
 var jwtIssuer = builder.Configuration["JWT:Issuer"];
 var jwtAudience = builder.Configuration["JWT:Audience"];
 
