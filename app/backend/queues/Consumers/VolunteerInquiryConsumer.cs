@@ -8,12 +8,10 @@ namespace H3.Queues.Consumers;
 public class VolunteerInquiryConsumer(IQueuesEvents events) 
     : IConsumer<VolunteerInquiry>
 {
-    public Task Consume(ConsumeContext<VolunteerInquiry> context)
+    public async Task Consume(ConsumeContext<VolunteerInquiry> context)
     {
         var form = context.Message;
 
-        events.PublishVolunteerInquiry(form);
-
-        return Task.CompletedTask;
+        await events.PublishVolunteerInquiryAsync(form);
     }
 }

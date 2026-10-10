@@ -8,12 +8,10 @@ namespace H3.Queues.Consumers;
 public class ClientInquiryConsumer(IQueuesEvents events) 
     : IConsumer<ClientInquiry>
 {
-    public Task Consume(ConsumeContext<ClientInquiry> context)
+    public async Task Consume(ConsumeContext<ClientInquiry> context)
     {
         var form = context.Message;
 
-        events.PublishClientInquiry(form);
-
-        return Task.CompletedTask;
+        await events.PublishClientInquiryAsync(form);
     }
 }
