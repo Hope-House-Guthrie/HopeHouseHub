@@ -5,7 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\queues\queues.csproj" />
+    <ProjectReference Include="..\queues\h3-queues.csproj" />
   </ItemGroup>
 
 </Project>

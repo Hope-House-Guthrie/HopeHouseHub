@@ -49,6 +49,12 @@ let
           description = "Path to the file containing the raw JWT secret key.";
         };
 
+        azureServiceBusFile = mkOption {
+          type = types.nullOr types.str;
+          default = null;
+          description = "Path to the file containing the Azure Service Bus connection string.";
+        };
+
         package = mkOption {
           type = types.nullOr types.package;
           default = null;
@@ -182,6 +188,18 @@ in
                 export JWT__ISSUER=https://${inst.domain}
                 export JWT__AUDIENCE=https://${inst.domain}
                 export JWT__SECRET=$(cat "${inst.jwtSecretFile}")
+
+                ${
+                  if inst.azureServiceBusFile != null then
+                    ''
+                      export H3__QUEUES__MODE="AzureServiceBus"
+                      export H3__QUEUES__AZURESERVICEBUS__CONNECTIONSTRING="$(cat "${inst.azureServiceBusFile}")"
+                    ''
+                  else
+                    ''
+                      export H3__QUEUES__MODE="InMemory"
+                    ''
+                }
 
                 exec ${package}/bin/h3-server
               '';

@@ -27,7 +27,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\data\h3-data.csproj" />
-    <ProjectReference Include="..\queues\queues.csproj" />
+    <ProjectReference Include="..\queues\h3-queues.csproj" />
   </ItemGroup>
 
 </Project>

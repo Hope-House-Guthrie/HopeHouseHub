@@ -20,6 +20,7 @@ pkgs.buildDotnetModule {
     system = stdenv.hostPlatform.system;
     lockfiles = [
       ../data/packages.lock.json
+      ../queues/packages.lock.json
       ./packages.lock.json
     ];
   };
@@ -30,6 +31,7 @@ pkgs.buildDotnetModule {
       ../Directory.Build.props
       ../Directory.Packages.props
       ../data
+      ../queues
       ./.
     ];
   };
