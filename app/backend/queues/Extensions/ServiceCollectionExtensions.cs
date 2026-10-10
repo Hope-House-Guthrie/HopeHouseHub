@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using H3.Queues.Builders;
 using H3.Queues.Options;
 using System;
+using H3.Queues.Events;
 
 namespace H3.Queues.Extensions;
 
@@ -22,6 +23,8 @@ public static class ServiceCollectionExtensions
         }
 
         configurator.ActiveBuilder.ConfigureMassTransit(services);
+
+        services.AddSingleton<IQueuesEvents, QueuesEvents>();
 
         return services;
     }

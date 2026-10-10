@@ -2,6 +2,7 @@ using System.Text;
 using H3.Data;
 using H3.Data.Entities;
 using H3.Server.Extensions;
+using H3.Server.Processors;
 using H3.Queues.Extensions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
@@ -73,6 +74,8 @@ builder.Services.AddQueues(builder.Configuration, cfg =>
 {
     cfg.AddConsumers();
 });
+
+builder.Services.AddHostedService<FormsProcessor>();
 
 var app = builder.Build();
 
