@@ -3,6 +3,7 @@ using System;
 namespace H3.Queues.Models;
 
 public record ClientInquiry(
+    DateTimeOffset Timestamp,
     string SuccessUrl,
     string FirstName,
     string? MiddleName,

@@ -18,6 +18,7 @@ public record ClientInquiryRequest(ClientInquiry Model, string SuccessUrl)
         string? message = GetValidString(form["message"], maxLength: 2000);
 
         var model = new ClientInquiry(
+            Timestamp: DateTimeOffset.UtcNow,
             SuccessUrl: form["success_url"].ToString(),
             FirstName: firstName ?? string.Empty,
             MiddleName: middleName,

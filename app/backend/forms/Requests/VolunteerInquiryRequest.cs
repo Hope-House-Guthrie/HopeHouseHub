@@ -1,5 +1,6 @@
 using H3.Queues.Models;
 using Microsoft.AspNetCore.Http;
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -19,6 +20,7 @@ public record VolunteerInquiryRequest(VolunteerInquiry Model, string SuccessUrl)
         string? message = GetValidString(form["message"], maxLength: 2000);
 
         var model = new VolunteerInquiry(
+            Timestamp: DateTimeOffset.UtcNow,
             SuccessUrl: form["success_url"].ToString(),
             FirstName: firstName ?? string.Empty,
             LastName: lastName ?? string.Empty,
