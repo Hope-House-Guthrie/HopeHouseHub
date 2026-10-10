@@ -1,7 +1,9 @@
 import createClient, { type Middleware } from "openapi-fetch";
 import type { paths, components } from "@backend";
 
-export const api = createClient<paths>({ baseUrl: "/" });
+const API_BASE_URL = process.env.H3_BACKEND_ORIGIN || "http://localhost:3002";
+
+export const api = createClient<paths>({ baseUrl: API_BASE_URL });
 
 const authMiddleware: Middleware = {
   async onRequest({ request }) {

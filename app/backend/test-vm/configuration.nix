@@ -1,3 +1,4 @@
+# todo: this is only a basic smoke test and not everything works at runtime for a true integration test
 { pkgs, ... }:
 {
   i18n.defaultLocale = "en_US.UTF-8";
@@ -32,7 +33,8 @@
 
   services.h3-server.test = {
     enable = true;
-    domain = "localhost";
+    backendAuthority = "api.h3.internal";
+    frontendOrigin = "https://h3.internal";
     jwtSecretFile = builtins.toFile "jwtSecretFile" "4OAvG2qzE+l7xwFydbBbeX9sdHgULBvaw57mM4MaqWA=";
     database = {
       host = "/run/postgresql";

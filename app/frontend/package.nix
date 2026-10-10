@@ -3,6 +3,7 @@
   pkgs,
   stdenv,
   version,
+  backendOrigin ? "localhost:3002",
   ...
 }:
 let
@@ -29,7 +30,7 @@ stdenv.mkDerivation {
   '';
 
   buildPhase = ''
-    bun run build
+    H3_BACKEND_ORIGIN="${backendOrigin}" bun run build --env="H3_*"
   '';
 
   installPhase = ''

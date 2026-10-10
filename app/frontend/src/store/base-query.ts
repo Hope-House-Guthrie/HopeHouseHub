@@ -1,6 +1,8 @@
 import { type BaseQueryFn } from "@reduxjs/toolkit/query";
 import { api } from "@/lib/api";
 
+const API_BASE_URL = process.env.H3_BACKEND_ORIGIN || "http://localhost:3002";
+
 export interface ApiFetchArgs {
   url: string;
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -14,7 +16,9 @@ export const baseQuery =
     try {
       const httpMethod = method.toLowerCase();
 
-      const initOptions: Record<string, unknown> = {};
+      const initOptions: Record<string, unknown> = {
+        baseUrl: API_BASE_URL,
+      };
       if (body !== undefined) {
         initOptions.body = body;
       }
@@ -22,9 +26,13 @@ export const baseQuery =
         initOptions.params = { query: params };
       }
 
+      const fullUrl = `${API_BASE_URL}${url.startsWith("/") ? "" : "/"}${url}`;
+
+      console.log(fullUrl);
+
       const { data, error, response } = (await api.request(
         httpMethod as never,
-        url as never,
+        fullUrl as never,
         initOptions as never,
       )) as { data?: unknown; error?: unknown; response: Response };
 

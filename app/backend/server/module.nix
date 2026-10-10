@@ -27,9 +27,14 @@ let
       options = {
         enable = mkEnableOption "H3 Backend instance: ${name}";
 
-        domain = mkOption {
+        backendAuthority = mkOption {
           type = types.str;
-          description = "Public URL for the application.";
+          description = "HTTP Authority for the backend application.";
+        };
+
+        frontendOrigin = mkOption {
+          type = types.str;
+          description = "HTTP Origin for the frontend application.";
         };
 
         user = mkOption {
@@ -121,7 +126,7 @@ in
           serviceName = "h3-server-${name}";
           runtimeSocketFile = "/run/${serviceName}/runtime.sock";
         in
-        nameValuePair inst.domain {
+        nameValuePair inst.backendAuthority {
           extraConfig = ''
             encode gzip zstd
 
@@ -185,9 +190,10 @@ in
                 export PGDATABASE=${inst.database.name}
                 export PGUSER=${inst.database.user}
                 export PGPORT=${toString inst.database.port}
-                export JWT__ISSUER=https://${inst.domain}
-                export JWT__AUDIENCE=https://${inst.domain}
+                export JWT__ISSUER=https://${inst.backendAuthority}
+                export JWT__AUDIENCE=https://${inst.backendAuthority}
                 export JWT__SECRET=$(cat "${inst.jwtSecretFile}")
+                export H3__FRONTEND__ORIGIN="${inst.frontendOrigin}"
 
                 ${
                   if inst.azureServiceBusFile != null then

@@ -25,16 +25,21 @@ let
       options = {
         enable = mkEnableOption "H3 Frontend instance: ${name}";
 
-        domain = mkOption {
+        backendOrigin = mkOption {
           type = types.str;
-          description = "Public URL for the application.";
+          description = "HTTP Origin for the backend application.";
+        };
+
+        frontendAuthority = mkOption {
+          type = types.str;
+          description = "HTTP Authority for the frontend application.";
         };
 
         package = mkOption {
           type = types.nullOr types.package;
           default = null;
           defaultText = lib.literalExpression "pkgs.h3-frontend";
-          description = "The H3 frontend package to use.";
+          description = "The base H3 frontend package to override with the instance API URL.";
         };
       };
     };
@@ -53,11 +58,15 @@ in
       virtualHosts = mapAttrs' (
         name: inst:
         let
-          package = if inst.package != null then inst.package else pkgs.h3-frontend;
+          basePackage = if inst.package != null then inst.package else pkgs.h3-frontend;
+
+          configuredPackage = basePackage.override {
+            backendOrigin = inst.backendOrigin;
+          };
         in
-        nameValuePair inst.domain {
+        nameValuePair inst.frontendAuthority {
           extraConfig = ''
-            root * "${package}/bin"
+            root * "${configuredPackage}/bin"
             encode gzip zstd
 
             handle {

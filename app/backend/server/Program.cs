@@ -13,22 +13,38 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
 using System.Reflection;
-
-// todo: listen on port 3002 instead of default 5000 for vscodium debugging
+using System;
+using System.Linq;
 
 var isOpenApiBuildReflectionStep = Assembly.GetEntryAssembly()?.GetName().Name == "GetDocument.Insider";
 
 var builder = WebApplication.CreateBuilder(args);
 
 const string DevCorsPolicyName = "development";
+const string ProdCorsPolicyName = "production";
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(DevCorsPolicyName, policy =>
     {
-        policy.AllowAnyOrigin()
-              .AllowAnyMethod()
-              .AllowAnyHeader();
+        policy
+            .AllowAnyOrigin()
+            .AllowAnyMethod()
+            .AllowAnyHeader();
+    });
+
+    options.AddPolicy(ProdCorsPolicyName, policy =>
+    {
+        const string key = "H3:Frontend:Origin";
+
+        var origin = builder.Configuration[key];
+
+        if (origin  == null) return;
+
+        policy
+            .WithOrigins(origin)
+            .AllowAnyMethod()
+            .AllowAnyHeader();
     });
 });
 
@@ -45,9 +61,9 @@ builder.Services.AddIdentity<User, Role>(options =>
 .AddDefaultTokenProviders();
 
 // Configure JWT Authentication
-var jwtKey = builder.Configuration["Jwt:SecretKey"] ?? "SUPER_SECRET_KEY_REPLACE_IN_APPSETTINGS_12345";
-var jwtIssuer = builder.Configuration["Jwt:Issuer"];
-var jwtAudience = builder.Configuration["Jwt:Audience"];
+var jwtKey = builder.Configuration["JWT:SecretKey"] ?? Guid.NewGuid().ToString();
+var jwtIssuer = builder.Configuration["JWT:Issuer"];
+var jwtAudience = builder.Configuration["JWT:Audience"];
 
 builder.Services.AddAuthentication(options =>
 {
@@ -84,6 +100,10 @@ if (app.Environment.IsDevelopment())
     app.UseCors(DevCorsPolicyName);
     app.MapOpenApi();
     app.MapScalarApiReference();
+}
+else
+{
+    app.UseCors(ProdCorsPolicyName);
 }
 
 app.UseAuthentication();

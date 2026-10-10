@@ -2,4 +2,4 @@
 port = 3001
 
 [serve.static]
-env = "BUN_PUBLIC_*"
+env = "H3_*"
