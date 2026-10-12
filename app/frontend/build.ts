@@ -17,6 +17,7 @@ const result = await Bun.build({
   define: {
     "process.env.NODE_ENV": JSON.stringify("production"),
   },
+  env: "H3_*",
 });
 
 for (const output of result.outputs) {
