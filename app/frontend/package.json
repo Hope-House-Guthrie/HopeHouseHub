@@ -10,25 +10,25 @@
     "build": "bun run generate-backend && bun run build.ts"
   },
   "dependencies": {
-    "@emotion/react": "^11.14.0",
-    "@emotion/styled": "^11.14.1",
-    "@fontsource/roboto": "^5.2.10",
-    "@mui/icons-material": "^9.1.1",
-    "@mui/material": "^9.1.2",
-    "@reduxjs/toolkit": "^2.12.0",
-    "bun-plugin-tailwind": "^0.1.2",
-    "openapi-fetch": "^0.17.0",
-    "react": "^19",
-    "react-dom": "^19",
-    "react-redux": "^9.3.0",
-    "react-router": "^8.0.1",
-    "tailwindcss": "^4.3.3"
+    "@emotion/react": "11.14.0",
+    "@emotion/styled": "11.14.1",
+    "@fontsource/roboto": "5.2.10",
+    "@mui/icons-material": "9.1.1",
+    "@mui/material": "9.1.2",
+    "@reduxjs/toolkit": "2.12.0",
+    "bun-plugin-tailwind": "0.1.2",
+    "openapi-fetch": "0.17.0",
+    "react": "19",
+    "react-dom": "19",
+    "react-redux": "9.3.0",
+    "react-router": "8.0.1",
+    "tailwindcss": "4.3.3"
   },
   "devDependencies": {
-    "@types/bun": "^1.3.14",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "daisyui": "^5.7.47",
-    "openapi-typescript": "^7.13.0"
+    "@types/bun": "1.3.14",
+    "@types/react": "19",
+    "@types/react-dom": "19",
+    "daisyui": "5.7.47",
+    "openapi-typescript": "7.13.0"
   }
 }
