@@ -449,6 +449,21 @@ namespace H3.Data.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Email")
+                        .HasDatabaseName("IX_VolunteerInquiries_Email");
+
+                    b.HasIndex("Phone")
+                        .HasDatabaseName("IX_VolunteerInquiries_Phone");
+
+                    b.HasIndex("IsArchived", "FirstName")
+                        .HasDatabaseName("IX_VolunteerInquiries_IsArchived_FirstName");
+
+                    b.HasIndex("IsArchived", "LastName")
+                        .HasDatabaseName("IX_VolunteerInquiries_IsArchived_LastName");
+
+                    b.HasIndex("IsArchived", "Timestamp")
+                        .HasDatabaseName("IX_VolunteerInquiries_IsArchived_Timestamp");
+
                     b.ToTable("VolunteerInquiries", (string)null);
                 });
 

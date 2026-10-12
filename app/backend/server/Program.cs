@@ -18,6 +18,7 @@ using System;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using H3.Server.Endpoints.VolunteerInquiries;
 
 var isOpenApiBuildReflectionStep = Assembly.GetEntryAssembly()?.GetName().Name == "GetDocument.Insider";
 
@@ -121,6 +122,7 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapClientInquiries();
+app.MapVolunteerInquiries();
 
 if (!isOpenApiBuildReflectionStep && app.Environment.IsProduction())
 {

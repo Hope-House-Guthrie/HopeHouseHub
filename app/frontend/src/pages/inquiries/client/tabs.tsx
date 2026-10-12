@@ -1,11 +1,11 @@
 import React from "react";
 
-interface InquiriesTabsProps {
+interface TabsProps {
   isArchived: boolean;
   onTabChange: (isArchived: boolean) => void;
 }
 
-export const InquiriesTabs: React.FC<InquiriesTabsProps> = ({
+export const Tabs: React.FC<TabsProps> = ({
   isArchived,
   onTabChange,
 }) => (

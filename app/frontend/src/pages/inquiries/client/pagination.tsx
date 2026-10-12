@@ -1,13 +1,13 @@
 import React from "react";
 
-interface InquiriesPaginationProps {
+interface PaginationProps {
   currentPage: number;
   totalPages: number;
   totalCount: number;
   onPageChange: (newPage: number) => void;
 }
 
-export const InquiriesPagination: React.FC<InquiriesPaginationProps> = ({
+export const Pagination: React.FC<PaginationProps> = ({
   currentPage,
   totalPages,
   totalCount,

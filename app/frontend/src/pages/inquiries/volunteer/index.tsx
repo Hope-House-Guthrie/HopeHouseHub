@@ -1,25 +1,25 @@
 import React, { useState } from "react";
 import {
-  useGetClientInquiriesQuery,
-  usePatchClientInquiryMutation,
-  useDeleteClientInquiryMutation,
-  type ClientInquiryIndexResource,
-  type ClientInquiryFilters,
-  type ClientInquirySort,
-} from "@/store/slices/client-inquiries";
+  useGetVolunteerInquiriesQuery,
+  usePatchVolunteerInquiryMutation,
+  useDeleteVolunteerInquiryMutation,
+  type VolunteerInquiryIndexResource,
+  type VolunteerInquiryFilters,
+  type VolunteerInquirySort,
+} from "@/store/slices/volunteer-inquiries";
 
-import { InquiriesHeader } from "./inquiries-header";
-import { InquiriesTabs } from "./inquiries-tabs";
-import { InquiriesFilters, type FilterInputs } from "./inquiries-filters";
-import { InquiriesTable } from "./inquiries-table";
-import { InquiriesPagination } from "./inquiries-pagination";
-import { InquiryDetailModal } from "./inquiries-detail-modal";
-import { DeleteConfirmationModal } from "./inquiries-delete-modal";
+import { Header } from "./header";
+import { Tabs } from "./tabs";
+import { Filters, type FilterInputs } from "./filters";
+import { Table } from "./table";
+import { Pagination } from "./pagination";
+import { DetailModal } from "./detail-modal";
+import { DeleteModal } from "./delete-modal";
 
-const initialFilterState: ClientInquiryFilters = {
+const initialFilterState: VolunteerInquiryFilters = {
   page: 1,
   pageSize: 20,
-  sort: "Timestamp" as ClientInquirySort,
+  sort: "Timestamp" as VolunteerInquirySort,
   descending: true,
   isArchived: false,
 };
@@ -32,14 +32,14 @@ const initialInputState: FilterInputs = {
   dateOfBirth: "",
 };
 
-export const ClientInquiriesPage: React.FC = () => {
+export const VolunteerInquiriesPage: React.FC = () => {
   const [activeQueryParams, setActiveQueryParams] =
-    useState<ClientInquiryFilters>(initialFilterState);
+    useState<VolunteerInquiryFilters>(initialFilterState);
   const [selectedInquiryId, setSelectedInquiryId] = useState<string | null>(
     null
   );
   const [deleteTarget, setDeleteTarget] =
-    useState<ClientInquiryIndexResource | null>(null);
+    useState<VolunteerInquiryIndexResource | null>(null);
   const [filterInputs, setFilterInputs] =
     useState<FilterInputs>(initialInputState);
 
@@ -55,11 +55,11 @@ export const ClientInquiriesPage: React.FC = () => {
     isFetching,
     error: fetchError,
     refetch,
-  } = useGetClientInquiriesQuery(cleanedFilters);
+  } = useGetVolunteerInquiriesQuery(cleanedFilters);
 
-  const [patchClientInquiry] = usePatchClientInquiryMutation();
-  const [deleteClientInquiry, { isLoading: isDeleting }] =
-    useDeleteClientInquiryMutation();
+  const [patchVolunteerInquiry] = usePatchVolunteerInquiryMutation();
+  const [deleteVolunteerInquiry, { isLoading: isDeleting }] =
+    useDeleteVolunteerInquiryMutation();
 
   const items = inquiryPageData?.items ?? [];
   const totalCount = inquiryPageData?.totalCount ?? 0;
@@ -94,7 +94,7 @@ export const ClientInquiriesPage: React.FC = () => {
     }));
   };
 
-  const handleSort = (column: ClientInquirySort) => {
+  const handleSort = (column: VolunteerInquirySort) => {
     setActiveQueryParams((prev) => {
       const isSameColumn = prev.sort === column;
       return {
@@ -111,12 +111,12 @@ export const ClientInquiriesPage: React.FC = () => {
   };
 
   const handleArchiveToggle = async (id: string, isArchived: boolean) => {
-    await patchClientInquiry({ id, patch: { isArchived: !isArchived } });
+    await patchVolunteerInquiry({ id, patch: { isArchived: !isArchived } });
   };
 
   const handleDeleteConfirm = async () => {
     if (deleteTarget) {
-      await deleteClientInquiry(deleteTarget.id);
+      await deleteVolunteerInquiry(deleteTarget.id);
       setDeleteTarget(null);
     }
   };
@@ -125,19 +125,19 @@ export const ClientInquiriesPage: React.FC = () => {
     fetchError && "data" in fetchError
       ? (fetchError.data as string)
       : fetchError
-      ? "Failed to fetch client inquiries"
+      ? "Failed to fetch volunteer inquiries"
       : null;
 
   return (
     <div className="p-6 space-y-6">
-      <InquiriesHeader isFetching={isFetching} onRefresh={refetch} />
+      <Header isFetching={isFetching} onRefresh={refetch} />
 
-      <InquiriesTabs
+      <Tabs
         isArchived={activeQueryParams.isArchived ?? false}
         onTabChange={handleTabChange}
       />
 
-      <InquiriesFilters
+      <Filters
         filterInputs={filterInputs}
         onInputChange={handleInputChange}
         onSubmit={handleSearchSubmit}
@@ -151,11 +151,11 @@ export const ClientInquiriesPage: React.FC = () => {
       )}
 
       <div className="card bg-base-100 shadow-md overflow-x-auto">
-        <InquiriesTable
+        <Table
           items={items}
           isLoading={isLoading}
           isFetching={isFetching}
-          currentSort={activeQueryParams.sort as ClientInquirySort}
+          currentSort={activeQueryParams.sort as VolunteerInquirySort}
           isDescending={activeQueryParams.descending ?? true}
           onSort={handleSort}
           onView={setSelectedInquiryId}
@@ -163,7 +163,7 @@ export const ClientInquiriesPage: React.FC = () => {
           onDeleteSelect={setDeleteTarget}
         />
 
-        <InquiriesPagination
+        <Pagination
           currentPage={activeQueryParams.page}
           totalPages={totalPages}
           totalCount={totalCount}
@@ -171,12 +171,12 @@ export const ClientInquiriesPage: React.FC = () => {
         />
       </div>
 
-      <InquiryDetailModal
+      <DetailModal
         selectedInquiryId={selectedInquiryId}
         onClose={() => setSelectedInquiryId(null)}
       />
 
-      <DeleteConfirmationModal
+      <DeleteModal
         deleteTarget={deleteTarget}
         isDeleting={isDeleting}
         onConfirm={handleDeleteConfirm}
@@ -186,4 +186,4 @@ export const ClientInquiriesPage: React.FC = () => {
   );
 };
 
-export default ClientInquiriesPage;
+export default VolunteerInquiriesPage;

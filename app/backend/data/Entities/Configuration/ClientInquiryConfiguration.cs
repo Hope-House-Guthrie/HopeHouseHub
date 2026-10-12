@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace H3.Data.Entities.Configurations;
+namespace H3.Data.Entities.Configuration;
 
 public class ClientInquiryConfiguration : IEntityTypeConfiguration<ClientInquiry>
 {

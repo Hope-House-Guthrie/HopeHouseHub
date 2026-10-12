@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using H3.Data.Entities;
 using H3.Data.Entities.Configuration;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
-using H3.Data.Entities.Configurations;
+using H3.Data.Entities.Configuration;
 
 namespace H3.Data;
 

@@ -8,17 +8,16 @@ export interface FilterInputs {
   lastName: string;
   email: string;
   phone: string;
-  dateOfBirth: string;
 }
 
-interface InquiriesFiltersProps {
+interface FiltersProps {
   filterInputs: FilterInputs;
   onInputChange: (field: keyof FilterInputs, value: string) => void;
   onSubmit: (e: React.FormEvent) => void;
   onReset: () => void;
 }
 
-export const InquiriesFilters: React.FC<InquiriesFiltersProps> = ({
+export const Filters: React.FC<FiltersProps> = ({
   filterInputs,
   onInputChange,
   onSubmit,
@@ -59,12 +58,6 @@ export const InquiriesFilters: React.FC<InquiriesFiltersProps> = ({
         className="input input-bordered input-sm w-full"
         value={filterInputs.phone}
         onChange={(e) => onInputChange("phone", e.target.value)}
-      />
-      <input
-        type="date"
-        className="input input-bordered input-sm w-full"
-        value={filterInputs.dateOfBirth}
-        onChange={(e) => onInputChange("dateOfBirth", e.target.value)}
       />
     </div>
     <div className="flex justify-end gap-2">

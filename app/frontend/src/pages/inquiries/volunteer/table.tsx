@@ -7,23 +7,23 @@ import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
 
 import type {
-  ClientInquiryIndexResource,
-  ClientInquirySort,
-} from "@/store/slices/client-inquiries";
+  VolunteerInquiryIndexResource,
+  VolunteerInquirySort,
+} from "@/store/slices/volunteer-inquiries";
 
-interface InquiriesTableProps {
-  items: ClientInquiryIndexResource[];
+interface TableProps {
+  items: VolunteerInquiryIndexResource[];
   isLoading: boolean;
   isFetching: boolean;
-  currentSort: ClientInquirySort;
+  currentSort: VolunteerInquirySort;
   isDescending: boolean;
-  onSort: (column: ClientInquirySort) => void;
+  onSort: (column: VolunteerInquirySort) => void;
   onView: (id: string) => void;
   onArchiveToggle: (id: string, isArchived: boolean) => void;
-  onDeleteSelect: (item: ClientInquiryIndexResource) => void;
+  onDeleteSelect: (item: VolunteerInquiryIndexResource) => void;
 }
 
-export const InquiriesTable: React.FC<InquiriesTableProps> = ({
+export const Table: React.FC<TableProps> = ({
   items,
   isLoading,
   isFetching,
@@ -34,7 +34,7 @@ export const InquiriesTable: React.FC<InquiriesTableProps> = ({
   onArchiveToggle,
   onDeleteSelect,
 }) => {
-  const renderSortIcon = (column: ClientInquirySort) => {
+  const renderSortIcon = (column: VolunteerInquirySort) => {
     if (currentSort !== column) return null;
     return isDescending ? (
       <ArrowDownwardIcon fontSize="inherit" />
@@ -49,24 +49,23 @@ export const InquiriesTable: React.FC<InquiriesTableProps> = ({
         <tr>
           <th
             className="cursor-pointer select-none"
-            onClick={() => onSort("FirstName" as ClientInquirySort)}
+            onClick={() => onSort("FirstName" as VolunteerInquirySort)}
           >
-            First Name {renderSortIcon("FirstName" as ClientInquirySort)}
+            First Name {renderSortIcon("FirstName" as VolunteerInquirySort)}
           </th>
           <th
             className="cursor-pointer select-none"
-            onClick={() => onSort("LastName" as ClientInquirySort)}
+            onClick={() => onSort("LastName" as VolunteerInquirySort)}
           >
-            Last Name {renderSortIcon("LastName" as ClientInquirySort)}
+            Last Name {renderSortIcon("LastName" as VolunteerInquirySort)}
           </th>
           <th>Email</th>
           <th>Phone</th>
-          <th>DOB</th>
           <th
             className="cursor-pointer select-none"
-            onClick={() => onSort("Timestamp" as ClientInquirySort)}
+            onClick={() => onSort("Timestamp" as VolunteerInquirySort)}
           >
-            Submitted {renderSortIcon("Timestamp" as ClientInquirySort)}
+            Submitted {renderSortIcon("Timestamp" as VolunteerInquirySort)}
           </th>
           <th className="text-right">Actions</th>
         </tr>
@@ -81,7 +80,7 @@ export const InquiriesTable: React.FC<InquiriesTableProps> = ({
         ) : items.length === 0 ? (
           <tr>
             <td colSpan={7} className="text-center py-8 text-base-content/60">
-              No client inquiries found.
+              No volunteer inquiries found.
             </td>
           </tr>
         ) : (
@@ -91,7 +90,6 @@ export const InquiriesTable: React.FC<InquiriesTableProps> = ({
               <td className="font-medium">{inquiry.lastName}</td>
               <td>{inquiry.email}</td>
               <td>{inquiry.phone || "—"}</td>
-              <td>{inquiry.dateOfBirth || "—"}</td>
               <td>
                 {inquiry.timestamp
                   ? new Date(inquiry.timestamp).toLocaleDateString()

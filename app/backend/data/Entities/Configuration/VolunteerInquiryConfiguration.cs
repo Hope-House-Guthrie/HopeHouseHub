@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace H3.Data.Entities.Configurations;
+namespace H3.Data.Entities.Configuration;
 
 public class VolunteerInquiryConfiguration : IEntityTypeConfiguration<VolunteerInquiry>
 {
@@ -57,6 +57,21 @@ public class VolunteerInquiryConfiguration : IEntityTypeConfiguration<VolunteerI
 
         builder.Property(e => e.Timestamp)
             .IsRequired();
+
+        builder.HasIndex(e => new { e.IsArchived, e.Timestamp })
+            .HasDatabaseName("IX_VolunteerInquiries_IsArchived_Timestamp");
+
+        builder.HasIndex(e => new { e.IsArchived, e.FirstName })
+            .HasDatabaseName("IX_VolunteerInquiries_IsArchived_FirstName");
+
+        builder.HasIndex(e => new { e.IsArchived, e.LastName })
+            .HasDatabaseName("IX_VolunteerInquiries_IsArchived_LastName");
+
+        builder.HasIndex(e => e.Email)
+            .HasDatabaseName("IX_VolunteerInquiries_Email");
+
+        builder.HasIndex(e => e.Phone)
+            .HasDatabaseName("IX_VolunteerInquiries_Phone");
     }
 
     private static bool SequenceEqual(List<string>? first, List<string>? second)

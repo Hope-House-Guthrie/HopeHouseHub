@@ -1,12 +1,12 @@
 import React from "react";
-import { useGetClientInquiryByIdQuery } from "@/store/slices/client-inquiries";
+import { useGetVolunteerInquiryByIdQuery } from "@/store/slices/volunteer-inquiries";
 
-interface InquiryDetailModalProps {
+interface DetailModalProps {
   selectedInquiryId: string | null;
   onClose: () => void;
 }
 
-export const InquiryDetailModal: React.FC<InquiryDetailModalProps> = ({
+export const DetailModal: React.FC<DetailModalProps> = ({
   selectedInquiryId,
   onClose,
 }) => {
@@ -14,7 +14,7 @@ export const InquiryDetailModal: React.FC<InquiryDetailModalProps> = ({
     data: selectedInquiry,
     isLoading: isLoadingDetail,
     error: detailError,
-  } = useGetClientInquiryByIdQuery(selectedInquiryId as string, {
+  } = useGetVolunteerInquiryByIdQuery(selectedInquiryId as string, {
     skip: !selectedInquiryId,
   });
 
@@ -25,7 +25,7 @@ export const InquiryDetailModal: React.FC<InquiryDetailModalProps> = ({
       <div className="modal-box max-w-2xl">
         <div className="flex justify-between items-start mb-4 border-b border-base-200 pb-3">
           <div>
-            <h3 className="font-bold text-xl">Client Inquiry Details</h3>
+            <h3 className="font-bold text-xl">Volunteer Inquiry Details</h3>
             <p className="text-xs text-base-content/60 font-mono mt-0.5">
               ID: {selectedInquiryId}
             </p>
@@ -51,7 +51,7 @@ export const InquiryDetailModal: React.FC<InquiryDetailModalProps> = ({
           </div>
         ) : selectedInquiry ? (
           <div className="space-y-4 text-sm">
-            {/* Personal Information */}
+            {/* Personal & Organization Information */}
             <div>
               <h4 className="font-semibold text-xs uppercase tracking-wider text-base-content/60 mb-2">
                 Personal Information
@@ -62,35 +62,28 @@ export const InquiryDetailModal: React.FC<InquiryDetailModalProps> = ({
                     Full Name
                   </span>
                   <span className="font-medium">
-                    {[
-                      selectedInquiry.firstName,
-                      selectedInquiry.middleName,
-                      selectedInquiry.lastName,
-                      selectedInquiry.suffix,
-                    ]
+                    {[selectedInquiry.firstName, selectedInquiry.lastName]
                       .filter(Boolean)
                       .join(" ")}
                   </span>
                 </div>
                 <div>
                   <span className="text-xs text-base-content/60 block">
-                    Date of Birth
+                    Organization
                   </span>
                   <span className="font-medium">
-                    {selectedInquiry.dateOfBirth
-                      ? String(selectedInquiry.dateOfBirth)
-                      : "—"}
+                    {selectedInquiry.organization || "—"}
                   </span>
                 </div>
               </div>
             </div>
 
-            {/* Contact Information */}
+            {/* Contact Details */}
             <div>
               <h4 className="font-semibold text-xs uppercase tracking-wider text-base-content/60 mb-2">
                 Contact Details
               </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-base-200/50 p-3 rounded-lg">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-base-200/50 p-3 rounded-lg">
                 <div>
                   <span className="text-xs text-base-content/60 block">
                     Email
@@ -107,59 +100,51 @@ export const InquiryDetailModal: React.FC<InquiryDetailModalProps> = ({
                     {selectedInquiry.phone || "—"}
                   </span>
                 </div>
-                <div>
-                  <span className="text-xs text-base-content/60 block">
-                    Preferred Method
-                  </span>
-                  <span className="font-medium">
-                    {selectedInquiry.contactMethod || "—"}
-                  </span>
-                </div>
               </div>
             </div>
 
-            {/* Household & Intake Factors */}
+            {/* Volunteer Profile & Availability */}
             <div>
               <h4 className="font-semibold text-xs uppercase tracking-wider text-base-content/60 mb-2">
-                Household & Intake Status
+                Volunteer Preferences
               </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 bg-base-200/50 p-3 rounded-lg">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-base-200/50 p-3 rounded-lg">
                 <div>
                   <span className="text-xs text-base-content/60 block">
-                    Household Type
+                    Volunteer Type
                   </span>
                   <span className="font-medium">
-                    {selectedInquiry.householdType || "—"}
+                    {selectedInquiry.volunteerType || "—"}
                   </span>
                 </div>
                 <div>
                   <span className="text-xs text-base-content/60 block">
-                    Children Count
+                    Availability
                   </span>
                   <span className="font-medium">
-                    {selectedInquiry.children}
+                    {selectedInquiry.availability || "—"}
                   </span>
                 </div>
-                <div>
-                  <span className="text-xs text-base-content/60 block">
-                    Shelter Timing
+                <div className="sm:col-span-2">
+                  <span className="text-xs text-base-content/60 block mb-1">
+                    Interests
                   </span>
-                  <span className="font-medium">
-                    {selectedInquiry.shelterTiming || "—"}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-xs text-base-content/60 block">
-                    Vaccination
-                  </span>
-                  <span className="font-medium">
-                    {selectedInquiry.vaccinationWillingness || "—"}
-                  </span>
+                  {selectedInquiry.interests && selectedInquiry.interests.length > 0 ? (
+                    <div className="flex flex-wrap gap-1">
+                      {selectedInquiry.interests.map((interest, index) => (
+                        <span key={index} className="badge badge-neutral badge-sm">
+                          {interest}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="font-medium">—</span>
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* Additional Message */}
+            {/* Message / Notes */}
             <div>
               <h4 className="font-semibold text-xs uppercase tracking-wider text-base-content/60 mb-2">
                 Message / Notes

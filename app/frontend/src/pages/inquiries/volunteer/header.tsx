@@ -1,18 +1,18 @@
 import React from "react";
 import RefreshIcon from "@mui/icons-material/Refresh";
 
-interface InquiriesHeaderProps {
+interface HeaderProps {
   isFetching: boolean;
   onRefresh: () => void;
 }
 
-export const InquiriesHeader: React.FC<InquiriesHeaderProps> = ({
+export const Header: React.FC<HeaderProps> = ({
   isFetching,
   onRefresh,
 }) => (
   <div className="flex justify-between items-center">
     <div>
-      <h1 className="text-3xl font-bold">Client Inquiries</h1>
+      <h1 className="text-3xl font-bold">Volunteer Inquiries</h1>
     </div>
     <button
       onClick={onRefresh}

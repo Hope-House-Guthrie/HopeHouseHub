@@ -4,6 +4,7 @@ import {
 
     // inquiries
     ContactSupport as ClientInquiriesIcon,
+    ContactSupport as VolunteerInquiriesIcon,
 
     // prototype
     Kitchen as KitchenIcon,
@@ -35,7 +36,8 @@ import DashboardPage from "@/pages/dashboard";
 import UsersPage from "@/pages/users";
 
 // inquiries
-import ClientInquiriesPage from "@/pages/client-inquiries";
+import ClientInquiriesPage from "@/pages/inquiries/client";
+import VolunteerInquiriesPage from "@/pages/inquiries/volunteer";
 
 // prototype
 import KitchenDisplayPage from "@/pages/prototype/kitchen/display";
@@ -121,6 +123,17 @@ export const routesConfig: NavigationNode[] = [
                         config: {
                             title: "Client Inquiries",
                             icon: <ClientInquiriesIcon />,
+                            showInNavigation: true,
+                            roles: ["ADMIN"],
+                            group: "Inquiries",
+                        },
+                    },
+                    {
+                        path: "volunteer-inquiries",
+                        element: <VolunteerInquiriesPage />,
+                        config: {
+                            title: "Volunteer Inquiries",
+                            icon: <VolunteerInquiriesIcon />,
                             showInNavigation: true,
                             roles: ["ADMIN"],
                             group: "Inquiries",

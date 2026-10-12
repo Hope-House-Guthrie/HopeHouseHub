@@ -73,3 +73,15 @@ export type ClientInquiryPatchResource =
 export type ClientInquirySort = components["schemas"]["ClientInquirySort"];
 export type PagedResultClientInquiryIndex =
   components["schemas"]["PagedResultOfClientInquiryIndex"];
+
+// volunteer inquiries
+export type VolunteerInquiryResource =
+  components["schemas"]["VolunteerInquiry"];
+export type VolunteerInquiryIndexResource =
+  components["schemas"]["VolunteerInquiryIndex"];
+export type VolunteerInquiryPatchResource =
+  components["schemas"]["VolunteerInquiryPatch"];
+export type VolunteerInquirySort =
+  components["schemas"]["VolunteerInquirySort"];
+export type PagedResultVolunteerInquiryIndex =
+  components["schemas"]["PagedResultOfVolunteerInquiryIndex"];

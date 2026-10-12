@@ -1,14 +1,14 @@
 import React from "react";
 import type { ClientInquiryIndexResource } from "@/store/slices/client-inquiries";
 
-interface DeleteConfirmationModalProps {
+interface DeleteModalProps {
   deleteTarget: ClientInquiryIndexResource | null;
   isDeleting: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }
 
-export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = ({
+export const DeleteModal: React.FC<DeleteModalProps> = ({
   deleteTarget,
   isDeleting,
   onConfirm,
