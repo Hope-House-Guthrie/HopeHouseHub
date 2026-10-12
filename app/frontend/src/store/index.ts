@@ -1,7 +1,7 @@
 import { configureStore } from "@reduxjs/toolkit";
 import accountReducer from "./slices/account";
 import authReducer from "./slices/auth";
-import clientInquiriesReducer from "./slices/client-inquiries";
+import { clientInquiryApi } from "./slices/client-inquiries";
 
 // prototype
 import opsReducer from "./slices/prototype/ops";
@@ -22,7 +22,7 @@ export const store = configureStore({
   reducer: {
     account: accountReducer,
     auth: authReducer,
-    clientInquiries: clientInquiriesReducer,
+    [clientInquiryApi.reducerPath]: clientInquiryApi.reducer,
 
     // prototype
     ops: opsReducer,
@@ -42,6 +42,9 @@ export const store = configureStore({
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware().concat(
+      clientInquiryApi.middleware,
+
+      // prototype
       kennyismsApi.middleware,
       menuItemsApi.middleware,
       mealsApi.middleware,

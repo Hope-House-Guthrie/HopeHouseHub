@@ -1,10 +1,6 @@
+import { createApi } from "@reduxjs/toolkit/query/react";
+import { baseQuery } from "@/store/base-query";
 import {
-  createSlice,
-  createAsyncThunk,
-  type PayloadAction,
-} from "@reduxjs/toolkit";
-import {
-  api,
   type ClientInquiryResource,
   type ClientInquiryIndexResource,
   type ClientInquiryPatchResource,
@@ -32,16 +28,7 @@ export interface ClientInquiryFilters {
   dateOfBirth?: string;
 }
 
-export interface ClientInquiryState {
-  items: ClientInquiryIndexResource[];
-  totalCount: number;
-  selectedInquiry: ClientInquiryResource | null;
-  filters: ClientInquiryFilters;
-  loading: boolean;
-  error: string | null;
-}
-
-const initialFilters: ClientInquiryFilters = {
+const defaultFilters: Partial<ClientInquiryFilters> = {
   page: 1,
   pageSize: 20,
   sort: "Timestamp" as ClientInquirySort,
@@ -49,146 +36,74 @@ const initialFilters: ClientInquiryFilters = {
   isArchived: false,
 };
 
-const initialState: ClientInquiryState = {
-  items: [],
-  totalCount: 0,
-  selectedInquiry: null,
-  filters: initialFilters,
-  loading: false,
-  error: null,
-};
+export const clientInquiryApi = createApi({
+  reducerPath: "clientInquiryApi",
+  baseQuery: baseQuery(),
+  tagTypes: ["ClientInquiry"],
+  endpoints: (builder) => ({
+    getClientInquiries: builder.query<
+      PagedResultClientInquiryIndex,
+      Partial<ClientInquiryFilters> | void
+    >({
+      query: (filters) => ({
+        url: "/api/client-inquiry",
+        method: "GET",
+        params: {
+          ...defaultFilters,
+          ...filters,
+        },
+      }),
+      providesTags: (result) =>
+        result?.items
+          ? [
+              ...result.items.map(({ id }) => ({
+                type: "ClientInquiry" as const,
+                id,
+              })),
+              { type: "ClientInquiry", id: "LIST" },
+            ]
+          : [{ type: "ClientInquiry", id: "LIST" }],
+    }),
 
-export const fetchClientInquiries = createAsyncThunk(
-  "clientInquiries/fetchAll",
-  async (
-    filters: Partial<ClientInquiryFilters> | undefined,
-    { getState, rejectWithValue },
-  ) => {
-    const state = (getState() as { clientInquiries: ClientInquiryState })
-      .clientInquiries;
-    const queryParams = { ...state.filters, ...filters };
+    getClientInquiryById: builder.query<ClientInquiryResource, string>({
+      query: (id) => ({
+        url: `/api/client-inquiry/${id}`,
+        method: "GET",
+      }),
+      providesTags: (_result, _error, id) => [{ type: "ClientInquiry", id }],
+    }),
 
-    const { data, error } = await api.GET("/api/client-inquiry", {
-      params: {
-        query: queryParams,
-      },
-    });
+    patchClientInquiry: builder.mutation<
+      void,
+      { id: string; patch: ClientInquiryPatchResource }
+    >({
+      query: ({ id, patch }) => ({
+        url: `/api/client-inquiry/${id}`,
+        method: "PATCH",
+        body: patch,
+      }),
+      invalidatesTags: (_result, _error, { id }) => [
+        { type: "ClientInquiry", id },
+        { type: "ClientInquiry", id: "LIST" },
+      ],
+    }),
 
-    if (error || !data)
-      return rejectWithValue(error ?? "Failed to fetch client inquiries");
-    return {
-      data: data as PagedResultClientInquiryIndex,
-      filters: queryParams,
-    };
-  },
-);
-
-export const fetchClientInquiryById = createAsyncThunk(
-  "clientInquiries/fetchById",
-  async (id: string, { rejectWithValue }) => {
-    const { data, error } = await api.GET("/api/client-inquiry/{id}", {
-      params: { path: { id } },
-    });
-
-    if (error || !data)
-      return rejectWithValue(error ?? "Client inquiry not found");
-    return data as ClientInquiryResource;
-  },
-);
-
-export const patchClientInquiry = createAsyncThunk(
-  "clientInquiries/patch",
-  async (
-    { id, patch }: { id: string; patch: ClientInquiryPatchResource },
-    { rejectWithValue },
-  ) => {
-    const { error } = await api.PATCH("/api/client-inquiry/{id}", {
-      params: { path: { id } },
-      body: patch,
-    });
-
-    if (error)
-      return rejectWithValue(error ?? "Failed to update client inquiry");
-    return { id, patch };
-  },
-);
-
-export const deleteClientInquiry = createAsyncThunk(
-  "clientInquiries/delete",
-  async (id: string, { rejectWithValue }) => {
-    const { error } = await api.DELETE("/api/client-inquiry/{id}", {
-      params: { path: { id } },
-    });
-
-    if (error)
-      return rejectWithValue(error ?? "Failed to delete client inquiry");
-    return id;
-  },
-);
-
-export const clientInquirySlice = createSlice({
-  name: "clientInquiries",
-  initialState,
-  reducers: {
-    setFilters: (
-      state,
-      action: PayloadAction<Partial<ClientInquiryFilters>>,
-    ) => {
-      state.filters = { ...state.filters, ...action.payload };
-    },
-    resetFilters: (state) => {
-      state.filters = initialFilters;
-    },
-    clearSelectedInquiry: (state) => {
-      state.selectedInquiry = null;
-    },
-  },
-  extraReducers: (builder) => {
-    builder
-      // Fetch Inquiries
-      .addCase(fetchClientInquiries.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(fetchClientInquiries.fulfilled, (state, action) => {
-        state.loading = false;
-        state.items = action.payload.data.items ?? [];
-        state.totalCount = action.payload.data.totalCount ?? 0;
-        state.filters = action.payload.filters;
-      })
-      .addCase(fetchClientInquiries.rejected, (state, action) => {
-        state.loading = false;
-        state.error =
-          (action.payload as string) || "Failed to fetch client inquiries";
-      })
-
-      // Fetch Inquiry By Id
-      .addCase(fetchClientInquiryById.fulfilled, (state, action) => {
-        state.selectedInquiry = action.payload;
-      })
-
-      // Patch Inquiry
-      .addCase(patchClientInquiry.fulfilled, (state, action) => {
-        // Remove item from active view if archive state changed
-        state.items = state.items.filter(
-          (item) => item.id !== action.payload.id,
-        );
-        if (state.selectedInquiry?.id === action.payload.id) {
-          state.selectedInquiry.isArchived =
-            action.payload.patch.isArchived ?? state.selectedInquiry.isArchived;
-        }
-      })
-
-      // Delete Inquiry
-      .addCase(deleteClientInquiry.fulfilled, (state, action) => {
-        state.items = state.items.filter((item) => item.id !== action.payload);
-        if (state.selectedInquiry?.id === action.payload) {
-          state.selectedInquiry = null;
-        }
-      });
-  },
+    deleteClientInquiry: builder.mutation<void, string>({
+      query: (id) => ({
+        url: `/api/client-inquiry/${id}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: (_result, _error, id) => [
+        { type: "ClientInquiry", id },
+        { type: "ClientInquiry", id: "LIST" },
+      ],
+    }),
+  }),
 });
 
-export const { setFilters, resetFilters, clearSelectedInquiry } =
-  clientInquirySlice.actions;
-export default clientInquirySlice.reducer;
+export const {
+  useGetClientInquiriesQuery,
+  useGetClientInquiryByIdQuery,
+  usePatchClientInquiryMutation,
+  useDeleteClientInquiryMutation,
+} = clientInquiryApi;

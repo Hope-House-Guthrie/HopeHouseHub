@@ -1,5 +1,4 @@
-import React, { useEffect, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import React, { useState } from "react";
 import SearchIcon from "@mui/icons-material/Search";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import ArchiveIcon from "@mui/icons-material/Archive";
@@ -11,74 +10,129 @@ import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
 import ClearIcon from "@mui/icons-material/Clear";
 
-import { type AppDispatch, type RootState } from "@/store";
 import {
-  fetchClientInquiries,
-  fetchClientInquiryById,
-  patchClientInquiry,
-  deleteClientInquiry,
-  setFilters,
-  resetFilters,
-  clearSelectedInquiry,
+  useGetClientInquiriesQuery,
+  useGetClientInquiryByIdQuery,
+  usePatchClientInquiryMutation,
+  useDeleteClientInquiryMutation,
   type ClientInquiryIndexResource,
+  type ClientInquiryFilters,
   type ClientInquirySort,
 } from "@/store/slices/client-inquiries";
 
-export const ClientInquiriesPage: React.FC = () => {
-  const dispatch = useDispatch<AppDispatch>();
-  const { items, totalCount, selectedInquiry, filters, loading, error } = useSelector(
-    (state: RootState) => state.clientInquiries
-  );
+const initialFilterState: ClientInquiryFilters = {
+  page: 1,
+  pageSize: 20,
+  sort: "Timestamp" as ClientInquirySort,
+  descending: true,
+  isArchived: false,
+};
 
-  const [deleteTarget, setDeleteTarget] = useState<ClientInquiryIndexResource | null>(null);
+export const ClientInquiriesPage: React.FC = () => {
+  // Query parameters state
+  const [activeQueryParams, setActiveQueryParams] =
+    useState<ClientInquiryFilters>(initialFilterState);
+
+  // Detail Modal selection ID state
+  const [selectedInquiryId, setSelectedInquiryId] = useState<string | null>(
+    null
+  );
+  const [deleteTarget, setDeleteTarget] =
+    useState<ClientInquiryIndexResource | null>(null);
+
+  // Form input state (buffered until form submit)
   const [filterInputs, setFilterInputs] = useState({
-    firstName: filters.firstName || "",
-    lastName: filters.lastName || "",
-    email: filters.email || "",
-    phone: filters.phone || "",
-    dateOfBirth: filters.dateOfBirth || "",
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    dateOfBirth: "",
   });
 
-  useEffect(() => {
-    dispatch(fetchClientInquiries());
-  }, [dispatch, filters.page, filters.pageSize, filters.sort, filters.descending, filters.isArchived]);
+  // RTK Query Hooks
+  const {
+    data: inquiryPageData,
+    isLoading,
+    isFetching,
+    error: fetchError,
+    refetch,
+  } = useGetClientInquiriesQuery(activeQueryParams);
 
+  const { data: selectedInquiry, isLoading: isLoadingDetail } =
+    useGetClientInquiryByIdQuery(selectedInquiryId!, {
+      skip: !selectedInquiryId,
+    });
+
+  const [patchClientInquiry] = usePatchClientInquiryMutation();
+  const [deleteClientInquiry, { isLoading: isDeleting }] =
+    useDeleteClientInquiryMutation();
+
+  const items = inquiryPageData?.items ?? [];
+  const totalCount = inquiryPageData?.totalCount ?? 0;
+  const totalPages = Math.ceil(totalCount / activeQueryParams.pageSize) || 1;
+
+  // Handlers
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    dispatch(setFilters({ ...filterInputs, page: 1 }));
-    dispatch(fetchClientInquiries());
+    setActiveQueryParams((prev) => ({
+      ...prev,
+      ...filterInputs,
+      page: 1,
+    }));
   };
 
   const handleReset = () => {
-    setFilterInputs({
+    const resetFormInputs = {
       firstName: "",
       lastName: "",
       email: "",
       phone: "",
       dateOfBirth: "",
-    });
-    dispatch(resetFilters());
-    dispatch(fetchClientInquiries());
+    };
+    setFilterInputs(resetFormInputs);
+    setActiveQueryParams((prev) => ({
+      ...initialFilterState,
+      isArchived: prev.isArchived, // Preserve current tab context
+    }));
+  };
+
+  const handleTabChange = (isArchived: boolean) => {
+    setActiveQueryParams((prev) => ({
+      ...prev,
+      isArchived,
+      page: 1,
+    }));
   };
 
   const handleSort = (column: ClientInquirySort) => {
-    const isSameColumn = filters.sort === column;
-    const nextDescending = isSameColumn ? !filters.descending : true;
-    dispatch(setFilters({ sort: column, descending: nextDescending, page: 1 }));
+    setActiveQueryParams((prev) => {
+      const isSameColumn = prev.sort === column;
+      return {
+        ...prev,
+        sort: column,
+        descending: isSameColumn ? !prev.descending : true,
+        page: 1,
+      };
+    });
   };
 
-  const handleArchiveToggle = (id: string, isArchived: boolean) => {
-    dispatch(patchClientInquiry({ id, patch: { isArchived: !isArchived } }));
+  const handleArchiveToggle = async (id: string, isArchived: boolean) => {
+    await patchClientInquiry({ id, patch: { isArchived: !isArchived } });
   };
 
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (deleteTarget) {
-      dispatch(deleteClientInquiry(deleteTarget.id));
+      await deleteClientInquiry(deleteTarget.id);
       setDeleteTarget(null);
     }
   };
 
-  const totalPages = Math.ceil(totalCount / filters.pageSize) || 1;
+  const errorMessage =
+    fetchError && "data" in fetchError
+      ? (fetchError.data as string)
+      : fetchError
+      ? "Failed to fetch client inquiries"
+      : null;
 
   return (
     <div className="p-6 space-y-6">
@@ -88,31 +142,39 @@ export const ClientInquiriesPage: React.FC = () => {
           <h1 className="text-3xl font-bold">Client Inquiries</h1>
         </div>
         <button
-          onClick={() => dispatch(fetchClientInquiries())}
+          onClick={() => refetch()}
+          disabled={isFetching}
           className="btn btn-outline btn-sm gap-2"
         >
-          <RefreshIcon fontSize="small" /> Refresh
+          <RefreshIcon
+            fontSize="small"
+            className={isFetching ? "animate-spin" : ""}
+          />{" "}
+          Refresh
         </button>
       </div>
 
       {/* Tabs */}
       <div className="tabs tabs-boxed w-fit">
         <button
-          className={`tab ${!filters.isArchived ? "tab-active" : ""}`}
-          onClick={() => dispatch(setFilters({ isArchived: false, page: 1 }))}
+          className={`tab ${!activeQueryParams.isArchived ? "tab-active" : ""}`}
+          onClick={() => handleTabChange(false)}
         >
           Active Inquiries
         </button>
         <button
-          className={`tab ${filters.isArchived ? "tab-active" : ""}`}
-          onClick={() => dispatch(setFilters({ isArchived: true, page: 1 }))}
+          className={`tab ${activeQueryParams.isArchived ? "tab-active" : ""}`}
+          onClick={() => handleTabChange(true)}
         >
           Archived Inquiries
         </button>
       </div>
 
       {/* Filters Form */}
-      <form onSubmit={handleSearchSubmit} className="card bg-base-100 shadow-md p-4 space-y-4">
+      <form
+        onSubmit={handleSearchSubmit}
+        className="card bg-base-100 shadow-md p-4 space-y-4"
+      >
         <div className="flex items-center gap-2 font-semibold">
           <FilterListIcon fontSize="small" /> Filters
         </div>
@@ -122,38 +184,52 @@ export const ClientInquiriesPage: React.FC = () => {
             placeholder="First Name"
             className="input input-bordered input-sm w-full"
             value={filterInputs.firstName}
-            onChange={(e) => setFilterInputs({ ...filterInputs, firstName: e.target.value })}
+            onChange={(e) =>
+              setFilterInputs({ ...filterInputs, firstName: e.target.value })
+            }
           />
           <input
             type="text"
             placeholder="Last Name"
             className="input input-bordered input-sm w-full"
             value={filterInputs.lastName}
-            onChange={(e) => setFilterInputs({ ...filterInputs, lastName: e.target.value })}
+            onChange={(e) =>
+              setFilterInputs({ ...filterInputs, lastName: e.target.value })
+            }
           />
           <input
             type="text"
             placeholder="Email"
             className="input input-bordered input-sm w-full"
             value={filterInputs.email}
-            onChange={(e) => setFilterInputs({ ...filterInputs, email: e.target.value })}
+            onChange={(e) =>
+              setFilterInputs({ ...filterInputs, email: e.target.value })
+            }
           />
           <input
             type="text"
             placeholder="Phone"
             className="input input-bordered input-sm w-full"
             value={filterInputs.phone}
-            onChange={(e) => setFilterInputs({ ...filterInputs, phone: e.target.value })}
+            onChange={(e) =>
+              setFilterInputs({ ...filterInputs, phone: e.target.value })
+            }
           />
           <input
             type="date"
             className="input input-bordered input-sm w-full"
             value={filterInputs.dateOfBirth}
-            onChange={(e) => setFilterInputs({ ...filterInputs, dateOfBirth: e.target.value })}
+            onChange={(e) =>
+              setFilterInputs({ ...filterInputs, dateOfBirth: e.target.value })
+            }
           />
         </div>
         <div className="flex justify-end gap-2">
-          <button type="button" onClick={handleReset} className="btn btn-ghost btn-sm gap-1">
+          <button
+            type="button"
+            onClick={handleReset}
+            className="btn btn-ghost btn-sm gap-1"
+          >
             <ClearIcon fontSize="small" /> Clear
           </button>
           <button type="submit" className="btn btn-primary btn-sm gap-1">
@@ -163,9 +239,9 @@ export const ClientInquiriesPage: React.FC = () => {
       </form>
 
       {/* Error Banner */}
-      {error && (
+      {errorMessage && (
         <div className="alert alert-error">
-          <span>{error}</span>
+          <span>{errorMessage}</span>
         </div>
       )}
 
@@ -174,23 +250,50 @@ export const ClientInquiriesPage: React.FC = () => {
         <table className="table w-full">
           <thead>
             <tr>
-              <th className="cursor-pointer select-none" onClick={() => handleSort("FirstName" as ClientInquirySort)}>
-                First Name {filters.sort === "FirstName" && (filters.descending ? <ArrowDownwardIcon fontSize="inherit" /> : <ArrowUpwardIcon fontSize="inherit" />)}
+              <th
+                className="cursor-pointer select-none"
+                onClick={() => handleSort("FirstName" as ClientInquirySort)}
+              >
+                First Name{" "}
+                {activeQueryParams.sort === "FirstName" &&
+                  (activeQueryParams.descending ? (
+                    <ArrowDownwardIcon fontSize="inherit" />
+                  ) : (
+                    <ArrowUpwardIcon fontSize="inherit" />
+                  ))}
               </th>
-              <th className="cursor-pointer select-none" onClick={() => handleSort("LastName" as ClientInquirySort)}>
-                Last Name {filters.sort === "LastName" && (filters.descending ? <ArrowDownwardIcon fontSize="inherit" /> : <ArrowUpwardIcon fontSize="inherit" />)}
+              <th
+                className="cursor-pointer select-none"
+                onClick={() => handleSort("LastName" as ClientInquirySort)}
+              >
+                Last Name{" "}
+                {activeQueryParams.sort === "LastName" &&
+                  (activeQueryParams.descending ? (
+                    <ArrowDownwardIcon fontSize="inherit" />
+                  ) : (
+                    <ArrowUpwardIcon fontSize="inherit" />
+                  ))}
               </th>
               <th>Email</th>
               <th>Phone</th>
               <th>DOB</th>
-              <th className="cursor-pointer select-none" onClick={() => handleSort("Timestamp" as ClientInquirySort)}>
-                Submitted {filters.sort === "Timestamp" && (filters.descending ? <ArrowDownwardIcon fontSize="inherit" /> : <ArrowUpwardIcon fontSize="inherit" />)}
+              <th
+                className="cursor-pointer select-none"
+                onClick={() => handleSort("Timestamp" as ClientInquirySort)}
+              >
+                Submitted{" "}
+                {activeQueryParams.sort === "Timestamp" &&
+                  (activeQueryParams.descending ? (
+                    <ArrowDownwardIcon fontSize="inherit" />
+                  ) : (
+                    <ArrowUpwardIcon fontSize="inherit" />
+                  ))}
               </th>
               <th className="text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {loading ? (
+            {isLoading || isFetching ? (
               <tr>
                 <td colSpan={7} className="text-center py-8">
                   <span className="loading loading-spinner loading-md"></span>
@@ -215,16 +318,22 @@ export const ClientInquiriesPage: React.FC = () => {
                     <button
                       title="View Details"
                       className="btn btn-ghost btn-xs"
-                      onClick={() => dispatch(fetchClientInquiryById(inquiry.id))}
+                      onClick={() => setSelectedInquiryId(inquiry.id)}
                     >
                       <VisibilityIcon fontSize="small" />
                     </button>
                     <button
                       title={inquiry.isArchived ? "Unarchive" : "Archive"}
                       className="btn btn-ghost btn-xs"
-                      onClick={() => handleArchiveToggle(inquiry.id, inquiry.isArchived)}
+                      onClick={() =>
+                        handleArchiveToggle(inquiry.id, inquiry.isArchived)
+                      }
                     >
-                      {inquiry.isArchived ? <UnarchiveIcon fontSize="small" /> : <ArchiveIcon fontSize="small" />}
+                      {inquiry.isArchived ? (
+                        <UnarchiveIcon fontSize="small" />
+                      ) : (
+                        <ArchiveIcon fontSize="small" />
+                      )}
                     </button>
                     <button
                       title="Delete"
@@ -243,21 +352,34 @@ export const ClientInquiriesPage: React.FC = () => {
         {/* Pagination */}
         <div className="flex flex-col sm:flex-row items-center justify-between p-4 border-t border-base-200 gap-4">
           <span className="text-sm text-base-content/70">
-            Showing Page {filters.page} of {totalPages} ({totalCount} items)
+            Showing Page {activeQueryParams.page} of {totalPages} ({totalCount}{" "}
+            items)
           </span>
           <div className="join">
             <button
               className="join-item btn btn-sm"
-              disabled={filters.page <= 1}
-              onClick={() => dispatch(setFilters({ page: filters.page - 1 }))}
+              disabled={activeQueryParams.page <= 1}
+              onClick={() =>
+                setActiveQueryParams((prev) => ({
+                  ...prev,
+                  page: prev.page - 1,
+                }))
+              }
             >
               «
             </button>
-            <button className="join-item btn btn-sm">Page {filters.page}</button>
+            <button className="join-item btn btn-sm">
+              Page {activeQueryParams.page}
+            </button>
             <button
               className="join-item btn btn-sm"
-              disabled={filters.page >= totalPages}
-              onClick={() => dispatch(setFilters({ page: filters.page + 1 }))}
+              disabled={activeQueryParams.page >= totalPages}
+              onClick={() =>
+                setActiveQueryParams((prev) => ({
+                  ...prev,
+                  page: prev.page + 1,
+                }))
+              }
             >
               »
             </button>
@@ -266,20 +388,47 @@ export const ClientInquiriesPage: React.FC = () => {
       </div>
 
       {/* View Detail Modal */}
-      {selectedInquiry && (
+      {selectedInquiryId && (
         <dialog className="modal modal-open">
           <div className="modal-box">
             <h3 className="font-bold text-lg mb-4">Client Inquiry Details</h3>
-            <div className="space-y-2 text-sm">
-              <p><strong>Name:</strong> {selectedInquiry.firstName} {selectedInquiry.lastName}</p>
-              <p><strong>Email:</strong> {selectedInquiry.email}</p>
-              <p><strong>Phone:</strong> {selectedInquiry.phone ?? "N/A"}</p>
-              <p><strong>Date of Birth:</strong> {selectedInquiry.dateOfBirth ?? "N/A"}</p>
-              <p><strong>Status:</strong> {selectedInquiry.isArchived ? "Archived" : "Active"}</p>
-              <p><strong>Submitted At:</strong> {new Date(selectedInquiry.timestamp!).toLocaleString()}</p>
-            </div>
+            {isLoadingDetail ? (
+              <div className="flex justify-center py-8">
+                <span className="loading loading-spinner loading-md"></span>
+              </div>
+            ) : selectedInquiry ? (
+              <div className="space-y-2 text-sm">
+                <p>
+                  <strong>Name:</strong> {selectedInquiry.firstName}{" "}
+                  {selectedInquiry.lastName}
+                </p>
+                <p>
+                  <strong>Email:</strong> {selectedInquiry.email}
+                </p>
+                <p>
+                  <strong>Phone:</strong> {selectedInquiry.phone ?? "N/A"}
+                </p>
+                <p>
+                  <strong>Date of Birth:</strong>{" "}
+                  {selectedInquiry.dateOfBirth ?? "N/A"}
+                </p>
+                <p>
+                  <strong>Status:</strong>{" "}
+                  {selectedInquiry.isArchived ? "Archived" : "Active"}
+                </p>
+                <p>
+                  <strong>Submitted At:</strong>{" "}
+                  {new Date(selectedInquiry.timestamp!).toLocaleString()}
+                </p>
+              </div>
+            ) : (
+              <p className="text-error">Inquiry detail unavailable.</p>
+            )}
             <div className="modal-action">
-              <button className="btn btn-sm" onClick={() => dispatch(clearSelectedInquiry())}>
+              <button
+                className="btn btn-sm"
+                onClick={() => setSelectedInquiryId(null)}
+              >
                 Close
               </button>
             </div>
@@ -294,14 +443,29 @@ export const ClientInquiriesPage: React.FC = () => {
             <h3 className="font-bold text-lg text-error">Confirm Delete</h3>
             <p className="py-4 text-sm">
               Are you sure you want to delete the inquiry for{" "}
-              <strong>{deleteTarget.firstName} {deleteTarget.lastName}</strong>? This action cannot be undone.
+              <strong>
+                {deleteTarget.firstName} {deleteTarget.lastName}
+              </strong>
+              ? This action cannot be undone.
             </p>
             <div className="modal-action">
-              <button className="btn btn-ghost btn-sm" onClick={() => setDeleteTarget(null)}>
+              <button
+                className="btn btn-ghost btn-sm"
+                disabled={isDeleting}
+                onClick={() => setDeleteTarget(null)}
+              >
                 Cancel
               </button>
-              <button className="btn btn-error btn-sm" onClick={handleDeleteConfirm}>
-                Delete
+              <button
+                className="btn btn-error btn-sm"
+                disabled={isDeleting}
+                onClick={handleDeleteConfirm}
+              >
+                {isDeleting ? (
+                  <span className="loading loading-spinner loading-xs"></span>
+                ) : (
+                  "Delete"
+                )}
               </button>
             </div>
           </div>

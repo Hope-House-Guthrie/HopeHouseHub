@@ -26,7 +26,7 @@ export const baseQuery =
         initOptions.params = { query: params };
       }
 
-      const fullUrl = `${API_BASE_URL}${url.startsWith("/") ? "" : "/"}${url}`;
+      const fullUrl = `${url.startsWith("/") ? "" : "/"}${url}`;
 
       console.log(fullUrl);
 
