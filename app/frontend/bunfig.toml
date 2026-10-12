@@ -2,4 +2,5 @@
 port = 3001
 
 [serve.static]
+plugins = ["bun-plugin-tailwind"]
 env = "H3_*"

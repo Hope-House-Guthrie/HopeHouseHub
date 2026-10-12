@@ -3,6 +3,7 @@ using System;
 namespace H3.Server.Endpoints.ClientInquiries;
 
 public record ClientInquiryIndex(
+    Guid Id,
     string FirstName,
     string LastName,
     DateOnly DateOfBirth,

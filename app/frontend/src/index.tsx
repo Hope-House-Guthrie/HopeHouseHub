@@ -7,6 +7,8 @@ import { Provider } from "react-redux";
 import { store } from "./store";
 import { routesConfig } from "./routes";
 
+import "@/styles/global.css";
+
 const elem = document.getElementById("root")!;
 
 const router = createBrowserRouter(routesConfig);

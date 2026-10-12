@@ -17,11 +17,7 @@
             "name": "page",
             "in": "query",
             "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
+              "type": "integer",
               "format": "int32",
               "default": 1
             }
@@ -30,11 +26,7 @@
             "name": "pageSize",
             "in": "query",
             "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
+              "type": "integer",
               "format": "int32",
               "default": 20
             }
@@ -43,7 +35,7 @@
             "name": "sort",
             "in": "query",
             "schema": {
-              "default": 3,
+              "default": "Timestamp",
               "$ref": "#/components/schemas/ClientInquirySort"
             }
           },
@@ -2355,11 +2347,7 @@
             "type": "string"
           },
           "children": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": "integer",
             "format": "int32"
           },
           "shelterTiming": {
@@ -2385,6 +2373,7 @@
       },
       "ClientInquiryIndex": {
         "required": [
+          "id",
           "firstName",
           "lastName",
           "dateOfBirth",
@@ -2395,6 +2384,10 @@
         ],
         "type": "object",
         "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
           "firstName": {
             "type": "string"
           },
@@ -2432,7 +2425,12 @@
         }
       },
       "ClientInquirySort": {
-        "type": "integer"
+        "enum": [
+          "None",
+          "FirstName",
+          "LastName",
+          "Timestamp"
+        ]
       },
       "KennyismCreateResource": {
         "required": [
@@ -2589,35 +2587,19 @@
             }
           },
           "totalCount": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": "integer",
             "format": "int32"
           },
           "page": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": "integer",
             "format": "int32"
           },
           "pageSize": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": "integer",
             "format": "int32"
           },
           "totalPages": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": "integer",
             "format": "int32"
           },
           "hasNextPage": {
@@ -2644,11 +2626,9 @@
             ]
           },
           "status": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "null",
-              "integer",
-              "string"
+              "integer"
             ],
             "format": "int32"
           },
@@ -2676,11 +2656,7 @@
         "type": "object",
         "properties": {
           "id": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": "integer",
             "format": "int32"
           },
           "key": {
@@ -2827,11 +2803,9 @@
             ]
           },
           "status": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "null",
-              "integer",
-              "string"
+              "integer"
             ],
             "format": "int32"
           },

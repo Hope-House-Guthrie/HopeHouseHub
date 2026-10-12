@@ -1,6 +1,11 @@
 import {
     Dashboard as DashboardIcon,
     PermIdentity as UsersIcon,
+
+    // inquiries
+    ContactSupport as ClientInquiriesIcon,
+
+    // prototype
     Kitchen as KitchenIcon,
     AccessTime as PassRequestsIcon,
     Biotech as UAFormIcon,
@@ -28,6 +33,11 @@ import ProtectedRoute from "@/components/protected-route";
 import MainLayout from "@/layouts/main";
 import DashboardPage from "@/pages/dashboard";
 import UsersPage from "@/pages/users";
+
+// inquiries
+import ClientInquiriesPage from "@/pages/client-inquiries";
+
+// prototype
 import KitchenDisplayPage from "@/pages/prototype/kitchen/display";
 import KitchenMenusPage from "@/pages/prototype/kitchen/menus";
 import KitchenResourcesPage from "@/pages/prototype/kitchen/kitchen-resources";
@@ -103,6 +113,17 @@ export const routesConfig: NavigationNode[] = [
                             icon: <UsersIcon />,
                             showInNavigation: true,
                             roles: ["ADMIN"],
+                        },
+                    },
+                    {
+                        path: "client-inquiries",
+                        element: <ClientInquiriesPage />,
+                        config: {
+                            title: "Client Inquiries",
+                            icon: <ClientInquiriesIcon />,
+                            showInNavigation: true,
+                            roles: ["ADMIN"],
+                            group: "Inquiries",
                         },
                     },
                     {

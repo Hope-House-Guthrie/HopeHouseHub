@@ -123,6 +123,7 @@ public static class ClientInquiryEndpoints
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .Select(x => new ClientInquiryIndex(
+                x.Id,
                 x.FirstName,
                 x.LastName,
                 x.DateOfBirth,

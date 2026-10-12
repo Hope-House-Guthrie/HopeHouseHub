@@ -1,6 +1,9 @@
 import { configureStore } from "@reduxjs/toolkit";
 import accountReducer from "./slices/account";
 import authReducer from "./slices/auth";
+import clientInquiriesReducer from "./slices/client-inquiries";
+
+// prototype
 import opsReducer from "./slices/prototype/ops";
 import passRequestReducer from "./slices/prototype/passRequest";
 import residentsReducer from "./slices/prototype/residents";
@@ -19,6 +22,9 @@ export const store = configureStore({
   reducer: {
     account: accountReducer,
     auth: authReducer,
+    clientInquiries: clientInquiriesReducer,
+
+    // prototype
     ops: opsReducer,
     passRequest: passRequestReducer,
     residents: residentsReducer,

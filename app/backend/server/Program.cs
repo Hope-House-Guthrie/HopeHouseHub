@@ -1,4 +1,4 @@
-using System.Text;
+
 using H3.Data;
 using H3.Data.Entities;
 using H3.Server.Endpoints.ClientInquiries;
@@ -7,6 +7,7 @@ using H3.Server.Processors;
 using H3.Queues.Extensions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http.Json;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -14,6 +15,9 @@ using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
 using System.Reflection;
 using System;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 var isOpenApiBuildReflectionStep = Assembly.GetEntryAssembly()?.GetName().Name == "GetDocument.Insider";
 
@@ -45,6 +49,13 @@ builder.Services.AddCors(options =>
             .AllowAnyMethod()
             .AllowAnyHeader();
     });
+});
+
+builder.Services.Configure<JsonOptions>(options =>
+{
+    options.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    options.SerializerOptions.NumberHandling = JsonNumberHandling.Strict;
 });
 
 builder.Services.AddOpenApi();

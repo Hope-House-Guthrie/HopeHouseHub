@@ -63,3 +63,13 @@ export type MenuItemUpdateResource =
 export type MealResource = components["schemas"]["MealResource"];
 
 export type MealUpdateResource = components["schemas"]["MealUpdateResource"];
+
+// client inquiries
+export type ClientInquiryResource = components["schemas"]["ClientInquiry"];
+export type ClientInquiryIndexResource =
+  components["schemas"]["ClientInquiryIndex"];
+export type ClientInquiryPatchResource =
+  components["schemas"]["ClientInquiryPatch"];
+export type ClientInquirySort = components["schemas"]["ClientInquirySort"];
+export type PagedResultClientInquiryIndex =
+  components["schemas"]["PagedResultOfClientInquiryIndex"];
