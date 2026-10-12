@@ -57,5 +57,23 @@ public class ClientInquiryConfiguration : IEntityTypeConfiguration<ClientInquiry
 
         builder.Property(e => e.Timestamp)
             .IsRequired();
+
+        builder.HasIndex(e => new { e.IsArchived, e.Timestamp })
+            .HasDatabaseName("IX_ClientInquiries_IsArchived_Timestamp");
+
+        builder.HasIndex(e => new { e.IsArchived, e.FirstName })
+            .HasDatabaseName("IX_ClientInquiries_IsArchived_FirstName");
+
+        builder.HasIndex(e => new { e.IsArchived, e.LastName })
+            .HasDatabaseName("IX_ClientInquiries_IsArchived_LastName");
+
+        builder.HasIndex(e => new { e.IsArchived, e.DateOfBirth })
+            .HasDatabaseName("IX_ClientInquiries_IsArchived_DateOfBirth");
+
+        builder.HasIndex(e => e.Email)
+            .HasDatabaseName("IX_ClientInquiries_Email");
+
+        builder.HasIndex(e => e.Phone)
+            .HasDatabaseName("IX_ClientInquiries_Phone");
     }
 }

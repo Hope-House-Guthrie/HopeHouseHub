@@ -94,6 +94,24 @@ namespace H3.Data.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Email")
+                        .HasDatabaseName("IX_ClientInquiries_Email");
+
+                    b.HasIndex("Phone")
+                        .HasDatabaseName("IX_ClientInquiries_Phone");
+
+                    b.HasIndex("IsArchived", "DateOfBirth")
+                        .HasDatabaseName("IX_ClientInquiries_IsArchived_DateOfBirth");
+
+                    b.HasIndex("IsArchived", "FirstName")
+                        .HasDatabaseName("IX_ClientInquiries_IsArchived_FirstName");
+
+                    b.HasIndex("IsArchived", "LastName")
+                        .HasDatabaseName("IX_ClientInquiries_IsArchived_LastName");
+
+                    b.HasIndex("IsArchived", "Timestamp")
+                        .HasDatabaseName("IX_ClientInquiries_IsArchived_Timestamp");
+
                     b.ToTable("ClientInquiries", (string)null);
                 });
 
