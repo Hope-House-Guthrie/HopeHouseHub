@@ -2,8 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace H3.Data.Entities.Configurations;
 
@@ -25,14 +25,15 @@ public class VolunteerInquiryConfiguration : IEntityTypeConfiguration<VolunteerI
 
         builder.Property(e => e.Email)
             .IsRequired()
-            .HasMaxLength(256);
+            .HasMaxLength(100);
 
         builder.Property(e => e.Phone)
-            .HasMaxLength(14);
+            .IsRequired()
+            .HasMaxLength(10);
 
         builder.Property(e => e.VolunteerType)
             .IsRequired()
-            .HasMaxLength(100);
+            .HasMaxLength(50);
 
         builder.Property(e => e.Organization)
             .HasMaxLength(150);

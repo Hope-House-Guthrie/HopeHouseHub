@@ -2,7 +2,7 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using H3.Queues.Models;
+using H3.Queues.Messages;
 
 namespace H3.Queues.Events;
 

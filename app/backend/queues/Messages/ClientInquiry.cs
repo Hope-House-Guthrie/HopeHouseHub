@@ -1,6 +1,6 @@
 using System;
 
-namespace H3.Queues.Models;
+namespace H3.Queues.Messages;
 
 public record ClientInquiry(
     DateTimeOffset Timestamp,
@@ -9,9 +9,9 @@ public record ClientInquiry(
     string? MiddleName,
     string LastName,
     string? Suffix,
-    DateOnly? DateOfBirth,
-    string? Phone,
-    string? Email,
+    DateOnly DateOfBirth,
+    string Phone,
+    string Email,
     string ContactMethod,
     string HouseholdType,
     int Children,

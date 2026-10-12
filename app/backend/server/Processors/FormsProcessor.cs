@@ -3,17 +3,15 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using H3.Data;
-using H3.Data.Entities;
 using H3.Queues.Events;
-using H3.Queues.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 using ClientInquiryEntity = H3.Data.Entities.ClientInquiry;
-using ClientInquiryMessage = H3.Queues.Models.ClientInquiry;
+using ClientInquiryMessage = H3.Queues.Messages.ClientInquiry;
 using VolunteerInquiryEntity = H3.Data.Entities.VolunteerInquiry;
-using VolunteerInquiryMessage = H3.Queues.Models.VolunteerInquiry;
+using VolunteerInquiryMessage = H3.Queues.Messages.VolunteerInquiry;
 
 namespace H3.Server.Processors;
 

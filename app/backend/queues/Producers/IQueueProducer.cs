@@ -1,4 +1,4 @@
-using H3.Queues.Models;
+using H3.Queues.Messages;
 using System.Threading.Tasks;
 
 namespace H3.Queues.Producers;

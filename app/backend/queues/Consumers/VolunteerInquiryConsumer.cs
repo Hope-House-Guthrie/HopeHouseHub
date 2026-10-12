@@ -1,5 +1,5 @@
 using H3.Queues.Events;
-using H3.Queues.Models;
+using H3.Queues.Messages;
 using MassTransit;
 using System.Threading.Tasks;
 

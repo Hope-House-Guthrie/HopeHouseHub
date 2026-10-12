@@ -1,4 +1,4 @@
-using H3.Queues.Models;
+using H3.Queues.Messages;
 using Microsoft.AspNetCore.Http;
 using System;
 using System.Threading.Tasks;
@@ -11,37 +11,24 @@ public record ClientInquiryRequest(ClientInquiry Model, string SuccessUrl)
     {
         var form = await context.Request.ReadFormAsync();
 
-        string? firstName = GetValidString(form["firstName"], maxLength: 100);
-        string? middleName = GetValidString(form["middleName"], maxLength: 100);
-        string? lastName = GetValidString(form["lastName"], maxLength: 100);
-        string? phone = GetValidString(form["phone"], maxLength: 14);
-        string? message = GetValidString(form["message"], maxLength: 2000);
-
         var model = new ClientInquiry(
             Timestamp: DateTimeOffset.UtcNow,
-            SuccessUrl: form["success_url"].ToString(),
-            FirstName: firstName ?? string.Empty,
-            MiddleName: middleName,
-            LastName: lastName ?? string.Empty,
-            Suffix: form["suffix"].ToString(),
-            DateOfBirth: DateOnly.TryParse(form["dateOfBirth"], out var dob) ? dob : null,
-            Phone: phone,
-            Email: form["email"].ToString(),
-            ContactMethod: form["contactMethod"].ToString(),
-            HouseholdType: form["householdType"].ToString(),
-            Children: int.TryParse(form["children"], out var c) ? c : 0,
-            ShelterTiming: form["shelterTiming"].ToString(),
-            VaccinationWillingness: form["vaccinationWillingness"].ToString(),
-            Message: message
+            SuccessUrl: form.GetString("success_url", required: true)!,
+            FirstName: form.GetString("firstName", maxLength: 100, required: true)!,
+            MiddleName: form.GetString("middleName", maxLength: 100),
+            LastName: form.GetString("lastName", maxLength: 100, required: true)!,
+            Suffix: form.GetString("suffix", maxLength: 5),
+            DateOfBirth: form.GetDate("dateOfBirth", required: true)!.Value,
+            Phone: form.GetPhone("phone", required: true)!,
+            Email: form.GetEmail("email", maxLength: 100, required: true)!,
+            ContactMethod: form.GetString("contactMethod", maxLength: 15, required: true)!,
+            HouseholdType: form.GetString("householdType", maxLength: 15, required: true)!,
+            Children: form.GetInt32("children", defaultValue: 0),
+            ShelterTiming: form.GetString("shelterTiming", maxLength: 50, required: true)!,
+            VaccinationWillingness: form.GetString("vaccinationWillingness", maxLength: 50, required: true)!,
+            Message: form.GetString("message", maxLength: 2000)
         );
 
         return new ClientInquiryRequest(model, model.SuccessUrl);
-    }
-
-    private static string? GetValidString(string? value, int maxLength)
-    {
-        if (string.IsNullOrWhiteSpace(value)) return null;
-        
-        return value.Length > maxLength ? value[..maxLength] : value;
     }
 }

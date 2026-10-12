@@ -1,20 +1,19 @@
 using System.Text;
 using H3.Data;
 using H3.Data.Entities;
+using H3.Server.Endpoints.ClientInquiries;
 using H3.Server.Extensions;
 using H3.Server.Processors;
 using H3.Queues.Extensions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
 using System.Reflection;
 using System;
-using System.Linq;
 
 var isOpenApiBuildReflectionStep = Assembly.GetEntryAssembly()?.GetName().Name == "GetDocument.Insider";
 
@@ -110,6 +109,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapClientInquiries();
 
 if (!isOpenApiBuildReflectionStep && app.Environment.IsProduction())
 {

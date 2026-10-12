@@ -23,32 +23,34 @@ public class ClientInquiryConfiguration : IEntityTypeConfiguration<ClientInquiry
             .HasMaxLength(100);
 
         builder.Property(e => e.Suffix)
-            .HasMaxLength(20);
+            .HasMaxLength(5);
 
         builder.Property(e => e.Phone)
-            .HasMaxLength(14);
+            .IsRequired()
+            .HasMaxLength(10);
 
         builder.Property(e => e.Email)
-            .HasMaxLength(256);
+            .IsRequired()
+            .HasMaxLength(100);
 
         builder.Property(e => e.ContactMethod)
             .IsRequired()
-            .HasMaxLength(50);
+            .HasMaxLength(15);
 
         builder.Property(e => e.HouseholdType)
             .IsRequired()
-            .HasMaxLength(100);
+            .HasMaxLength(15);
 
         builder.Property(e => e.Children)
             .IsRequired();
 
         builder.Property(e => e.ShelterTiming)
             .IsRequired()
-            .HasMaxLength(100);
+            .HasMaxLength(50);
 
         builder.Property(e => e.VaccinationWillingness)
             .IsRequired()
-            .HasMaxLength(100);
+            .HasMaxLength(50);
 
         builder.Property(e => e.Message)
             .HasMaxLength(2000);

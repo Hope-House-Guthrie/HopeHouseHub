@@ -1,4 +1,4 @@
-using H3.Queues.Models;
+using H3.Queues.Messages;
 using MassTransit;
 using System;
 using System.Threading.Tasks;

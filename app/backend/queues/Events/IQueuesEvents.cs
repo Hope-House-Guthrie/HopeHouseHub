@@ -1,7 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using H3.Queues.Models;
+using H3.Queues.Messages;
 
 namespace H3.Queues.Events;
 
