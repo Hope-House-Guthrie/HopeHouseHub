@@ -8,7 +8,7 @@
     users.root.password = "root";
   };
 
-  services.h3-frontend = {
+  services.h3-frontend.test = {
     enable = true;
     backendOrigin = "https://api.h3.internal";
     frontendAuthority = "h3.internal";

@@ -2,10 +2,12 @@
   h3-server,
 }:
 {
+  hostingEnvironment,
+}:
+{
   config,
   lib,
   pkgs,
-  hostingEnvironment,
   ...
 }:
 
@@ -17,13 +19,13 @@ let
     types
     ;
 
-  cfg = config.services.h3-server;
+  cfg = config.services.h3-server.${hostingEnvironment};
 
   serviceName = "h3-server-${hostingEnvironment}";
   runtimeSocketFile = "/run/${serviceName}/runtime.sock";
 in
 {
-  options.services.h3-server = {
+  options.services.h3-server.${hostingEnvironment} = {
     enable = mkEnableOption "H3 Server";
 
     backendAuthority = mkOption {
@@ -57,12 +59,6 @@ in
       type = types.nullOr types.str;
       default = null;
       description = "Path to the file containing the Azure Service Bus connection string.";
-    };
-
-    package = mkOption {
-      type = types.nullOr types.package;
-      default = null;
-      description = "The H3 server package to use.";
     };
 
     database = {
@@ -127,67 +123,63 @@ in
       '';
     };
 
-    systemd.services =
-      let
-        package = if cfg.package != null then cfg.package else h3-server;
-      in
-      {
-        "${serviceName}" = {
-          description = "H3 Server (${hostingEnvironment})";
+    systemd.services = {
+      "${serviceName}" = {
+        description = "H3 Server (${hostingEnvironment})";
 
-          after = [
-            "network.target"
-            "postgresql.service"
-            "postgresql-setup.service"
-          ];
+        after = [
+          "network.target"
+          "postgresql.service"
+          "postgresql-setup.service"
+        ];
 
-          wants = [
-            "postgresql-setup.service"
-          ];
+        wants = [
+          "postgresql-setup.service"
+        ];
 
-          requires = [
-            "postgresql.service"
-          ];
+        requires = [
+          "postgresql.service"
+        ];
 
-          wantedBy = [ "multi-user.target" ];
+        wantedBy = [ "multi-user.target" ];
 
-          serviceConfig = {
-            WorkingDirectory = "${package}/bin";
-            Restart = "always";
-            User = cfg.user;
-            Group = cfg.group;
-            RuntimeDirectory = serviceName;
-            RuntimeDirectoryMode = "0750";
-            UMask = "0007";
-            ExecStart = pkgs.writeShellScript "h3-server-wrapper" ''
-              set -euo pipefail
+        serviceConfig = {
+          WorkingDirectory = "${h3-server}/bin";
+          Restart = "always";
+          User = cfg.user;
+          Group = cfg.group;
+          RuntimeDirectory = serviceName;
+          RuntimeDirectoryMode = "0750";
+          UMask = "0007";
+          ExecStart = pkgs.writeShellScript "h3-server-wrapper" ''
+            set -euo pipefail
 
-              export ASPNETCORE_URLS=http://unix:${runtimeSocketFile}
-              export PGHOST=${cfg.database.host}
-              export PGDATABASE=${cfg.database.name}
-              export PGUSER=${cfg.database.user}
-              export PGPORT=${toString cfg.database.port}
-              export JWT__ISSUER=https://${cfg.backendAuthority}
-              export JWT__AUDIENCE=https://${cfg.backendAuthority}
-              export JWT__SECRET=$(cat "${cfg.jwtSecretFile}")
-              export H3__FRONTEND__ORIGIN="${cfg.frontendOrigin}"
+            export ASPNETCORE_URLS=http://unix:${runtimeSocketFile}
+            export PGHOST=${cfg.database.host}
+            export PGDATABASE=${cfg.database.name}
+            export PGUSER=${cfg.database.user}
+            export PGPORT=${toString cfg.database.port}
+            export JWT__ISSUER=https://${cfg.backendAuthority}
+            export JWT__AUDIENCE=https://${cfg.backendAuthority}
+            export JWT__SECRET=$(cat "${cfg.jwtSecretFile}")
+            export H3__FRONTEND__ORIGIN="${cfg.frontendOrigin}"
 
-              ${
-                if cfg.azureServiceBusFile != null then
-                  ''
-                    export H3__QUEUES__MODE="AzureServiceBus"
-                    export H3__QUEUES__AZURESERVICEBUS__CONNECTIONSTRING="$(cat "${cfg.azureServiceBusFile}")"
-                  ''
-                else
-                  ''
-                    export H3__QUEUES__MODE="InMemory"
-                  ''
-              }
+            ${
+              if cfg.azureServiceBusFile != null then
+                ''
+                  export H3__QUEUES__MODE="AzureServiceBus"
+                  export H3__QUEUES__AZURESERVICEBUS__CONNECTIONSTRING="$(cat "${cfg.azureServiceBusFile}")"
+                ''
+              else
+                ''
+                  export H3__QUEUES__MODE="InMemory"
+                ''
+            }
 
-              exec ${package}/bin/h3-server
-            '';
-          };
+            exec ${h3-server}/bin/h3-server
+          '';
         };
       };
+    };
   };
 }

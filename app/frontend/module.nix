@@ -2,9 +2,11 @@
   h3-frontend,
 }:
 {
+  hostingEnvironment,
+}:
+{
   config,
   lib,
-  hostingEnvironment,
   ...
 }:
 
@@ -16,10 +18,10 @@ let
     types
     ;
 
-  cfg = config.services.h3-frontend;
+  cfg = config.services.h3-frontend.${hostingEnvironment};
 in
 {
-  options.services.h3-frontend = {
+  options.services.h3-frontend.${hostingEnvironment} = {
     enable = mkEnableOption "H3 Frontend instance: ${hostingEnvironment}";
 
     backendOrigin = mkOption {
@@ -31,12 +33,6 @@ in
       type = types.str;
       description = "HTTP Authority for the frontend application.";
     };
-
-    package = mkOption {
-      type = types.nullOr types.package;
-      default = null;
-      description = "The base H3 frontend package to override with the instance API URL.";
-    };
   };
 
   config = mkIf (cfg.enable) {
@@ -45,14 +41,12 @@ in
 
       virtualHosts.${cfg.frontendAuthority}.extraConfig =
         let
-          basePackage = if cfg.package != null then cfg.package else h3-frontend;
-
-          configuredPackage = basePackage.override {
+          package = h3-frontend.override {
             backendOrigin = cfg.backendOrigin;
           };
         in
         ''
-          root * "${configuredPackage}/bin"
+          root * "${package}/bin"
           encode gzip zstd
 
           handle {

@@ -83,13 +83,9 @@
       nixosConfigurations.hub-backend-test-vm = inputs.nixpkgs.lib.nixosSystem {
         inherit system;
 
-        specialArgs = {
-          hostingEnvironment = "test";
-        };
-
         modules = [
-          nixosModules.h3-forms
-          nixosModules.h3-server
+          (nixosModules.h3-forms { hostingEnvironment = "test"; })
+          (nixosModules.h3-server { hostingEnvironment = "test"; })
           ./app/backend/test-vm
         ];
       };
@@ -97,12 +93,8 @@
       nixosConfigurations.hub-frontend-test-vm = inputs.nixpkgs.lib.nixosSystem {
         inherit system;
 
-        specialArgs = {
-          hostingEnvironment = "test";
-        };
-
         modules = [
-          nixosModules.h3-frontend
+          (nixosModules.h3-frontend { hostingEnvironment = "test"; })
           ./app/frontend/test-vm
         ];
       };

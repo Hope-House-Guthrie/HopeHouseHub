@@ -2,10 +2,12 @@
   h3-forms,
 }:
 {
+  hostingEnvironment,
+}:
+{
   config,
   lib,
   pkgs,
-  hostingEnvironment,
   ...
 }:
 
@@ -17,12 +19,12 @@ let
     types
     ;
 
-  cfg = config.services.h3-forms;
+  cfg = config.services.h3-forms.${hostingEnvironment};
 
   serviceName = "h3-forms-${hostingEnvironment}";
 in
 {
-  options.services.h3-forms = {
+  options.services.h3-forms.${hostingEnvironment} = {
     enable = mkEnableOption "H3 Forms instance: ${hostingEnvironment}";
 
     user = mkOption {
@@ -35,12 +37,6 @@ in
       type = types.str;
       default = "h3-forms-${hostingEnvironment}";
       description = "System group under which the service runs.";
-    };
-
-    package = mkOption {
-      type = types.nullOr types.package;
-      default = null;
-      description = "The H3 forms package to use.";
     };
 
     azureServiceBusFile = mkOption {
@@ -70,39 +66,35 @@ in
       groups.${cfg.group} = { };
     };
 
-    systemd.services.${serviceName} =
-      let
-        package = if cfg.package != null then cfg.package else h3-forms;
-      in
-      {
-        description = "H3 Forms (${hostingEnvironment})";
-        after = [ "network.target" ];
-        wantedBy = [ "multi-user.target" ];
-        serviceConfig = {
-          User = cfg.user;
-          Group = cfg.group;
-          RuntimeDirectory = serviceName;
-          RuntimeDirectoryMode = "0750";
-          UMask = "0007";
-          WorkingDirectory = "${package}/bin";
-          Restart = "always";
-          ExecStart = pkgs.writeShellScript "h3-forms-wrapper" ''
-            set -euo pipefail
-            export ASPNETCORE_URLS="http://unix:${cfg.socketPath}"
-            ${
-              if cfg.azureServiceBusFile != null then
-                ''
-                  export H3__QUEUES__MODE="AzureServiceBus"
-                  export H3__QUEUES__AZURESERVICEBUS__CONNECTIONSTRING="$(cat "${cfg.azureServiceBusFile}")"
-                ''
-              else
-                ''
-                  export H3__QUEUES__MODE="InMemory"
-                ''
-            }
-            exec ${package}/bin/h3-forms
-          '';
-        };
+    systemd.services.${serviceName} = {
+      description = "H3 Forms (${hostingEnvironment})";
+      after = [ "network.target" ];
+      wantedBy = [ "multi-user.target" ];
+      serviceConfig = {
+        User = cfg.user;
+        Group = cfg.group;
+        RuntimeDirectory = serviceName;
+        RuntimeDirectoryMode = "0750";
+        UMask = "0007";
+        WorkingDirectory = "${h3-forms}/bin";
+        Restart = "always";
+        ExecStart = pkgs.writeShellScript "h3-forms-wrapper" ''
+          set -euo pipefail
+          export ASPNETCORE_URLS="http://unix:${cfg.socketPath}"
+          ${
+            if cfg.azureServiceBusFile != null then
+              ''
+                export H3__QUEUES__MODE="AzureServiceBus"
+                export H3__QUEUES__AZURESERVICEBUS__CONNECTIONSTRING="$(cat "${cfg.azureServiceBusFile}")"
+              ''
+            else
+              ''
+                export H3__QUEUES__MODE="InMemory"
+              ''
+          }
+          exec ${h3-forms}/bin/h3-forms
+        '';
       };
+    };
   };
 }
