@@ -93,6 +93,10 @@
       nixosConfigurations.hub-backend-test-vm = inputs.nixpkgs.lib.nixosSystem {
         inherit system;
 
+        specialArgs = {
+          hostingEnvironment = "test";
+        };
+
         modules = [
           ./app/backend/test-vm
           {
@@ -103,6 +107,10 @@
 
       nixosConfigurations.hub-frontend-test-vm = inputs.nixpkgs.lib.nixosSystem {
         inherit system;
+
+        specialArgs = {
+          hostingEnvironment = "test";
+        };
 
         modules = [
           ./app/frontend/test-vm

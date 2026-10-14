@@ -27,11 +27,11 @@
     '';
   };
 
-  services.h3-forms.test = {
+  services.h3-forms = {
     enable = true;
   };
 
-  services.h3-server.test = {
+  services.h3-server = {
     enable = true;
     backendAuthority = "api.h3.internal";
     frontendOrigin = "https://h3.internal";
