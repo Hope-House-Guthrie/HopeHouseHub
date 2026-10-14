@@ -1,4 +1,7 @@
 {
+  h3-server,
+}:
+{
   config,
   lib,
   pkgs,
@@ -59,7 +62,6 @@ in
     package = mkOption {
       type = types.nullOr types.package;
       default = null;
-      defaultText = lib.literalExpression "pkgs.h3-server";
       description = "The H3 server package to use.";
     };
 
@@ -127,7 +129,7 @@ in
 
     systemd.services =
       let
-        package = if cfg.package != null then cfg.package else pkgs.h3-server;
+        package = if cfg.package != null then cfg.package else h3-server;
       in
       {
         "${serviceName}" = {

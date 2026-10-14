@@ -1,4 +1,7 @@
 {
+  h3-forms,
+}:
+{
   config,
   lib,
   pkgs,
@@ -37,7 +40,6 @@ in
     package = mkOption {
       type = types.nullOr types.package;
       default = null;
-      defaultText = lib.literalExpression "pkgs.h3-forms";
       description = "The H3 forms package to use.";
     };
 
@@ -70,7 +72,7 @@ in
 
     systemd.services.${serviceName} =
       let
-        package = if cfg.package != null then cfg.package else pkgs.h3-forms;
+        package = if cfg.package != null then cfg.package else h3-forms;
       in
       {
         description = "H3 Forms (${hostingEnvironment})";

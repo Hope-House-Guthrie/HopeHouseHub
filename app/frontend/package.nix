@@ -1,6 +1,6 @@
 {
   inputs,
-  pkgs,
+  h3-server,
   stdenv,
   version,
   backendOrigin ? "localhost:3002",
@@ -26,7 +26,7 @@ stdenv.mkDerivation {
 
   postUnpack = ''
     mkdir -p $NIX_BUILD_TOP/backend/server
-    cp ${pkgs.h3-server}/lib/h3-server/openapi.json $NIX_BUILD_TOP/backend/server/openapi.json
+    cp ${h3-server}/lib/h3-server/openapi.json $NIX_BUILD_TOP/backend/server/openapi.json
   '';
 
   buildPhase = ''

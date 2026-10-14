@@ -1,7 +1,9 @@
 {
+  h3-frontend,
+}:
+{
   config,
   lib,
-  pkgs,
   hostingEnvironment,
   ...
 }:
@@ -33,7 +35,6 @@ in
     package = mkOption {
       type = types.nullOr types.package;
       default = null;
-      defaultText = lib.literalExpression "pkgs.h3-frontend";
       description = "The base H3 frontend package to override with the instance API URL.";
     };
   };
@@ -44,7 +45,7 @@ in
 
       virtualHosts.${cfg.frontendAuthority}.extraConfig =
         let
-          basePackage = if cfg.package != null then cfg.package else pkgs.h3-frontend;
+          basePackage = if cfg.package != null then cfg.package else h3-frontend;
 
           configuredPackage = basePackage.override {
             backendOrigin = cfg.backendOrigin;
