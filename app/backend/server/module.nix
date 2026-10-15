@@ -124,8 +124,15 @@ in
     };
 
     systemd.services = {
+      caddy = {
+        wants = [ "${serviceName}.service" ];
+        after = [ "${serviceName}.service" ];
+      };
+
       "${serviceName}" = {
         description = "H3 Server (${hostingEnvironment})";
+
+        before = [ "caddy.service" ];
 
         after = [
           "network.target"

@@ -66,34 +66,42 @@ in
       groups.${cfg.group} = { };
     };
 
-    systemd.services.${serviceName} = {
-      description = "H3 Forms (${hostingEnvironment})";
-      after = [ "network.target" ];
-      wantedBy = [ "multi-user.target" ];
-      serviceConfig = {
-        User = cfg.user;
-        Group = cfg.group;
-        RuntimeDirectory = serviceName;
-        RuntimeDirectoryMode = "0750";
-        UMask = "0007";
-        WorkingDirectory = "${h3-forms}/bin";
-        Restart = "always";
-        ExecStart = pkgs.writeShellScript "h3-forms-wrapper" ''
-          set -euo pipefail
-          export ASPNETCORE_URLS="http://unix:${cfg.socketPath}"
-          ${
-            if cfg.azureServiceBusFile != null then
-              ''
-                export H3__QUEUES__MODE="AzureServiceBus"
-                export H3__QUEUES__AZURESERVICEBUS__CONNECTIONSTRING="$(cat "${cfg.azureServiceBusFile}")"
-              ''
-            else
-              ''
-                export H3__QUEUES__MODE="InMemory"
-              ''
-          }
-          exec ${h3-forms}/bin/h3-forms
-        '';
+    systemd.services = {
+      caddy = {
+        wants = [ "${serviceName}.service" ];
+        after = [ "${serviceName}.service" ];
+      };
+
+      ${serviceName} = {
+        description = "H3 Forms (${hostingEnvironment})";
+        before = [ "caddy.service" ];
+        after = [ "network.target" ];
+        wantedBy = [ "multi-user.target" ];
+        serviceConfig = {
+          User = cfg.user;
+          Group = cfg.group;
+          RuntimeDirectory = serviceName;
+          RuntimeDirectoryMode = "0750";
+          UMask = "0007";
+          WorkingDirectory = "${h3-forms}/bin";
+          Restart = "always";
+          ExecStart = pkgs.writeShellScript "h3-forms-wrapper" ''
+            set -euo pipefail
+            export ASPNETCORE_URLS="http://unix:${cfg.socketPath}"
+            ${
+              if cfg.azureServiceBusFile != null then
+                ''
+                  export H3__QUEUES__MODE="AzureServiceBus"
+                  export H3__QUEUES__AZURESERVICEBUS__CONNECTIONSTRING="$(cat "${cfg.azureServiceBusFile}")"
+                ''
+              else
+                ''
+                  export H3__QUEUES__MODE="InMemory"
+                ''
+            }
+            exec ${h3-forms}/bin/h3-forms
+          '';
+        };
       };
     };
   };
